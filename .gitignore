@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.spec
+build/
+dist/
+
+# 测试夹具与临时产物
+tests/_sandbox/
+tests/_exe_data/
+tests/_http_data/
+tests/_chrome_prof/
+tests/_*.txt
+tests/_*.log
+tests/*.png
+
+# 本机数据与缩略图缓存
+thumbs/
+*.log
+
+# 可执行文件走 Releases 分发, 不进仓库
+*.exe
+安装包/
+
+# IDE / 系统
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+
+# 隐私防再犯: 背景图/演示数据/会话脚本产物
+bg.jpg
+tests/_demodata/
+zzmi_manager.py.orig
+ui.html.orig
+_shot_*.py
+gen_*.py
+_publish.py
+upload_preview.py
+push_*.py

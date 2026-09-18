@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZZMI Mod 管家</title>
+<style>
+:root{
+  --bg:#0b0d10; --bg2:#101318; --panel:#161a20; --panel2:#1d222a; --panel3:#242b34;
+  --line:#272e38; --line2:#333c48;
+  --txt:#e9edf2; --txt2:#b7c0cc; --dim:#808b99;
+  --accent:#d8f425; --accent2:#a7c400; --ink:#0b0d10;
+  --ok:#3ddc84; --off:#ff5d73; --warn:#ffb02e; --info:#5aa9ff;
+  --shadow:0 8px 28px rgba(0,0,0,.45);
+  --r:14px; --r2:10px;
+}
+html[data-theme="light"]{
+  --bg:#eef1f5; --bg2:#f7f9fb; --panel:#ffffff; --panel2:#f3f6f9; --panel3:#e9eef4;
+  --line:#dde3ea; --line2:#cbd4de;
+  --txt:#111823; --txt2:#3d4756; --dim:#6b7787;
+  --accent:#c8e63c; --accent2:#8fac00; --ink:#111823;
+  --shadow:0 6px 22px rgba(20,30,50,.10);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--txt);
+  font:14px/1.5 "Microsoft YaHei UI","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;overflow:hidden;
+}
+/* 背景图: 铺满窗口, 压暗到 25% 不抢内容, 不挡鼠标 */
+body::before{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:url("/bg.jpg") center/cover no-repeat;
+  opacity:.25;
+}
+html[data-theme="light"] body::before{opacity:.32}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:8px;border:2px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:var(--dim);background-clip:content-box}
+::-webkit-scrollbar-track{background:transparent}
+
+#app{display:flex;flex-direction:column;height:100%}
+header{
+  display:flex;align-items:center;gap:12px;padding:10px 14px;
+  background:linear-gradient(180deg,var(--bg2),var(--bg));
+  border-bottom:1px solid var(--line);flex:0 0 auto;z-index:20;
+}
+.brand{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.logo{
+  width:34px;height:34px;border-radius:9px;background:var(--accent);color:var(--ink);
+  display:grid;place-items:center;font-weight:900;font-size:17px;letter-spacing:-1px;
+  box-shadow:0 0 0 3px rgba(216,244,37,.13);
+}
+html[data-theme="light"] .logo{box-shadow:0 0 0 3px rgba(140,175,0,.16)}
+.brand b{font-size:15px;display:block;line-height:1.15}
+.brand span{font-size:11px;color:var(--dim)}
+.pathchip{
+  display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;
+  background:var(--panel);border:1px solid var(--line);max-width:40vw;min-width:0;
+  font-size:12px;color:var(--txt2);cursor:pointer;transition:.15s;
+}
+.pathchip:hover{border-color:var(--line2);background:var(--panel2)}
+.pathchip .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:0 0 auto}
+.pathchip.bad .dot{background:var(--off)}
+.pathchip code{font-family:Consolas,Menlo,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spacer{flex:1 1 auto}
+.btn{
+  display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:var(--r2);
+  background:var(--panel);border:1px solid var(--line);color:var(--txt2);
+  transition:.15s;white-space:nowrap;font-size:13px;
+}
+.btn:hover{background:var(--panel2);border-color:var(--line2);color:var(--txt)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--accent);color:var(--ink);border-color:transparent;font-weight:700}
+.btn.primary:hover{filter:brightness(1.08);color:var(--ink)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--off);border-color:rgba(255,93,115,.35)}
+.btn.danger:hover{background:rgba(255,93,115,.12)}
+.btn[disabled]{opacity:.45;pointer-events:none}
+
+main{flex:1 1 auto;display:flex;min-height:0}
+aside{
+  width:250px;flex:0 0 250px;border-right:1px solid var(--line);
+  background:var(--bg2);overflow-y:auto;padding:12px 10px 60px;
+}
+.side-h{font-size:11px;letter-spacing:1.4px;color:var(--dim);padding:10px 10px 6px;font-weight:700}
+.navi{
+  display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;
+  color:var(--txt2);transition:.12s;width:100%;text-align:left;font-size:13px;
+}
+.navi:hover{background:var(--panel);color:var(--txt)}
+.navi.on{background:var(--panel3);color:var(--txt);box-shadow:inset 2px 0 0 var(--accent)}
+.navi .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.navi .cnt{font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap}
+.navi.on .cnt{color:var(--accent2)}
+html[data-theme="light"] .navi.on .cnt{color:#6b8000}
+.navi.multi .cnt{color:var(--warn)}
+.navi.sub{padding-left:24px;font-size:12.5px}
+.subwrap{display:none}
+.subwrap.open{display:block}
+.tri{width:12px;font-size:9px;color:var(--dim);transition:.15s;flex:0 0 auto}
+.tri.open{transform:rotate(90deg)}
+
+section.content{flex:1 1 auto;display:flex;flex-direction:column;min-width:0;min-height:0}
+.toolbar{
+  display:flex;align-items:center;gap:8px;padding:10px 14px;flex-wrap:wrap;
+  border-bottom:1px solid var(--line);background:var(--bg2);flex:0 0 auto;
+}
+.search{
+  display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--r2);padding:7px 11px;min-width:200px;flex:1 1 200px;max-width:360px;
+}
+.search input{background:none;border:0;outline:none;flex:1;min-width:0}
+.search .k{font-size:12px;color:var(--dim)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{
+  padding:6px 11px;border-radius:999px;background:var(--panel);border:1px solid var(--line);
+  color:var(--txt2);font-size:12px;transition:.13s;
+}
+.chip:hover{border-color:var(--line2);color:var(--txt)}
+.chip.on{background:var(--accent);border-color:transparent;color:var(--ink);font-weight:700}
+select.sel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);
+  padding:7px 9px;outline:none;font-size:12.5px}
+.scopebar{
+  display:flex;align-items:center;gap:9px;padding:9px 16px;flex:0 0 auto;
+  border-bottom:1px dashed var(--line);font-size:12.5px;color:var(--txt2);
+}
+.scopebar b{color:var(--txt)}
+.scopebar .x{margin-left:auto}
+.banner{
+  margin:0 16px;padding:10px 13px;border-radius:var(--r2);display:flex;gap:10px;
+  align-items:flex-start;font-size:12.5px;background:rgba(255,176,46,.10);
+  border:1px solid rgba(255,176,46,.35);color:var(--txt2);
+}
+.banner.ok{background:rgba(61,220,132,.09);border-color:rgba(61,220,132,.3)}
+.banner.err{background:rgba(255,93,115,.10);border-color:rgba(255,93,115,.35)}
+.banner b{color:var(--txt)}
+.scroll{overflow-y:auto;padding:13px 16px 80px;flex:1 1 auto}
+
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(216px,1fr))}
+.grid.list{grid-template-columns:1fr}
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  overflow:hidden;display:flex;flex-direction:column;transition:.16s;position:relative;
+}
+.card:hover{border-color:var(--line2);transform:translateY(-2px);box-shadow:var(--shadow)}
+.card.off{opacity:.6}
+.card.off .thumbwrap{filter:grayscale(.85)}
+.thumbwrap{
+  position:relative;aspect-ratio:16/10;background:
+    linear-gradient(135deg,var(--panel2),var(--panel3));display:grid;place-items:center;
+  overflow:hidden;transition:.2s;
+}
+.grid.list .thumbwrap{aspect-ratio:auto;width:104px;height:74px;flex:0 0 auto}
+.thumbwrap img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .25s}
+.thumbwrap img.ld{opacity:1}
+.thumbwrap .ph{color:var(--dim);font-size:26px;opacity:.5}
+.state{position:absolute;top:8px;left:8px;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;backdrop-filter:blur(6px)}
+.state.on{background:rgba(61,220,132,.9);color:#06240f}
+.state.no{background:rgba(255,93,115,.9);color:#2a060c}
+.cardbody{padding:10px 11px 11px;display:flex;flex-direction:column;gap:7px;flex:1;min-width:0}
+.cardtitle{font-size:13.5px;font-weight:600;line-height:1.32;word-break:break-word}
+.meta{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.tag{font-size:10.5px;padding:2px 7px;border-radius:6px;background:var(--panel3);
+  color:var(--txt2);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.tag.cat{background:rgba(90,169,255,.16);color:var(--info)}
+.tag.char{background:rgba(216,244,37,.16);color:var(--accent2)}
+html[data-theme="light"] .tag.char{color:#6b8000}
+.tag.warn{background:rgba(255,176,46,.16);color:var(--warn)}
+.grid.list .cardinner{display:flex;gap:12px;align-items:stretch}
+.grid.list .cardbody{justify-content:center}
+.cardfoot{display:flex;gap:6px;align-items:center;margin-top:auto}
+.mini{padding:5px 9px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);
+  font-size:12px;color:var(--txt2);transition:.13s}
+.mini:hover{background:var(--panel3);color:var(--txt);border-color:var(--line2)}
+.sw{margin-left:auto;width:44px;height:24px;border-radius:999px;background:var(--line2);
+  position:relative;transition:.18s;flex:0 0 auto}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
+  background:#fff;transition:.18s}
+.sw.on{background:var(--ok)}
+.sw.on::after{left:23px}
+.overflow{position:absolute;top:8px;right:8px;display:flex;gap:5px;opacity:0;transition:.15s}
+.card:hover .overflow{opacity:1}
+.iconbtn{width:27px;height:27px;border-radius:8px;background:rgba(10,12,16,.65);color:#fff;
+  display:grid;place-items:center;font-size:13px;backdrop-filter:blur(6px)}
+.iconbtn:hover{background:var(--accent);color:var(--ink)}
+html[data-theme="light"] .iconbtn{background:rgba(255,255,255,.85);color:#333}
+html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink)}
+
+.mask{position:fixed;inset:0;background:rgba(4,6,9,.55);backdrop-filter:blur(3px);
+  opacity:0;pointer-events:none;transition:.2s;z-index:40}
+.mask.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;height:100%;width:min(560px,94vw);background:var(--bg2);
+  border-left:1px solid var(--line);z-index:50;transform:translateX(100%);
+  transition:transform .24s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column}
+.drawer.on{transform:none}
+.modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-46%) scale(.97);z-index:60;
+  width:min(660px,94vw);max-height:86vh;background:var(--bg2);border:1px solid var(--line);
+  border-radius:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;
+  opacity:0;pointer-events:none;transition:.2s}
+.modal.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+.dh{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);flex:0 0 auto}
+.dh h3{margin:0;font-size:15px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dbody{padding:16px;overflow-y:auto;flex:1 1 auto}
+.dfoot{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;flex:0 0 auto}
+.xbtn{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--dim);font-size:17px}
+.xbtn:hover{background:var(--panel2);color:var(--txt)}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:13px}
+.field label{font-size:12px;color:var(--dim);font-weight:600}
+.inp{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);
+  padding:10px 12px;outline:none;width:100%}
+.inp:focus{border-color:var(--accent)}
+.hint{font-size:11.5px;color:var(--dim);line-height:1.6}
+.kv{display:flex;gap:10px;font-size:12.5px;padding:6px 0;border-bottom:1px dashed var(--line)}
+.kv .k{color:var(--dim);flex:0 0 96px}
+.kv .v{flex:1;word-break:break-all}
+.tree{margin-top:6px;border:1px solid var(--line);border-radius:var(--r2);overflow:hidden}
+.trow{display:flex;align-items:center;gap:9px;padding:8px 11px;font-size:12.5px;border-bottom:1px solid var(--line)}
+.trow:last-child{border-bottom:0}
+.trow:nth-child(odd){background:var(--panel)}
+.trow.dim{opacity:.55}
+.trow .nm{flex:1;word-break:break-all}
+.trow .n{font-size:11px;color:var(--dim);white-space:nowrap}
+.hs{display:flex;flex-wrap:wrap;gap:5px}
+.hs span{font-family:Consolas,monospace;font-size:11px;padding:2px 6px;border-radius:6px;
+  background:var(--panel3);color:var(--txt2)}
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);z-index:80;
+  background:var(--panel3);border:1px solid var(--line2);color:var(--txt);
+  padding:11px 17px;border-radius:12px;box-shadow:var(--shadow);opacity:0;
+  transition:.22s;font-size:13px;max-width:74vw;text-align:center;pointer-events:none;
+  white-space:pre-line}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast.err{border-color:rgba(255,93,115,.5);color:#ffd9df}
+.toast.ok{border-color:rgba(61,220,132,.45)}
+.empty{text-align:center;color:var(--dim);padding:60px 20px;font-size:13px}
+.spin{width:15px;height:15px;border:2px solid var(--line2);border-top-color:var(--accent);
+  border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+#dead{position:fixed;inset:0;z-index:200;background:var(--bg);display:none;
+  place-items:center;padding:30px}
+#dead.on{display:grid}
+#dead .box{max-width:620px;background:var(--panel);border:1px solid var(--line);
+  border-radius:16px;padding:26px;box-shadow:var(--shadow)}
+#dead h2{margin:0 0 12px;font-size:18px}
+#dead ol{padding-left:22px;line-height:1.9;font-size:13.5px;color:var(--txt2)}
+#dead code{background:var(--panel3);padding:1px 6px;border-radius:5px;font-size:12px}
+</style>
+</head>
+<body>
+<div id="app" style="display:none">
+  <header>
+    <div class="brand">
+      <div class="logo">Z</div>
+      <div><b>ZZMI Mod 管家</b><span id="verline">加载中…</span></div>
+    </div>
+    <div class="pathchip" id="pathchip" title="点击修改 ZZMI 路径">
+      <span class="dot"></span><code id="pathcode">…</code>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn primary" id="btnLaunch" title="用 ZZMI 直接启动绝区零(需要管理员授权, 会弹 UAC 窗口)">▶ 启动游戏</button>
+    <button class="btn" id="btnUndo" title="撤销上一步操作">↶ 撤销</button>
+    <button class="btn" id="btnRescan" title="重新扫描 Mods 目录">⟳ 重新扫描</button>
+    <button class="btn ghost" id="btnLib" title="管理 Mods 外面的仓库目录">🗄 仓库</button>
+    <button class="btn ghost" id="btnSet" title="设置">⚙</button>
+  </header>
+
+  <main>
+    <aside>
+      <div class="side-h">总览</div>
+      <button class="navi on" data-scope="all"><span class="nm">全部 Mod</span><span class="cnt" id="cAll">0</span></button>
+      <button class="navi" data-scope="enabled"><span class="nm">✅ 已启用</span><span class="cnt" id="cOn">0</span></button>
+      <button class="navi" data-scope="disabled"><span class="nm">⛔ 已禁用</span><span class="cnt" id="cOff">0</span></button>
+      <div class="side-h">角色 <span id="multiHint" style="font-weight:400"></span></div>
+      <input class="inp" id="charFilter" placeholder="🔍 过滤角色…" style="margin:0 4px 6px;padding:6px 9px;font-size:12px">
+      <div id="chars"></div>
+      <div class="side-h">分类</div>
+      <div id="cats"></div>
+    </aside>
+
+    <section class="content">
+      <div class="toolbar">
+        <div class="search">
+          <span class="k">🔍</span>
+          <input id="q" placeholder="搜索 mod / 角色 / 路径  (按 / 聚焦)">
+          <span class="k" id="qclear" style="cursor:pointer;display:none">✕</span>
+        </div>
+        <div class="chips">
+          <button class="chip on" data-f="all">全部</button>
+          <button class="chip" data-f="enabled">已启用</button>
+          <button class="chip" data-f="disabled">已禁用</button>
+          <button class="chip" data-f="conflict">冲突</button>
+        </div>
+        <select class="sel" id="sort">
+          <option value="def">默认排序</option>
+          <option value="size">按体积</option>
+          <option value="time">按修改时间</option>
+          <option value="name">按名称</option>
+        </select>
+        <select class="sel" id="view">
+          <option value="grid">网格</option>
+          <option value="list">列表</option>
+        </select>
+        <div class="spacer"></div>
+        <button class="btn" id="btnOnAll" title="把当前筛选结果全部启用">全部启用</button>
+        <button class="btn" id="btnOffAll" title="把当前筛选结果全部禁用">全部禁用</button>
+        <select class="sel" id="presetSel"><option value="">— 方案 —</option></select>
+        <button class="btn" id="btnPresetSave">保存</button>
+        <button class="btn" id="btnPresetApply">套用</button>
+        <button class="btn danger" id="btnPresetDel">删</button>
+      </div>
+      <div id="scopebar" class="scopebar" style="display:none"></div>
+      <div id="banners" style="padding-top:10px"></div>
+      <div class="scroll"><div id="cards" class="grid"></div></div>
+    </section>
+  </main>
+</div>
+
+<div id="dead">
+  <div class="box">
+    <h2>😵 连不上后台服务</h2>
+    <p style="color:var(--txt2);font-size:13.5px">
+      界面由本地小服务器驱动, 现在收不到它的回应。最常见的原因是<b>系统代理把 127.0.0.1 也拦截了</b>。</p>
+    <ol>
+      <li>确认那个黑色控制台窗口还开着 —— <b>关掉它程序就退出了</b>。</li>
+      <li>如果开着代理/加速器(Clash、v2rayN、迅雷等), 把 <code>127.0.0.1</code> 和
+          <code>localhost</code> 加入「直连/绕过」列表, 或暂时关掉「系统代理」。</li>
+      <li>重新双击 <code>启动ZZMI管家.bat</code> 或 <code>ZZMI-Mod-Manager.exe</code>:
+          它会用<b>独立窗口 + 强制绕过代理</b>的方式打开, 基本不会再遇到这个问题。</li>
+    </ol>
+    <p class="hint">报错: <span id="deadMsg"></span></p>
+    <div style="margin-top:14px"><button class="btn primary" onclick="location.reload()">重试</button></div>
+  </div>
+</div>
+
+<div class="mask" id="mask"></div>
+
+<div class="drawer" id="drawer">
+  <div class="dh"><h3 id="dtTitle">Mod 详情</h3><button class="xbtn" id="dtClose">✕</button></div>
+  <div class="dbody" id="dtBody"></div>
+  <div class="dfoot">
+    <button class="btn" id="dtReveal">📂 打开文件夹</button>
+    <button class="btn" id="dtRename">✎ 重命名</button>
+    <button class="btn danger" id="dtToggle">切换状态</button>
+  </div>
+</div>
+
+<div class="modal" id="mSet">
+  <div class="dh"><h3>⚙ 设置</h3><button class="xbtn" data-close="mSet">✕</button></div>
+  <div class="dbody" id="setBody"></div>
+  <div class="dfoot"><button class="btn primary" data-close="mSet">完成</button></div>
+</div>
+
+<div class="modal" id="mLib">
+  <div class="dh"><h3>🗄 仓库</h3><button class="xbtn" data-close="mLib">✕</button></div>
+  <div class="dbody" id="libBody"></div>
+  <div class="dfoot"><button class="btn primary" data-close="mLib">完成</button></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BOOT = __BOOT__;
+const T = BOOT.token;
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+let S = null;
+let filter = "all";
+let scope = {type:"all", value:"", label:""};
+let qtext = "", charQ = "";
+let viewMode = "grid";
+let curDetail = null;
+let busy = false;
+let io = null;
+
+async function api(path, body){
+  const url = path + (path.includes("?") ? "&" : "?") + "t=" + encodeURIComponent(T);
+  const opt = {method: body ? "POST" : "GET"};
+  if (body){ opt.headers = {"Content-Type":"application/json"}; opt.body = JSON.stringify(body); }
+  const r = await fetch(url, opt);
+  if(!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+function toast(msg, kind){
+  const el = $("#toast");
+  el.textContent = msg;
+  el.className = "toast on" + (kind ? " " + kind : "");
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>{ el.className = "toast"; }, 3400);
+}
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+async function load(){
+  try{
+    const st = await api("/api/state");
+    S = st;
+    $("#dead").classList.remove("on");
+    $("#app").style.display = "";
+    document.documentElement.setAttribute("data-theme", st.theme || "dark");
+    renderAll();
+    if (!st.configured) openSetup();   // 首次启动: 自动弹出设置页并显示检测进度
+  }catch(e){
+    $("#app").style.display = "none";
+    $("#deadMsg").textContent = e.message;
+    $("#dead").classList.add("on");
+  }
+}
+
+function renderAll(){
+  $("#cAll").textContent = S.stats.total || 0;
+  $("#cOn").textContent = S.stats.enabled || 0;
+  $("#cOff").textContent = S.stats.disabled || 0;
+  $("#verline").textContent = "v" + S.version + " · " + S.stats.total + " 个 mod · "
+    + S.stats.chars + " 个角色 · 扫描 " + S.scan_seconds + "s"
+    + (S.thumb_pending ? " · 缩略图 " + S.thumb_pending : "")
+    + (S.hotkey ? " · 呼出键 " + S.hotkey : "");
+  renderPath(); renderChars(); renderCats(); renderPresets();
+  renderBanners(); renderScopebar(); renderCards(); observeThumbs();
+}
+
+function renderPath(){
+  const c = $("#pathchip"), code = $("#pathcode");
+  if (S.configured && S.mods_dir_exists){
+    c.classList.remove("bad"); code.textContent = S.mods_dir;
+    c.title = "ZZMI 根目录: " + S.zzmi_root + "\n点击修改";
+  }else if (S.configured){
+    c.classList.add("bad"); code.textContent = "Mods 目录不存在 → 点此修正";
+  }else{
+    c.classList.add("bad"); code.textContent = "未找到 ZZMI, 点此指定路径";
+  }
+}
+
+function renderChars(){
+  const box = $("#chars");
+  const list = (S.chars||[]).filter(c => !charQ || c.name.toLowerCase().includes(charQ));
+  $("#multiHint").textContent = S.stats.multi_chars ? (S.stats.multi_chars + " 个角色有多套") : "";
+  if (!list.length){ box.innerHTML = '<div class="hint" style="padding:8px 10px">没有匹配的角色</div>'; return; }
+  box.innerHTML = list.map(c => `
+    <button class="navi sub ${c.multi?"multi":""} ${scope.type==="char"&&scope.value===c.name?"on":""}"
+        data-char="${esc(c.name)}" title="${c.multi?"这个角色有 "+c.count+" 套 mod":""}">
+      <span class="nm">${esc(c.name)}</span>
+      <span class="cnt">${c.multi ? "×"+c.count+" " : ""}${c.enabled}/${c.count}</span>
+    </button>`).join("");
+  box.querySelectorAll("[data-char]").forEach(b => b.onclick = () => {
+    scope = {type:"char", value:b.dataset.char, label:"角色: " + b.dataset.char};
+    setActive(b); renderScopebar(); renderCards();
+  });
+}
+function renderCats(){
+  const box = $("#cats");
+  const cats = S.categories || [];
+  if (!cats.length){ box.innerHTML = '<div class="hint" style="padding:8px 10px">还没有扫描到 mod</div>'; return; }
+  box.innerHTML = cats.map((c,i) => `
+    <div>
+      <div class="navi ${scope.type==="category"&&scope.value===c.name?"on":""}" data-cat="${esc(c.name)}" data-i="${i}">
+        <span class="tri" data-tri="${i}">▶</span>
+        <span class="nm">${esc(c.name)}</span>
+        <span class="cnt">${c.enabled}/${c.count}</span>
+      </div>
+      <div class="subwrap" data-sub="${i}">
+        ${(c.groups||[]).map(g => `
+          <button class="navi sub" data-cat-char="${esc(c.name)}|::|${esc(g.name)}">
+            <span class="nm">${esc(g.name)}</span><span class="cnt">${g.enabled}/${g.count}</span>
+          </button>`).join("")}
+      </div>
+    </div>`).join("");
+  box.querySelectorAll("[data-tri]").forEach(t => t.onclick = e => {
+    e.stopPropagation();
+    t.classList.toggle("open");
+    box.querySelector('[data-sub="'+t.dataset.tri+'"]').classList.toggle("open");
+  });
+  box.querySelectorAll("[data-cat]").forEach(b => b.onclick = () => {
+    scope = {type:"category", value:b.dataset.cat, label:"分类: " + b.dataset.cat};
+    b.querySelector(".tri").classList.add("open");
+    box.querySelector('[data-sub="'+b.dataset.i+'"]').classList.add("open");
+    setActive(b); renderScopebar(); renderCards();
+  });
+  box.querySelectorAll("[data-cat-char]").forEach(b => b.onclick = () => {
+    const ch = b.dataset.catChar.split("|::|")[1];
+    scope = {type:"char", value:ch, label:"角色: " + ch};
+    setActive(b); renderScopebar(); renderCards();
+  });
+}
+function setActive(el){
+  $$("aside .navi").forEach(n => n.classList.remove("on"));
+  el.classList.add("on");
+}
+function renderScopebar(){
+  const bar = $("#scopebar");
+  if (scope.type === "all" && filter === "all" && !qtext){ bar.style.display = "none"; return; }
+  bar.style.display = "";
+  bar.innerHTML = `<span>当前: <b>${esc(scope.label || "全部")}</b>
+    ${filter!=="all" ? " · 「"+(filter==="enabled"?"已启用":filter==="disabled"?"已禁用":"冲突")+"」" : ""}
+    ${qtext ? " · 搜索「"+esc(qtext)+"」" : ""}</span>
+    <button class="mini x" onclick="clearScope()">✕ 清除</button>`;
+}
+function clearScope(){
+  scope = {type:"all", value:"", label:""}; filter = "all"; qtext = ""; $("#q").value = "";
+  $$(".chip[data-f]").forEach(x => x.classList.toggle("on", x.dataset.f === "all"));
+  setActive($('aside .navi[data-scope="all"]'));
+  renderScopebar(); renderChars(); renderCats(); renderCards();
+}
+
+function renderBanners(){
+  const out = [];
+  if (!S.configured){
+    const det = S.detect || {};
+    const prog = det.done === false ? `<div class="hint">🔍 正在后台自动查找 ZZMI… ${esc(det.step||"")}</div>` : "";
+    out.push(`<div class="banner err"><span>⚠</span><div><b>还没找到 ZZMI。</b>
+      <button class="mini" onclick="openSetup()">手动指定 ZZMI 路径</button>
+      或 <button class="mini" onclick="autoDetect()">自动查找</button>${prog}</div></div>`);
+  }else if(!S.mods_dir_exists){
+    out.push(`<div class="banner err"><span>⚠</span><div><b>Mods 目录不存在:</b> ${esc(S.mods_dir)}
+      <button class="mini" onclick="openSetup()">修改路径</button></div></div>`);
+  }
+  if (S.game_running){
+    out.push(`<div class="banner ok"><span>🎮</span><div>绝区零正在运行 —— 游戏里按 <b>F10</b> 直接重载 mod
+      (不用重启), <b>F6</b> 临时开关全部服装 mod。<br>
+      <span class="hint">游戏开着时个别文件可能被占用, 如果提示"文件被占用"就先关游戏再切。</span></div></div>`);
+  }
+  const cf = S.conflicts || [];
+  if (cf.length){
+    const same = cf.filter(c => c.same_char).length;
+    const top = cf.slice(0,3).map(c => `${esc(c.a_name)} ↔ ${esc(c.b_name)}`).join("、");
+    out.push(`<div class="banner"><span>⚡</span><div><b>${cf.length} 组 hash 重叠</b>
+      (${same ? same + " 组是同角色, 建议只留一套; " : ""}其余可能是共用部件)。
+      <button class="mini" onclick="showConflicts()">查看</button></div></div>`);
+  }
+  $("#banners").innerHTML = out.join("");
+}
+
+function visible(){
+  let list = (S.entries||[]).slice();
+  if (scope.type === "char") list = list.filter(e => e.char === scope.value);
+  else if (scope.type === "category") list = list.filter(e => e.category === scope.value);
+  if (filter === "enabled") list = list.filter(e => e.enabled);
+  else if (filter === "disabled") list = list.filter(e => !e.enabled);
+  else if (filter === "conflict"){
+    const ids = new Set();
+    (S.conflicts||[]).forEach(c => { ids.add(c.a); ids.add(c.b); });
+    list = list.filter(e => ids.has(e.id));
+  }
+  if (qtext){
+    const q = qtext.toLowerCase();
+    list = list.filter(e => (e.path+e.name+e.char).toLowerCase().includes(q));
+  }
+  const s = $("#sort").value;
+  if (s === "size") list.sort((a,b) => b.size - a.size);
+  else if (s === "time") list.sort((a,b) => b.mtime - a.mtime);
+  else if (s === "name") list.sort((a,b) => a.name.localeCompare(b.name,"zh"));
+  return list;
+}
+function renderCards(){
+  const list = visible();
+  const box = $("#cards");
+  box.className = "grid" + (viewMode === "list" ? " list" : "");
+  if (!S.entries || !S.entries.length){
+    box.innerHTML = `<div class="empty">这个 Mods 目录里还没有 mod。<br>把下载好的 mod 文件夹丢进 Mods 就行。</div>`;
+    return;
+  }
+  if (!list.length){ box.innerHTML = '<div class="empty">没有符合条件的 mod</div>'; return; }
+  const conflictIds = new Set();
+  (S.conflicts||[]).forEach(c => { conflictIds.add(c.a); conflictIds.add(c.b); });
+
+  box.innerHTML = list.map(e => {
+    const showImg = !S.hide_preview && e.thumb;
+    const tbl = showImg
+      ? `<img data-src="/thumb?t=${encodeURIComponent(T)}&p=${encodeURIComponent(e.thumb)}" alt="">`
+      : `<div class="ph">${e.enabled ? "◈" : "◇"}</div>`;
+    const tags = [];
+    if (e.char && e.char !== e.name) tags.push(`<span class="tag char">👤 ${esc(e.char)}</span>`);
+    if (e.category && e.category !== "(根目录)") tags.push(`<span class="tag cat">${esc(e.category)}</span>`);
+    tags.push(`<span class="tag">${e.ini_count} ini</span>`);
+    tags.push(`<span class="tag">${e.size_h}</span>`);
+    if (conflictIds.has(e.id)) tags.push(`<span class="tag warn">⚠ 冲突</span>`);
+    if (e.partial) tags.push(`<span class="tag warn">◑ 部分禁用</span>`);
+    if ((e.backup_inis||[]).length) tags.push(`<span class="tag">含备份</span>`);
+    const inner = `
+      <div class="thumbwrap">${tbl}
+        <span class="state ${e.enabled?"on":"no"}">${e.enabled?"已启用":"已禁用"}</span>
+        <div class="overflow">
+          <button class="iconbtn" title="详情" data-act="detail" data-id="${esc(e.id)}">ⓘ</button>
+          <button class="iconbtn" title="打开文件夹" data-act="reveal" data-id="${esc(e.id)}">📂</button>
+        </div>
+      </div>`;
+    const body = `
+      <div class="cardbody">
+        <div class="cardtitle">${esc(e.name)}</div>
+        <div class="meta">${tags.join("")}</div>
+        <div class="cardfoot">
+          <button class="mini" data-act="detail" data-id="${esc(e.id)}">详情</button>
+          <button class="mini" data-act="solo" data-id="${esc(e.id)}"
+            title="同一角色只保留这一套, 其它自动禁用">只留这套</button>
+          <button class="sw ${e.enabled?"on":""}" data-act="toggle" data-id="${esc(e.id)}"
+            data-on="${e.enabled?1:0}" title="点击切换"></button>
+        </div>
+      </div>`;
+    return `<div class="card ${e.enabled?"":"off"}" data-card="${esc(e.id)}">
+      ${viewMode==="list" ? `<div class="cardinner">${inner}${body}</div>` : inner + body}
+    </div>`;
+  }).join("");
+  observeThumbs();
+}
+function observeThumbs(){
+  if (io) io.disconnect();
+  if (!("IntersectionObserver" in window)){
+    $$("#cards img[data-src]").forEach(i => { i.src = i.dataset.src; i.classList.add("ld"); });
+    return;
+  }
+  io = new IntersectionObserver((ents, obs) => {
+    ents.forEach(en => {
+      if (!en.isIntersecting) return;
+      const img = en.target;
+      img.src = img.dataset.src;
+      img.onload = () => img.classList.add("ld");
+      img.onerror = () => { img.style.display = "none"; };
+      obs.unobserve(img);
+    });
+  }, {root: $(".scroll"), rootMargin: "280px"});
+  $$("#cards img[data-src]").forEach(i => io.observe(i));
+}
+
+$("#cards").addEventListener("click", async ev => {
+  const el = ev.target.closest("[data-act]");
+  if (!el) return;
+  const id = el.dataset.id, act = el.dataset.act;
+  if (act === "detail") return openDetail(id);
+  if (act === "reveal") return api("/api/reveal",{id}).then(r => { if(!r.ok) toast(r.msg||"打不开","err"); });
+  if (act === "toggle") return doToggle([id], el.dataset.on !== "1");
+  if (act === "solo"){
+    const e = S.entries.find(x => x.id === id);
+    if (!e) return;
+    const sib = (S.entries||[]).filter(x => x.char === e.char && x.id !== id && x.enabled);
+    if (sib.length && !confirm(`「${e.name}」属于角色【${e.char}】。\n\n只留这一套, 并禁用同角色的另外 ${sib.length} 套?`)) return;
+    if (sib.length) await api("/api/toggle", {ids: sib.map(s=>s.id), enabled:false});
+    return doToggle([id], true);
+  }
+});
+
+async function doToggle(ids, enabled){
+  if (busy) return;
+  busy = true;
+  try{
+    const r = await api("/api/toggle", {ids, enabled});
+    S = r.state;
+    const f = r.result;
+    if (f.failed) toast(`完成 ${f.ok} 项, ${f.failed} 项失败:\n` +
+      f.details.slice(0,3).map(d => "· " + d.name + ": " + d.msg).join("\n"), "err");
+    else toast((enabled?"已启用 ":"已禁用 ") + f.ok + " 个 mod\n(游戏里按 F10 立即生效)", "ok");
+    renderAll();
+    if (curDetail && ids.includes(curDetail)) openDetail(curDetail, true);
+  }catch(e){ toast("操作失败: "+e.message+"\n多半是后台服务被关了, 或被系统代理拦截", "err"); }
+  finally{ busy = false; }
+}
+
+$$(".chip[data-f]").forEach(c => c.onclick = () => {
+  $$(".chip[data-f]").forEach(x => x.classList.remove("on"));
+  c.classList.add("on"); filter = c.dataset.f; renderScopebar(); renderCards();
+});
+$("#q").oninput = e => {
+  qtext = e.target.value.trim();
+  $("#qclear").style.display = qtext ? "" : "none";
+  renderScopebar(); renderCards();
+};
+$("#qclear").onclick = () => { $("#q").value=""; qtext=""; $("#qclear").style.display="none"; renderScopebar(); renderCards(); };
+$("#charFilter").oninput = e => { charQ = e.target.value.trim().toLowerCase(); renderChars(); };
+$("#sort").onchange = renderCards;
+$("#view").onchange = e => { viewMode = e.target.value; renderCards(); };
+$$("aside .navi[data-scope]").forEach(b => b.onclick = () => {
+  const s = b.dataset.scope;
+  scope = {type:"all", value:"", label:""};
+  filter = (s === "all") ? "all" : s;
+  $$(".chip[data-f]").forEach(x => x.classList.toggle("on", x.dataset.f === filter));
+  setActive(b); renderScopebar(); renderCards();
+});
+
+async function batchScope(enabled){
+  const list = visible();
+  if (!list.length) return toast("没有可操作的 mod","err");
+  const nOn = list.filter(e=>e.enabled).length, nOff = list.length - nOn;
+  if (enabled){
+    if (nOff && !confirm(`把当前筛选出的 ${nOff} 个 mod 全部【启用】?`)) return;
+    return doToggle(list.filter(e=>!e.enabled).map(e=>e.id), true);
+  }
+  if (nOn && !confirm(`把当前筛选出的 ${nOn} 个 mod 全部【禁用】?`)) return;
+  return doToggle(list.filter(e=>e.enabled).map(e=>e.id), false);
+}
+$("#btnOnAll").onclick = () => batchScope(true);
+$("#btnOffAll").onclick = () => batchScope(false);
+
+function renderPresets(){
+  const sel = $("#presetSel"), cur = sel.value, ps = S.presets || {};
+  sel.innerHTML = '<option value="">— 方案 —</option>' + Object.keys(ps).map(k =>
+    `<option value="${esc(k)}">${esc(k)} (${(ps[k].enabled||[]).length})</option>`).join("");
+  if (cur && ps[cur]) sel.value = cur;
+}
+$("#btnPresetSave").onclick = async () => {
+  const name = prompt("给当前这套 mod 组合起个名字:", "方案 " + new Date().toLocaleDateString());
+  if (!name) return;
+  const r = await api("/api/preset", {action:"save", name});
+  if (r.state) S = r.state;
+  toast(r.msg, r.ok?"ok":"err"); renderPresets();
+};
+$("#btnPresetApply").onclick = async () => {
+  const name = $("#presetSel").value;
+  if (!name) return toast("先选一个方案","err");
+  if (!confirm(`套用方案「${name}」? 不在方案里的 mod 会被禁用。`)) return;
+  const r = await api("/api/preset", {action:"apply", name});
+  if (r.state) S = r.state;
+  toast(r.msg, r.ok?"ok":"err"); renderAll();
+};
+$("#btnPresetDel").onclick = async () => {
+  const name = $("#presetSel").value;
+  if (!name) return;
+  if (!confirm(`删除方案「${name}」?`)) return;
+  const r = await api("/api/preset", {action:"delete", name});
+  if (r.state) S = r.state;
+  toast(r.msg, r.ok?"ok":"err"); renderPresets();
+};
+
+$("#btnRescan").onclick = async () => {
+  const b = $("#btnRescan"); b.disabled = true; b.innerHTML = '<span class="spin"></span> 扫描中';
+  try{
+    const r = await api("/api/rescan", {});
+    S = r.state; renderAll(); toast("已重新扫描 ("+S.scan_seconds+"s)", "ok");
+  }catch(e){ toast("扫描失败: "+e.message, "err"); }
+  b.disabled = false; b.innerHTML = "⟳ 重新扫描";
+};
+$("#btnUndo").onclick = async () => {
+  const r = await api("/api/undo", {});
+  if (r.state) S = r.state;
+  toast(r.msg, r.ok?"ok":"err"); renderAll();
+};
+$("#btnLaunch").onclick = async () => {
+  const r = await api("/api/launch", {});
+  toast(r.msg, r.ok ? "ok" : "err");
+  if (r.ok){
+    const b = $("#btnLaunch"); b.disabled = true;
+    setTimeout(() => { b.disabled = false; }, 6000);
+  }
+};
+$("#btnSet").onclick = () => openSetup();
+$("#btnLib").onclick = openLib;
+$("#pathchip").onclick = () => openSetup();
+
+async function openDetail(id, silent){
+  curDetail = id;
+  if (!silent){ $("#mask").classList.add("on"); $("#drawer").classList.add("on");
+    $("#dtBody").innerHTML = '<div class="empty"><span class="spin"></span> 读取中…</div>'; }
+  let d;
+  try{ d = await api("/api/detail?id=" + encodeURIComponent(id)); }
+  catch(e){ $("#dtBody").innerHTML = '<div class="empty">出错: '+esc(e.message)+'</div>'; return; }
+  if (d.error){ $("#dtBody").innerHTML = '<div class="empty">读不到详情</div>'; return; }
+  const e = d.entry;
+  $("#dtTitle").textContent = e.name;
+  const subs = (e.sub_dirs||[]).map(s => `
+    <div class="trow ${s.disabled?"dim":""}">
+      <span>${s.disabled?"⛔":"✅"}</span>
+      <span class="nm">${esc(s.local)}</span>
+      <span class="n">${s.ini} ini · ${s.files} 文件</span>
+      <button class="mini" data-dt="${esc(s.rel)}" data-dton="${s.disabled?1:0}">${s.disabled?"启用":"禁用"}</button>
+    </div>`).join("");
+  // ---- 部件 / 变体 ----
+  const stripDis = s => String(s).split("/").map(p =>
+    p.replace(/^(?:disabled|禁用)[_\- ]*/i, "")).join("/");
+  const comps = d.components || [], groups = d.groups || [];
+  const byRel = {}; comps.forEach(c => byRel[c.rel] = c);
+  const inGroup = new Set(); groups.forEach(g => (g.files||[]).forEach(f => inGroup.add(f)));
+  let compRows = "";
+  groups.forEach(g => {
+    compRows += `<div class="trow" style="background:var(--panel3)">
+      <span>🔀</span><span class="nm"><b>${esc(g.label)}</b>
+      <br><span class="hint">变体组 · ${g.files.length} 个文件在覆盖同一批资源, 只能开一个 —— 点「用这个」一键切换</span></span>
+      <span class="n">${g.n_hashes} hash</span></div>`;
+    compRows += g.files.map(f => {
+      const c = byRel[f] || {};
+      const active = g.active === f;
+      return `<div class="trow ${c.enabled?"":"dim"}">
+        <span>${active?"🟢":(c.enabled?"⚠":"⚪")}</span>
+        <span class="nm">${esc(stripDis(f))}</span>
+        <span class="n">${active?"当前生效":(c.enabled?"⚠ 同时开着":"未启用")}</span>
+        ${active ? "" : `<button class="mini" data-vs="${esc(f)}">用这个</button>`}
+      </div>`;
+    }).join("");
+  });
+  comps.filter(c => !c.backup && !inGroup.has(c.rel)).forEach(c => {
+    compRows += `<div class="trow ${c.enabled?"":"dim"}">
+      <span>${c.enabled?"✅":"⛔"}</span>
+      <span class="nm">${esc(stripDis(c.rel))}</span>
+      <span class="n">${c.n_hashes ? c.n_hashes + " hash · " : ""}${(c.size/1024).toFixed(1)} KB</span>
+      <button class="mini" data-cf="${esc(c.rel)}" data-cfe="${c.enabled?1:0}">${c.enabled?"禁用":"启用"}</button>
+    </div>`;
+  });
+  // ---- 变体提示 (只读: $var = 0,1,2 + type = cycle) ----
+  // 不提供任何按钮, 不修改文件; 变体一律在游戏内按绑定键循环切换。
+  const cycles = d.cycles || [];
+  let cycleRows = "";
+  cycles.forEach(c => {
+    const keys = (c.keys||[]).slice(0,3).join(" / ");
+    const cur = (c.current !== null && c.current !== undefined) ? " · 默认第 " + c.current + " 套" : "";
+    const n = c.values && c.values.length ? c.values.length : "";
+    cycleRows += `<div class="trow" style="background:var(--panel3)">
+      <span>🎮</span><span class="nm"><b>${esc(c.label_cn || c.label)}</b><span class="hint"> ${esc(c.label_cn ? c.label : "")}</span>${n ? " · 共 " + n + " 个变体" : ""}
+      <br><span class="hint">${keys ? "进游戏按 <b>"+esc(keys)+"</b> 键循环切换变体" : "进游戏后按该 mod 绑定的按键循环切换"}${cur}${c.switchable ? "" : " · 此变体含表达式, 只能在游戏里按键切"}</span></span>
+      <span class="n">游戏内切换</span></div>`;
+  });
+  if (!compRows) compRows = '<div class="trow"><span class="nm">（这个 mod 没有 ini）</span></div>';
+  const nBackupComp = comps.filter(c => c.backup).length;
+  const hs = (e.hashes||[]).slice(0,60).map(h => `<span>${esc(h)}</span>`).join("") || '<span>—</span>';
+  const bk = (e.backup_inis||[]).length ? `<div class="kv"><span class="k">备份 ini</span>
+    <span class="v">${e.backup_inis.map(esc).join(", ")}<br>
+    <span class="hint">以 disabled/DISABLED 开头的副本会被 3DMigoto 忽略, 留着不影响使用。</span></span></div>` : "";
+  $("#dtBody").innerHTML = `
+    <div class="kv"><span class="k">状态</span><span class="v">
+      ${e.enabled?'<b style="color:var(--ok)">已启用</b>':'<b style="color:var(--off)">已禁用</b>'}
+      ${e.dir_disabled?" (目录带 DISABLED 前缀)":""}${e.partial?' <span class="tag warn">部分子目录被禁用</span>':""}</span></div>
+    <div class="kv"><span class="k">角色</span><span class="v">
+      <input class="inp" id="dtChar" value="${esc(e.char)}" style="max-width:240px;padding:6px 9px;display:inline-block">
+      <button class="mini" id="dtCharSave">保存角色</button>
+      <div class="hint">自动识别为「${esc(e.char_auto)}」${e.char_manual?" · 当前为手动指定":""}。改完就能按角色一键切换。</div></span></div>
+    <div class="kv"><span class="k">分类</span><span class="v">${esc(e.category)}</span></div>
+    <div class="kv"><span class="k">磁盘路径</span><span class="v">${esc(d.abs_path)}</span></div>
+    <div class="kv"><span class="k">体积</span><span class="v">${e.size_h} · ${e.files} 个文件 · ${e.ini_count} 个 ini</span></div>
+    <div class="kv"><span class="k">修改时间</span><span class="v">${new Date(e.mtime*1000).toLocaleString()}</span></div>
+    ${bk}
+    <h4 style="margin:16px 0 6px;font-size:13px">会覆盖的 hash (${(e.hashes||[]).length})</h4>
+    <div class="hs">${hs}</div>
+    <h4 style="margin:16px 0 6px;font-size:13px">目录结构 —— 可以单独开关某个部件</h4>
+    <div class="tree">${subs || '<div class="trow"><span class="nm">（这个 mod 是单层文件夹）</span></div>'}</div>
+    <h4 style="margin:16px 0 6px;font-size:13px">部件 / 变体开关
+      ${groups.length ? `<span class="hint">(发现 ${groups.length} 个变体组)</span>` : ""}</h4>
+    <div class="tree">${compRows}</div>
+    ${cycles.length ? `<h4 style="margin:16px 0 6px;font-size:13px">变体提示 (${cycles.length})
+      <span class="hint">(只读信息; 工具不会改你的文件)</span></h4>
+    <div class="tree">${cycleRows}</div>` : ""}
+    ${nBackupComp ? `<p class="hint" style="margin:6px 2px">📦 另有 ${nBackupComp} 个备份副本(其他工具留下的 DISABLED/beifen 文件), 不参与变体判断, 留着不影响使用。</p>` : ""}
+    <p class="hint" style="margin-top:14px">变体 = 同一个 mod 里互相覆盖的几套文件(如 长剑/短剑、贴图 A/B), 同组只能开一个。
+    部件 = 互不冲突的独立文件(如 face / body / 附加件), 想关就关。
+    禁用 = 文件名加 <code>DISABLED_</code> 前缀, 永不删文件, 顶栏「撤销」随时回退。
+    改完在游戏里按 <b>F10</b> 立即生效。</p>`;
+  $("#dtBody").querySelectorAll("[data-dt]").forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    const r = await api("/api/dir_toggle", {rel: b.dataset.dt, enabled: b.dataset.dton !== "1"});
+    if (r.state) S = r.state;
+    toast(r.msg || "完成", r.ok?"ok":"err"); renderAll(); openDetail(curDetail, true);
+  });
+  $("#dtBody").querySelectorAll("[data-cf]").forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    const r = await api("/api/component_toggle", {id: curDetail, rel: b.dataset.cf,
+                                                  enabled: b.dataset.cfe === "1"});
+    if (r.state) S = r.state;
+    toast(r.msg || "完成", r.ok?"ok":"err"); renderAll(); openDetail(curDetail, true);
+  });
+  $("#dtBody").querySelectorAll("[data-vs]").forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    const r = await api("/api/variant_select", {id: curDetail, rel: b.dataset.vs});
+    if (r.state) S = r.state;
+    toast(r.msg || "完成", r.ok?"ok":"err"); renderAll(); openDetail(curDetail, true);
+  });
+  const cs = $("#dtCharSave");
+  if (cs) cs.onclick = async () => {
+    const r = await api("/api/set_char", {id: e.id, char: $("#dtChar").value.trim()});
+    if (r.state) S = r.state;
+    toast(r.msg, r.ok?"ok":"err"); renderAll(); openDetail(e.id, true);
+  };
+}
+$("#dtClose").onclick = closeAll;
+$("#dtReveal").onclick = async () => { const r = await api("/api/reveal", {id:curDetail}); if(!r.ok) toast("打不开","err"); };
+$("#dtToggle").onclick = () => {
+  const e = S.entries.find(x => x.id === curDetail);
+  if (e) doToggle([e.id], !e.enabled);
+};
+$("#dtRename").onclick = async () => {
+  const e = S.entries.find(x => x.id === curDetail);
+  if (!e) return;
+  const n = prompt("新的文件夹名:", e.name);
+  if (!n || n === e.name) return;
+  const r = await api("/api/rename", {id:e.id, name:n});
+  if (r.state) S = r.state;
+  toast(r.msg || "完成", r.ok?"ok":"err");
+  if (r.ok){ curDetail = null; closeAll(); }
+  renderAll();
+};
+
+function openSetup(){ $("#mask").classList.add("on"); $("#mSet").classList.add("on"); renderSetup(); }
+function renderSetup(){
+  const d = S.detect || {}, cands = (d.candidates||[]);
+  $("#setBody").innerHTML = `
+    <div class="field">
+      <label>ZZMI / XXMI Launcher 安装目录</label>
+      <input class="inp" id="inRoot" value="${esc(S.zzmi_root||"")}"
+        placeholder="例如  F:\\MOD  或  C:\\Users\\你\\AppData\\Roaming\\XXMI Launcher">
+      <div class="hint">填含有 <code>Resources\\Bin\\XXMI Launcher.exe</code> 和 <code>ZZMI</code>
+      子目录的那一层。换电脑后在这里填一次自己的路径, 之后自动记住。</div>
+    </div>
+    <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn" id="btnAuto">🔍 自动查找</button>
+      <button class="btn primary" id="btnSaveRoot">保存并扫描</button>
+      <button class="btn" id="btnOpenRoot">📂 打开该目录</button>
+    </div>
+    <div class="hint" id="detStep">${esc(d.step || (d.done === false ? "扫描中…" : ""))}</div>
+    ${d.message ? `<div class="banner ${d.found?"ok":""}" style="margin:10px 0"><span>${d.found?"✔":"ℹ"}</span><div>${esc(d.message)}</div></div>` : ""}
+    ${cands.length ? `<h4 style="margin:14px 0 6px;font-size:13px">找到这些候选, 点一下即可使用</h4>
+      <div class="tree">${cands.map(c=>`<div class="trow"><span class="nm">${esc(c.root)}</span>
+        <span class="n">${esc((c.importers||[]).join("/"))}</span>
+        <button class="mini" data-use="${esc(c.root)}">用这个</button></div>`).join("")}</div>` : ""}
+    <h4 style="margin:18px 0 6px;font-size:13px">当前状态</h4>
+    <div class="kv"><span class="k">Mods 目录</span><span class="v">${esc(S.mods_dir||"—")}</span></div>
+    <div class="kv"><span class="k">启动器</span><span class="v">${esc(S.launcher_exe||"—")} ${S.launcher_exists?"✅":"❌"}</span></div>
+    <div class="kv"><span class="k">游戏</span><span class="v">${esc(S.game_exe||"—")}</span></div>
+    <div class="kv"><span class="k">缩略图</span><span class="v">${esc(S.thumb_engine)}
+      ${S.thumb_pending?`<span class="hint">· 还有 ${S.thumb_pending} 张在后台生成</span>`:""}</span></div>
+    <h4 style="margin:18px 0 6px;font-size:13px">界面</h4>
+    <div class="kv"><span class="k">主题</span><span class="v">
+      <button class="mini" onclick="setTheme('dark')">深色</button>
+      <button class="mini" onclick="setTheme('light')">浅色</button></span></div>
+    <div class="kv"><span class="k">预览图</span><span class="v">
+      <button class="mini" onclick="setHide(true)">隐藏</button>
+      <button class="mini" onclick="setHide(false)">显示</button>
+      <span class="hint">(当前: ${S.hide_preview?"隐藏":"显示"})</span></span></div>
+    <div class="kv"><span class="k">数据目录</span><span class="v">~/.zzmi-manager</span></div>
+    <h4 style="margin:18px 0 6px;font-size:13px">全局快捷键</h4>
+    <div class="kv"><span class="k">呼出 / 隐藏</span><span class="v">
+      <input class="inp" id="inHotkey" value="${esc(S.hotkey||"F9")}"
+        style="max-width:160px;padding:6px 9px;display:inline-block">
+      <button class="mini" id="btnHotkey">保存</button>
+      <br><span class="hint">绝区零运行时按下即可呼出/隐藏管理器窗口。
+      字母/数字必须带修饰键(如 <b>F9</b>、Alt+Z), 单独按 F1~F12 也可以。
+      ${S.hotkey_ok === false ? '<b style="color:var(--warn,#e8b339)">⚠ 当前快捷键注册失败(可能被其他程序占用), 请换一个组合。</b>' : ""}</span></span></div>
+    <h4 style="margin:18px 0 6px;font-size:13px">退出</h4>
+    <div class="kv"><span class="k">退出程序</span><span class="v">
+      <button class="btn danger" id="btnQuit">⏻ 退出 ZZMI 管家</button>
+      <span class="hint">等价于关掉那个黑色控制台窗口。</span></span></div>`;
+  $("#btnAuto").onclick = () => autoDetect();
+  $("#btnSaveRoot").onclick = async () => {
+    const v = $("#inRoot").value.trim();
+    if (!v) return toast("请填写路径","err");
+    const r = await api("/api/config", {zzmi_root: v});
+    if (!r.ok) return toast(r.msg, "err");
+    S = r.state; renderAll(); toast("已保存, 共 "+S.stats.total+" 个 mod", "ok");
+  };
+  $("#btnOpenRoot").onclick = () => api("/api/openroot", {path: $("#inRoot").value.trim() || S.mods_dir});
+  const bhk = $("#btnHotkey");
+  if (bhk) bhk.onclick = async () => {
+    const r = await api("/api/config", {hotkey: $("#inHotkey").value.trim()});
+    if (r.state) S = r.state;
+    toast(r.msg || "完成", r.ok?"ok":"err");
+  };
+  $("#btnQuit").onclick = async () => {
+    if (!confirm("确定退出 ZZMI 管家?")) return;
+    try{ await api("/api/quit", {}); }catch(e){}
+    document.body.innerHTML = '<div style="display:grid;place-items:center;height:100vh;color:#808b99;font:15px sans-serif">已退出, 可以关掉这个窗口了</div>';
+  };
+  $("#setBody").querySelectorAll("[data-use]").forEach(b => b.onclick = async () => {
+    const r = await api("/api/config", {zzmi_root: b.dataset.use});
+    if (!r.ok) return toast(r.msg,"err");
+    S = r.state; renderAll(); toast("已切换到 "+b.dataset.use,"ok"); renderSetup();
+  });
+}
+let detecting = false;
+async function autoDetect(){
+  if (detecting) return;
+  detecting = true;
+  toast("正在扫描本机磁盘, 请稍候…");
+  try{ await api("/api/autodetect"); }catch(e){ detecting = false; return; }
+  const tick = setInterval(async () => {
+    try{
+      const st = await api("/api/state");
+      S = st;
+      const d = st.detect || {}, line = $("#detStep");
+      if (line && d.step) line.textContent = d.step;
+      if (d.done){
+        clearInterval(tick); detecting = false;
+        renderAll();
+        if ($("#mSet").classList.contains("on")) renderSetup();
+        toast(d.message, d.found ? "ok" : "err");
+      }
+    }catch(e){ clearInterval(tick); detecting = false; }
+  }, 900);
+}
+async function setTheme(t){
+  const r = await api("/api/config",{theme:t});
+  if (r.state){ S = r.state; document.documentElement.setAttribute("data-theme",t); renderSetup(); }
+}
+async function setHide(v){
+  const r = await api("/api/config",{hide_preview:v});
+  if (r.state){ S = r.state; renderCards(); renderSetup(); }
+}
+
+function showConflicts(){
+  const cf = S.conflicts||[];
+  $("#mask").classList.add("on"); $("#mSet").classList.add("on");
+  $("#setBody").innerHTML = `
+    <div class="hint" style="margin-bottom:10px">两条已启用的 mod 都在改同一个游戏对象(hash)时会互相覆盖。
+    <b>同角色</b>的两套皮肤几乎必然冲突 —— 留一套、禁另一套即可;
+    不同角色之间的重叠多半是共用部件(武器/UI), 一般不用管。</div>
+    <div class="tree">${cf.slice(0,80).map(c => `
+      <div class="trow">
+        <span>${c.same_char?"👥":"⚠"}</span>
+        <span class="nm">${esc(c.a_name)} ↔ ${esc(c.b_name)}
+          <br><span class="hint">${c.same_char
+            ? "同角色【"+esc(c.a_char)+"】→ 建议只留一套"
+            : "不同角色(" + esc(c.a_char) + " / " + esc(c.b_char) + ") → 可能是共用部件"} · ${c.n} 个 hash</span></span>
+        <button class="mini" data-off="${esc(c.b)}">禁用后者</button>
+      </div>`).join("") || '<div class="trow"><span class="nm">没有冲突 🎉</span></div>'}</div>`;
+  $("#setBody").querySelectorAll("[data-off]").forEach(b => b.onclick = () => {
+    doToggle([b.dataset.off], false); closeAll();
+  });
+}
+
+async function openLib(){
+  $("#mask").classList.add("on"); $("#mLib").classList.add("on");
+  $("#libBody").innerHTML = '<div class="empty"><span class="spin"></span> 统计仓库中…</div>';
+  let r;
+  try{ r = await api("/api/library"); }
+  catch(e){ $("#libBody").innerHTML = '<div class="empty">读取失败</div>'; return; }
+  const libs = r.libraries||[], tops = r.mods_top||[], libNames = libs.map(L => L.name);
+  $("#libBody").innerHTML = `
+    <div class="hint" style="margin-bottom:12px">这些目录都在 <code>Mods</code> <b>外面</b>,
+    游戏不会加载 —— 相当于"未启用仓库"。想用哪套就搬进 Mods, 用不上了再搬回去。搬动可撤销。</div>
+    <div class="kv"><span class="k">Mods 目录</span><span class="v">${esc(r.mods_dir||"—")}</span></div>
+    <h4 style="margin:16px 0 6px;font-size:13px">Mods 里的顶层分类 → 移出到仓库</h4>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      <span class="hint">移出到:</span>
+      <select class="sel" id="libTarget">
+        ${libNames.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("")}
+        <option value="__new__">＋ 新建一个仓库目录…</option>
+      </select>
+    </div>
+    <div class="tree">${tops.map(t=>`<div class="trow">
+        <span class="nm">${esc(t.name)}${t.disabled?" <span class='hint'>(已禁用)</span>":""}</span>
+        <button class="mini" data-out="${esc(t.name)}">移出到仓库</button></div>`).join("")
+      || '<div class="trow"><span class="nm">（空）</span></div>'}</div>
+    ${libs.map(L => `
+      <h4 style="margin:18px 0 6px;font-size:13px">🗄 ${esc(L.name)}
+        <span class="hint">(${L.count} 项)</span>
+        <button class="mini" data-openlib="${esc(L.path||"")}" style="margin-left:6px">打开</button></h4>
+      <div class="tree">${(L.items||[]).slice(0,80).map(it=>`
+        <div class="trow"><span class="nm">${esc(it.name)}</span>
+        <span class="n">${it.size_h} · ${it.files} 文件</span>
+        <button class="mini" data-in="${esc(L.name)}|::|${esc(it.name)}">启用 → 移入 Mods</button></div>`).join("")
+        || '<div class="trow"><span class="nm">（空）</span></div>'}</div>`).join("")
+      || '<div class="banner" style="margin-top:16px">还没发现仓库目录</div>'}`;
+  $("#libBody").querySelectorAll("[data-openlib]").forEach(b => b.onclick = () =>
+    api("/api/openroot", {path: b.dataset.openlib}));
+  $("#libBody").querySelectorAll("[data-in]").forEach(b => b.onclick = async () => {
+    const [lib, name] = b.dataset.in.split("|::|");
+    if (!confirm(`把「${name}」从仓库「${lib}」搬进 Mods 并启用?`)) return;
+    const rr = await api("/api/move", {src_base:"root", src_rel: lib + "/" + name,
+                                       dst_base:"mods", dst_rel: name});
+    if (rr.state) S = rr.state;
+    toast(rr.msg || "已移入", rr.ok?"ok":"err"); renderAll(); openLib();
+  });
+  $("#libBody").querySelectorAll("[data-out]").forEach(b => b.onclick = async () => {
+    const name = b.dataset.out;
+    let target = $("#libTarget").value;
+    if (target === "__new__"){
+      target = prompt("新仓库目录名(会在 ZZMI 根目录下创建):", "未使用");
+      if (!target) return;
+    }
+    if (!confirm(`把「${name}」从 Mods 移出到仓库「${target}」?\n(游戏将不再加载它)`)) return;
+    const rr = await api("/api/move", {src_base:"mods", src_rel: name,
+                                       dst_base:"root", dst_rel: target + "/" + name});
+    if (rr.state) S = rr.state;
+    toast(rr.msg || "已移出", rr.ok?"ok":"err"); renderAll(); openLib();
+  });
+}
+
+function closeAll(){
+  $("#mask").classList.remove("on");
+  $("#drawer").classList.remove("on");
+  $$(".modal").forEach(m => m.classList.remove("on"));
+}
+$("#mask").onclick = closeAll;
+$$("[data-close]").forEach(b => b.onclick = closeAll);
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeAll();
+  if (e.key === "/" && document.activeElement !== $("#q")){ e.preventDefault(); $("#q").focus(); }
+});
+window.openSetup = openSetup; window.autoDetect = autoDetect;
+window.showConflicts = showConflicts; window.setTheme = setTheme; window.setHide = setHide;
+
+load();
+setInterval(async () => {
+  try{
+    const st = await api("/api/state");
+    if (!S){ S = st; renderAll(); return; }
+    const detecting = !st.configured && st.detect && st.detect.done === false;
+    const changed = st.game_running !== S.game_running
+      || st.thumb_pending !== S.thumb_pending
+      || (S.detect||{}).done !== (st.detect||{}).done
+      || (S.detect||{}).step !== (st.detect||{}).step;
+    S = st;
+    if (detecting){ renderAll(); const m = $("#mSet"); if (m.classList.contains("on")) renderSetup(); }
+    else if (changed) renderAll();
+  }catch(e){}
+}, 2000);
+</script>
+</body>
+</html>
