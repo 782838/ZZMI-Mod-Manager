@@ -38,3 +38,25 @@ gen_*.py
 _publish.py
 upload_preview.py
 push_*.py
+
+# 隐私清理与发布备份(勿提交)
+_assets_backup/
+_repo_meta.json
+_release_full_backup.json
+_release_live_backup.json
+
+# 隐私/临时工作产物,永不提交
+_*
+out_*.txt
+probe_*.py
+verify_*.py
+recon_*.py
+check_uijs.py
+build_venv/
+dist_venv/
+.git_leaked_bak/
+tests/_*
+tests/run_*.py
+tests/live_check.py
+tests/ui_check.py
+screenshots/preview-censored.png
