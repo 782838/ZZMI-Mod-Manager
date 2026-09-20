@@ -1483,12 +1483,15 @@ let mmPath = "";
 function showManualHelp(f, enable){
   const box = $("#mManual");
   if (!box) return;
+  // v1.5.24: 重命名被系统挡下也走这个弹窗 —— 后端在 detail 里带 rename:True
+  const isRen = !!f.rename;
   mmDir = f.dir || "";
   mmPath = f.cur || "";
   const name = f.name || "";
   const want = f.target_name || (enable ? name.replace(/^DISABLED_/i, "")
                                        : "DISABLED_" + name);
-  $("#mmTitle").textContent = enable ? "⚠ 启用失败, 得手动来一下"
+  $("#mmTitle").textContent = isRen ? "⚠ 重命名失败, 得手动来一下"
+                            : enable ? "⚠ 启用失败, 得手动来一下"
                                      : "⚠ 禁用失败, 得手动来一下";
   // reason 由后端 lock_reason_kind() 给出: denied=没权限 / busy=被占用 / other
   const whyMap = {
@@ -1497,11 +1500,14 @@ function showManualHelp(f, enable){
     other: "这个 mod 的文件夹被系统挡着没让改名(占用或权限问题)。"
   };
   const why = whyMap[f.reason] || whyMap.busy;
-  const step = enable
-    ? `<b>把文件夹名前面的 <code>DISABLED_</code> 删掉</b>`
-    : `<b>在文件夹名前加上 <code>DISABLED_</code></b>`;
-  const goText = enable ? "📂 去删除(删掉 DISABLED_)" : "📂 去改名(加上 DISABLED_)";
-  const openTip = enable
+  const step = isRen ? `把名字改成 <code>${esc(want)}</code>(可点下面「复制新名字」再粘贴)`
+            : enable ? `<b>把文件夹名前面的 <code>DISABLED_</code> 删掉</b>`
+                     : `<b>在文件夹名前加上 <code>DISABLED_</code></b>`;
+  const goText = isRen ? "📂 去改名(F2)"
+             : enable ? "📂 去删除(删掉 DISABLED_)" : "📂 去改名(加上 DISABLED_)";
+  const openTip = isRen
+    ? "点下面的「📂 去改名」—— 会打开它所在的文件夹并<b>自动选中这个 mod</b>(窗口顶到屏幕最前面), 直接按 F2 就能改名"
+    : enable
     ? "点下面的「📂 去删除」—— 会打开它所在的文件夹并<b>自动选中这个 mod</b>(窗口顶到屏幕最前面), 直接按 F2 就能改名"
     : "点下面的「📂 去改名」—— 会打开它所在的文件夹并<b>自动选中这个 mod</b>(窗口顶到屏幕最前面), 直接按 F2 就能改名";
   $("#mmBody").innerHTML = `
@@ -1516,9 +1522,16 @@ function showManualHelp(f, enable){
       <li>${step}</li>
       <li>回到这里按 <b>F9</b> 或点「🔄 重扫」, 状态就更新了</li>
     </ol>
-    <p class="hint" style="margin-top:12px">💡 想彻底避免这一步: 先把游戏关掉再操作, 就能一键完成了。</p>`;
-  $("#mmCopy").textContent = "📋 复制 DISABLED_";
+    <p class="hint" style="margin-top:12px">${isRen
+      ? "💡 手动改也报「拒绝访问」的话: 先关掉游戏、关掉开着那个文件夹的资源管理器窗口, 再改一次。"
+      : "💡 想彻底避免这一步: 先把游戏关掉再操作, 就能一键完成了。"}</p>`;
+  $("#mmCopy").textContent = isRen ? "📋 复制新名字" : "📋 复制 DISABLED_";
   $("#mmCopy").onclick = async () => {
+    if (isRen){
+      const good = await copyText(want);
+      toast(good ? "已复制「" + want + "」—— F2 之后直接粘贴" : "复制失败, 手动敲这个名字吧", good ? "ok" : "err");
+      return;
+    }
     const good = await copyText("DISABLED_");
     toast(good ? "已复制 DISABLED_ —— 粘贴到文件夹名最前面即可"
                : "复制失败, 手动敲这几个字母吧: D I S A B L E D _", good ? "ok" : "err");
@@ -1976,7 +1989,9 @@ async function renameMod(e){
   if (!n || n === e.name) return false;
   const r = await api("/api/rename", {id:e.id, name:n});
   if (r.state) S = r.state;
-  toast(r.msg || "完成", r.ok?"ok":"err");
+  // v1.5.24: 系统挡下改名(拒绝访问/被占用) -> 弹手动改名教程, 点一下就去资源管理器里 F2
+  if (!r.ok && r.manual) showManualHelp(r.manual, false);
+  else toast(r.msg || "完成", r.ok?"ok":"err");
   // v1.5.8: 名字被占用 -> 后端已自动加 (2), 弹窗说清楚
   if (r.ok && r.renamed) showDupNotice([{
     orig_name: r.orig_name, target_name: r.target_name, seq: r.seq

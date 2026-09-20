@@ -5,6 +5,14 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.24 更新
+-----------
+* **重命名被系统挡下时, 也给「手动来一下」弹窗**: 以前禁用/启用失败会弹教程(打开资源管理器、
+  自动选中那个 mod 文件夹、置顶, 直接按 F2 就能改), 但**改名**失败只甩一条红色小横幅
+  (`重命名失败: [WinError 5] 拒绝访问。`)。现在改名撞到「拒绝访问 / 被占用」也弹同一个教程,
+  里面写清楚「文件夹叫什么 → 要改成什么」, 点「📂 去改名(F2)」就跳到资源管理器里选中好,
+  还能「📋 复制新名字」直接粘贴 —— 和工具本来要做的一模一样
+
 v1.5.23 更新
 -----------
 * **修: 下载区文件行竖排(一个字一行)**。v1.5.22 给文件行加的中文译名用了
@@ -299,7 +307,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.23"
+VERSION = "1.5.24"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -2923,7 +2931,10 @@ def do_rename(mods_dir, entry, new_name):
             out += "（「%s」已被占用, 自动加了 (%d)）" % (target, seq)
         return True, out, {"renamed": seq is not None, "orig_name": target,
                            "target_name": final, "seq": seq}
-    return False, msg
+    # v1.5.24: 改名被系统挡下 -> 交回手动改名弹窗需要的料(和启停失败同一套弹窗)
+    return False, msg, {"dir": os.path.dirname(cur), "cur": cur, "want": dst,
+                        "target_name": final, "name": os.path.basename(cur),
+                        "reason": lock_reason_kind(msg), "rename": True}
 
 
 def _explorer_windows():
@@ -5384,6 +5395,8 @@ class Handler(BaseHTTPRequestHandler):
                     out["target_name"] = extra.get("target_name")
                     out["orig_name"] = extra.get("orig_name")
                     out["seq"] = extra.get("seq")
+                if not ok and extra:
+                    out["manual"] = extra   # v1.5.24: 前端弹「手动改名」教程
                 return self._json(out)
 
             if act == "list_dirs":

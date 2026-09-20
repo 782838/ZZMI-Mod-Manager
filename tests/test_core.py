@@ -147,6 +147,19 @@ s7 = Z.scan_mods(mods)
 w("重命名后条目: " + ", ".join(e["name"] for e in s7.entries))
 assert any(e["name"] == "改过名的mod" for e in s7.entries), "重命名没生效"
 
+# v1.5.24: 改名被系统挡下 -> 必须交回手动改名弹窗需要的料(dir/cur/target_name/reason/rename)
+_real_rd = Z._rename_dir
+try:
+    Z._rename_dir = lambda src, dst, j: (False, "[WinError 5] 拒绝访问。: '%s' -> '%s'" % (src, dst))
+    _blk = Z.do_rename(mods, Z.scan_mods(mods).entries[0], "挡住的改名")
+finally:
+    Z._rename_dir = _real_rd
+assert _blk[0] is False and len(_blk) == 3, "改名失败没返回手动弹窗信息"
+_m = _blk[2]
+assert _m.get("rename") and _m.get("reason") == "denied", "手动弹窗信息不对: %s" % _m
+assert _m.get("cur") and _m.get("dir") and _m.get("target_name") == "挡住的改名", "缺路径/目标名: %s" % _m
+w("改名被拒 -> 手动弹窗信息 OK (reason=%s, name=%s)" % (_m["reason"], _m["name"]))
+
 # 移动 (仓库)
 lib = os.path.join(SB, "仓库A")
 os.makedirs(lib, exist_ok=True)
