@@ -60,3 +60,6 @@ tests/run_*.py
 tests/live_check.py
 tests/ui_check.py
 screenshots/preview-censored.png
+
+# 一次性交接文档(含本机绝对路径, 不入库)
+交接任务-*.md

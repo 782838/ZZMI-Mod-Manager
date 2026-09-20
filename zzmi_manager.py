@@ -5,6 +5,110 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.23 更新
+-----------
+* **修: 下载区文件行竖排(一个字一行)**。v1.5.22 给文件行加的中文译名用了
+  `flex:0 0 100%` 想独占一行, 但那一行本身是不换行的 flex 容器 → 文件名被挤到
+  1 字符宽, 显示成竖排。现给文件行加 `flex-wrap:wrap`, 译名自然换到下一行
+* **下载区底部新增翻页条**: 列表很长时滑到最底下也能直接「上一页/下一页」,
+  不必再滑回顶部; 翻页后自动回到列表顶部
+
+v1.5.22 更新
+-----------
+* **下载区文件名也会翻中文**: 以前只翻 mod 标题, 文件那一行(如
+  `white_high_heels_recolor_3.zip`)保持英文。现在文件名先去后缀/下划线换空格
+  清洗成短语再机翻, 翻得出来就显示在文件名下面(受「中文译名」开关控制);
+  翻不出(如整串是角色名)就不硬凑, 保持原样
+* **蓝飞机(Telegram)接口暂时关闭**: 该功能还没实测通过, 本版把入口整体下线
+  (下载区只剩香蕉网), 测通后下个版本恢复
+
+v1.5.21 更新
+-----------
+* **修: 重命名后卡片图变灰/半天出不来**。根因不是图丢了 —— 是缩略图还没生成时,
+  后端直接把**整张原图**(实测有 7MB)塞给页面, 叠加后台正在批量压图, 页面好几秒收不完,
+  看起来就像图没了。现在第一次请求就**当场生成缩略图**(毫秒级), 立刻显示
+* **修: 重命名后自己选的封面会跟丢**: 封面/角色标记现在会自动跟着新文件夹名迁移,
+  不会再留在旧路径上失效
+* (你录屏里看到的灰图就是第一条; 等几秒其实会自己出来, 但体验就是"坏了")
+
+v1.5.20 更新
+-----------
+* **界面窗口不再往你的浏览器里写历史**: 以前用 Edge/Chrome 打开后, 浏览器历史里会留下一串
+  `127.0.0.1:端口` 记录。现在给本程序单独一个数据目录(`数据目录\browser-profile`),
+  历史/缓存只写进这里, **你自己的 Edge 历史里再也搜不到这些记录**(以前留下的旧记录要在
+  Edge 里 Ctrl+H 手动删一次)
+* **找不到浏览器时让你自己挑**: 顺序 Edge -> 谷歌 Chrome -> 都没有就弹文件框让你自己选一个
+  浏览器, 选过一次就记住。选了非 Chrome 内核(如火狐)也能用, 只是退化成普通标签页
+* 另外修掉了程序退出时命令行偶尔甩出的一段 traceback(无害但吓人)
+
+v1.5.19 更新
+-----------
+* **修: 卡片排版又被挤爆(根因终于挖到)**: 卡片底部按钮行(详情/重命名/只留这套+开关)不换行,
+  它的最小宽度(~250px)把网格每列从 216px 撑到 250px+, 整行横向溢出 -> 右侧卡片被窗口裁掉、
+  按钮文字被压换行。现在按钮行放不下会自动换行、按钮均分空间, 任何窗口宽度都不再溢出
+* (v1.5.11 加「重命名」按钮后埋下的雷, 2 按钮时代不触发, 所以"之前是好的")
+
+v1.5.18 更新
+-----------
+* **蓝飞机(Telegram)下载区现在开箱即用**: telethon 库已直接打进安装包里, 不用再自己装任何依赖。
+  打开「下载区 → 蓝飞机」按教程申请 api_id/api_hash、填代理、验证码登录, 就能导入频道里的 mod
+* 连接 Telegram/香蕉网失败时都会提示「请确认代理/魔法已开启」
+
+v1.5.17 更新
+-----------
+* 下载区顶部新增双 tab: 「香蕉网」(默认, 匿名可用) 与「蓝飞机」(Telegram 导入, 含完整教程与设置表单)
+* 首次引入 Telegram userbot 导入: 拉频道消息、下载 zip/ini 附件与预览图, 只写工具自己的下载目录
+* **修: 「📁 选择…」终于能用了(真凶找到了)**: 上次换成了 Windows 自带的文件夹选择框,
+  但没给这个系统函数声明返回值类型 —— 它返回的是 64 位指针, Python 默认按 32 位读,
+  指针被砍掉一半, 紧接着拿它去取路径就**内存越界, 程序直接崩**。
+  日志里那句 `access violation reading 0x...` 就是它。现在签名声明齐了,
+  实测能正常弹出、正常选中、正常取回路径
+* 不会再出现「点了按钮像没反应」: 就算系统框真出不来, 也会明确告诉你可以直接粘贴路径
+
+v1.5.15 更新
+-----------
+* **修: 下载目录真的改不了了(关键)**: 从资源管理器地址栏复制路径时 Windows 会自动加引号
+  (英文双引号包住整个路径), 以前没处理 -> 被当成相对路径拼到程序自己的目录后面 -> 报「建不了这个文件夹」,
+  看起来就是「怎么都改不了」。现在引号(含中文引号)一律剥掉, 带引号粘贴也能正确生效
+* **修: 相对路径会静默跑偏**: 以前输入相对路径会被悄悄拼到程序运行目录, 文件下到哪都不知道。
+  现在明确拒绝并提示「请填完整路径(例如 D: 后面跟文件夹名)」
+* **选择文件夹更稳**: 选择框现在挂到界面窗口上(天然在浏览器之上), 另有看门狗反复把它拽到最前,
+  不会再出现「点了没反应」。选完**直接生效**, 不用再点「改到这里」
+* **每个按钮都有反馈**: 「📂 打开」「改到这里」无论成功失败都弹提示并带上实际路径,
+  不会再有「按了没动静」的感觉
+
+v1.5.14 更新
+-----------
+* **角色名显示中文**: v1.5.13 的角色下拉只有英文转写名(Anby Demara 这种), 认不出是谁。
+  现在显示成「安比·德玛拉 · Anby Demara (130)」——中文在前、英文保留方便搜索。
+  内置了绝区零 62 个角色的官方中文名对照表(零网络依赖), 以后出新角色会自动机翻兜底
+* **修: 「📁 选择…」点了没反应**: 打包后弹文件夹选择框必失败(`No module named 'tkinter'`,
+  PyInstaller 默认不收 tkinter)。改成直接调 Windows 自带的文件夹选择框, 任何机器都能用;
+  另外弹框前先把界面窗口顶到最前, 免得选择框开在浏览器后面看不见
+* **修: 「📂 打开」打不开文件夹**: 本程序是管理员权限跑的, 有些机器上 explorer 被静默拦掉。
+  改成三级回落(explorer 定位 → explorer 直开 → ShellExecuteW), 总有一级能开
+
+v1.5.13 更新
+-----------
+* **下载区加「角色分类」**: 香蕉网 Character Skins 下面其实有 62 个角色(安比、雅、薇薇安…),
+  以前只能按整个分类爬。现在下载区顶部有个角色下拉, 选谁就只列谁的 mod(带该角色的 mod 数量),
+  也能随时切回「全部角色」。角色列表本地缓存 1 天, 想手动刷就点旁边的「↻ 刷新」
+* **下载的文件自己挑**: 每个 mod 卡片现在会展开它的全部文件(文件名 + 大小 + 杀毒结果),
+  勾哪个下哪个 —— 一个 mod 有多个版本/分卷时不用整个包都拖下来; 还能「全选 / 全不选」。
+  怕请求太多可以关掉「列出文件」开关
+* **「已下载」标记**: 下过的文件在卡片上标「已下载」, 一眼看出哪些重复了。
+  下载目录弹窗里也能看到目录位置、文件总数和总大小, 还能一键清空记录(只清标记, 不删文件)
+* **下载目录能选不用手打**: 弹窗里加了「📁 选择…」直接弹系统文件夹选择框
+
+v1.5.12 更新
+-----------
+* **新增「⬇ 下载区」: 直接从 GameBanana 抓 mod**: 界面上点「⬇ 下载区」, 粘贴一个 GameBanana
+  链接(分类页 / 游戏 mod 列表 / 单个 mod), 就会把上面的 mod 名字、预览图、作者列出来,
+  每个都带「下载」按钮, 一键下到本地下载目录; 还能翻页、看大图、打开/清空下载目录
+* **mod 名字自动翻译成中文**: 外网 mod 名大多是英文, 下载区会显示中文译名(可开关)。
+  翻译结果本地缓存, 同一个名字不会反复翻
+* **下载目录可自定义**: 默认放在 数据目录/downloads, 也能在下载区里改成任意盘任意文件夹
+
 v1.5.11 更新
 -----------
 * **修复: 深色主题下输入弹窗文字看不清**: 弹窗的说明文字和输入框文字误用了按钮黑字色(--ink),
@@ -173,6 +277,8 @@ ZZMI_NO_BROWSER=1  不自动打开窗口
 """
 
 import base64
+import ctypes
+from ctypes import wintypes
 import hashlib
 import io
 import json
@@ -193,7 +299,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.11"
+VERSION = "1.5.23"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -256,6 +362,8 @@ DEFAULT_CONFIG = {
     "win_size": "auto",
     "hotkey": "F9",
     "update_repo": UPDATE_REPO,
+    "downloads_dir": "",        # v1.5.12 下载区: mod 下载到哪(空=数据目录/downloads)
+    "show_translated": True,    # v1.5.12 下载区: 是否显示中文译名
 }
 
 ROOT_SKIP = {"resources", "themes", "locale", "backups", "dds", "bin",
@@ -2668,12 +2776,39 @@ def do_move(src_base, src_rel, dst_base, dst_rel):
     return (True, "已移动") if ok else (False, msg)
 
 
+def strip_path_quotes(p):
+    """去掉用户复制路径时常带的引号 / 首尾空白。
+
+    v1.5.15: 从资源管理器地址栏复制路径时 Windows 会自动加引号("D:\\xx"),
+    以前没处理 -> 被当成相对路径拼到默认目录后面 -> 报「建不了这个文件夹」,
+    用户看到的就是「目录根本改不了」。引号一律剥掉。
+
+    注意左右引号是不同的字符(全角 " 和 "), 要按配对处理。
+    """
+    s = (p or "").strip()
+    pairs = (('"', '"'), ("'", "'"),
+             ("\u201c", "\u201d"),      # 中文左右双引号 “ ”
+             ("\u2018", "\u2019"),      # 中文左右单引号 ‘ ’
+             ("\u300c", "\u300d"))      # 直角引号 「 」
+    changed = True
+    while changed and len(s) >= 2:
+        changed = False
+        for a, b in pairs:
+            if s[0] == a and s[-1] == b:
+                s = s[1:-1].strip()
+                changed = True
+                break
+    return s
+
+
 def is_abs_path(p):
     """判断用户给的是不是一个完整路径(F:\\xxx / \\\\nas\\share / abs:前缀)。"""
-    s = (p or "").strip()
+    s = strip_path_quotes(p)
     if s.startswith("abs:"):
         return True
     if re.match(r"^[A-Za-z]:[\\/]", s):
+        return True
+    if re.match(r"^[A-Za-z]:$", s):          # 光给个盘符 "D:"
         return True
     if s.startswith("\\\\") or s.startswith("//"):
         return True
@@ -2681,7 +2816,7 @@ def is_abs_path(p):
 
 
 def strip_abs_prefix(p):
-    s = (p or "").strip()
+    s = strip_path_quotes(p)
     return s[4:].strip() if s.startswith("abs:") else s
 
 
@@ -2730,6 +2865,38 @@ def move_mods_batch(mods_dir, entries, dst_root):
             fails.append({"id": e["id"], "name": e["name"], "msg": msg})
     return {"ok": ok, "failed": len(fails), "details": fails[:20],
             "moved": moved[:60]}
+
+
+def _migrate_override_keys(cfg, old_rel, new_rel):
+    """重命名 mod 文件夹后, 把配置里以旧路径为键/值的覆盖项迁到新路径。
+
+    覆盖 thumb_overrides(键=mod路径, 值=封面图路径) 和 char_overrides
+    (键=mod路径, 值=角色名)。不匹配的一律不动; 不清任何旧键(禁用中的 mod
+    合法地不在当前列表里, 清了会丢用户设置)。"""
+    if not old_rel or not new_rel or old_rel == new_rel:
+        return
+    oldp, newp = old_rel + "/", new_rel + "/"
+    for name in ("thumb_overrides", "char_overrides"):
+        ov = cfg.get(name)
+        if not isinstance(ov, dict):
+            continue
+        for k in list(ov.keys()):
+            v = ov[k]
+            if k == old_rel:
+                nk = new_rel
+            elif k.startswith(oldp):
+                nk = newp + k[len(oldp):]
+            else:
+                nk = k
+            nv = v
+            if isinstance(v, str):
+                if v == old_rel:
+                    nv = new_rel
+                elif v.startswith(oldp):
+                    nv = newp + v[len(oldp):]
+            if nk != k:
+                ov.pop(k, None)
+            ov[nk] = nv
 
 
 def do_rename(mods_dir, entry, new_name):
@@ -2841,6 +3008,11 @@ def open_in_explorer(path, select=False):
 
     select=True 时: 传目录也走「/select」方式 —— 打开它所在的父目录并把这一项
     高亮选中(玩家按 F2 就能改名, 不用自己一层层翻进去找)。
+
+    v1.5.14: 打包后本程序是**提权(管理员)**进程, 直接 os.startfile / explorer
+    在部分机器上会被静默拦掉(用户实测「📂 打开」没反应)。改成多级回落:
+      ① explorer /select(定位)  → ② explorer 直接开目录  → ③ ShellExecuteW
+    三级里任意一级成功就算成功。
     """
     if not path or not os.path.exists(path):
         return False
@@ -2853,21 +3025,203 @@ def open_in_explorer(path, select=False):
         known = set(h for h, _t in _explorer_windows())
     except Exception:
         known = set()
-    try:
-        if sel_target:
-            # 打开父目录并选中它(等价于在资源管理器里点一下这个文件夹) —— 会复用已有窗口
-            subprocess.Popen(["explorer", "/select,", sel_target])
-        else:
-            # 等价于"双击这个文件夹": 已开着就复用那个窗口并激活它
-            os.startfile(p)  # noqa
-    except Exception:
+
+    started = False
+    # ① /select 定位(会复用已有窗口)
+    if sel_target:
         try:
-            subprocess.Popen(["explorer", p])
+            subprocess.Popen(["explorer", "/select,", sel_target])
+            started = True
         except Exception:
-            return False
+            started = False
+    # ② explorer 直接开目录 / ③ ShellExecuteW —— 逐级回落
+    if not started:
+        for attempt in (
+            lambda: subprocess.Popen(["explorer", p]),
+            lambda: os.startfile(p),  # noqa
+            lambda: _shell_execute(p),
+        ):
+            try:
+                attempt()
+                started = True
+                break
+            except Exception:
+                continue
+    if not started:
+        return False
     threading.Thread(target=_focus_explorer_async, args=(hint, known),
                      daemon=True).start()
     return True
+
+
+def _shell_execute(path):
+    """ShellExecuteW 打开(explorer 被拦时的最后一级回落)。"""
+    import ctypes
+    SW_SHOWNORMAL = 1
+    r = ctypes.windll.shell32.ShellExecuteW(None, "open", path, None, None, SW_SHOWNORMAL)
+    if int(r) <= 32:
+        raise OSError("ShellExecuteW 返回 %s" % r)
+    return True
+
+
+def _pick_folder_win(initial="", owner=None):
+    """弹 Windows 原生「浏览文件夹」框(SHBrowseForFolderW), 返回绝对路径; 取消 = ''。
+
+    v1.5.16 致命修正(用户实测「选择…」永远失败):
+      · **必须显式声明 restype = c_void_p**。SHBrowseForFolderW 返回的是 PIDL 指针
+        (64 位)。ctypes 默认按 c_int(32 位) 解释返回值 -> 指针被截断 ->
+        随后 SHGetPathFromIDListW 拿着野指针 -> **access violation, 进程直接崩**
+        (日志里能看到 "access violation reading 0x..." 就是这个)。
+      · SHGetPathFromIDListW / CoTaskMemFree 的入参也要按指针声明, 否则同样截断。
+      · 挂 owner 窗口(界面窗口 hwnd) => 选择框是它的子窗口, 天然压在浏览器之上。
+      · 弹框期间另有「反复置顶」看门狗, 双保险。
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    BIF_RETURNONLYFSDIRS = 0x0001
+    BIF_NEWDIALOGSTYLE = 0x0040          # 新建文件夹按钮 + 可输入路径
+    BIF_EDITBOX = 0x0010
+    BIF_USENEWUI = BIF_NEWDIALOGSTYLE | BIF_EDITBOX | BIF_RETURNONLYFSDIRS
+
+    class BROWSEINFOW(ctypes.Structure):
+        _fields_ = [("hwndOwner", wintypes.HWND),
+                    ("pidlRoot", ctypes.c_void_p),
+                    ("pszDisplayName", wintypes.LPWSTR),
+                    ("lpszTitle", wintypes.LPCWSTR),
+                    ("ulFlags", wintypes.UINT),
+                    ("lpfn", ctypes.c_void_p),
+                    ("lParam", wintypes.LPARAM),
+                    ("iImage", ctypes.c_int)]
+
+    shell32 = ctypes.windll.shell32
+    ole32 = ctypes.windll.ole32
+    user32 = ctypes.windll.user32
+
+    # ---- 关键: 声明签名, 防止 64 位指针被按 32 位截断(这曾导致进程崩溃) ----
+    shell32.SHBrowseForFolderW.argtypes = [ctypes.POINTER(BROWSEINFOW)]
+    shell32.SHBrowseForFolderW.restype = ctypes.c_void_p          # PIDL = 指针!
+    shell32.SHGetPathFromIDListW.argtypes = [ctypes.c_void_p,
+                                             ctypes.c_wchar_p]
+    shell32.SHGetPathFromIDListW.restype = wintypes.BOOL
+    ole32.CoTaskMemFree.argtypes = [ctypes.c_void_p]
+    ole32.CoTaskMemFree.restype = None
+    user32.GetForegroundWindow.restype = wintypes.HWND
+
+    buf = ctypes.create_unicode_buffer(260)
+    bi = BROWSEINFOW()
+    # owner: 优先用传进来的界面窗口; 退一步用当前前台窗口
+    bi.hwndOwner = owner or user32.GetForegroundWindow()
+    bi.pszDisplayName = ctypes.cast(buf, wintypes.LPWSTR)
+    bi.lpszTitle = "选择 mod 下载保存到哪个文件夹"
+    bi.ulFlags = BIF_USENEWUI
+
+    ole32.CoInitializeEx(None, 0x2)      # APARTMENTTHREADED
+    try:
+        pidl = shell32.SHBrowseForFolderW(ctypes.byref(bi))
+        if not pidl:
+            return ""                    # 用户点了取消
+        try:
+            path = ctypes.create_unicode_buffer(1024)
+            ok = shell32.SHGetPathFromIDListW(ctypes.c_void_p(pidl), path)
+            got = path.value if ok else ""
+        finally:
+            ole32.CoTaskMemFree(ctypes.c_void_p(pidl))
+        return os.path.abspath(got) if got else ""
+    finally:
+        try:
+            ole32.CoUninitialize()
+        except Exception:
+            pass
+
+
+def _pick_keep_front(hwnd, stop):
+    """弹框期间不停把选择框拽到最前 + 闪一下, 保证用户看得见。
+
+    v1.5.16: 所有 hwnd 相关的 Win32 函数都要声明签名 —— HWND 是 64 位指针,
+    ctypes 默认按 c_int 解释返回值会截断 (和 SHBrowseForFolderW 那个崩因同类)。
+    """
+    import ctypes
+    from ctypes import wintypes
+    user32 = ctypes.windll.user32
+    user32.FindWindowW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR]
+    user32.FindWindowW.restype = wintypes.HWND
+    user32.SetWindowPos.argtypes = [wintypes.HWND, wintypes.HWND,
+                                    ctypes.c_int, ctypes.c_int,
+                                    ctypes.c_int, ctypes.c_int, ctypes.c_uint]
+    user32.SetWindowPos.restype = wintypes.BOOL
+    user32.SetForegroundWindow.argtypes = [wintypes.HWND]
+    user32.BringWindowToTop.argtypes = [wintypes.HWND]
+
+    found = None
+    while not stop.is_set():
+        if not found:
+            # 浏览文件夹对话框类名固定是 #32770
+            h = user32.FindWindowW("#32770", None)
+            if h:
+                found = h
+        if found:
+            try:
+                user32.SetWindowPos(found, -1, 0, 0, 0, 0, 0x0001 | 0x0002)  # TOPMOST
+                user32.SetWindowPos(found, -2, 0, 0, 0, 0, 0x0001 | 0x0002)  # NOTOPMOST
+                user32.SetForegroundWindow(found)
+                user32.BringWindowToTop(found)
+            except Exception:
+                pass
+        time.sleep(0.35)
+
+
+def pick_folder(initial="", owner=None):
+    """弹系统文件夹选择框(Windows) 与浏览结果的容器, 返回绝对路径; 取消返回 ''。
+
+    v1.5.13: 给「下载目录」用, 免得玩家自己手打路径。
+    v1.5.15: 原实现走 tkinter, 打包后必报 `No module named 'tkinter'`
+      (PyInstaller 默认不收 tkinter)—— 选文件夹永远失败。改成 Windows 自带
+      SHBrowseForFolderW(系统内核自带, 零依赖), 并且:
+        · 挂 owner/前台窗口 => 框天然在浏览器之上
+        · 起看门狗线程反复置顶 => 就算被盖住也会被拽回来
+    v1.5.16: **关键** 修 SHBrowseForFolderW 返回值被 ctypes 按 32 位截断导致的
+      access violation(用户实测「选择…」永远失败)。签名已在 _pick_folder_win
+      里显式声明。tkinter 只作最后兜底。
+    """
+    if os.name == "nt":
+        stop = threading.Event()
+        try:
+            hwnd = owner
+            if not hwnd:
+                try:
+                    hwnd = find_manager_window()
+                except Exception:
+                    hwnd = None
+            threading.Thread(target=_pick_keep_front, args=(hwnd, stop),
+                             daemon=True).start()
+            return _pick_folder_win(initial, hwnd or None)
+        except Exception as e:
+            log("pick_folder 原生框失败, 试 tkinter: %s" % str(e)[:160])
+        finally:
+            stop.set()
+
+    # --- 兜底: tkinter ---
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        try:
+            root.attributes("-topmost", True)
+        except Exception:
+            pass
+        init = initial if (initial and os.path.isdir(initial)) else None
+        p = filedialog.askdirectory(title="选择 mod 下载保存到哪个文件夹",
+                                    initialdir=init, mustexist=False)
+        try:
+            root.destroy()
+        except Exception:
+            pass
+        return os.path.abspath(p) if p else ""
+    except Exception as e:
+        log("pick_folder 不可用: %s" % str(e)[:160])
+        return ""
 
 
 # ===========================================================================
@@ -2964,11 +3318,20 @@ BROWSER_CANDIDATES = [
 ]
 
 
-def find_browser():
+def find_browser(custom=None):
+    """找一个能用的浏览器: 用户自己指定过的优先, 否则 Edge -> Chrome。"""
+    if custom and os.path.isfile(custom):
+        return custom
     for b in BROWSER_CANDIDATES:
         if os.path.isfile(b):
             return b
     return None
+
+
+def is_chromium_exe(exe):
+    """判断是不是 Chrome 内核(只有它才认 --app / --user-data-dir 那套参数)。"""
+    n = os.path.basename(exe or "").lower()
+    return ("msedge" in n) or ("chrome" in n) or ("chromium" in n)
 
 
 def screen_size():
@@ -3120,13 +3483,107 @@ def _chrome_app_windows():
     return out
 
 
-def open_app_window(url, size=None):
-    """用 Edge/Chrome 的 --app 模式开独立窗口。
-    默认**打开就全屏**(最大化); 设置里把 win_size 写成 1000,700 才用固定尺寸(居中)。"""
-    b = find_browser()
+class OPENFILENAMEW(ctypes.Structure):
+    """comdlg32 的 GetOpenFileNameW 参数结构(64 位下 sizeof 应为 152)。"""
+    _fields_ = [
+        ("lStructSize", wintypes.DWORD), ("hwndOwner", wintypes.HWND),
+        ("hInstance", wintypes.HINSTANCE), ("lpstrFilter", wintypes.LPCWSTR),
+        ("lpstrCustomFilter", wintypes.LPWSTR), ("nMaxCustFilter", wintypes.DWORD),
+        ("nFilterIndex", wintypes.DWORD), ("lpstrFile", wintypes.LPWSTR),
+        ("nMaxFile", wintypes.DWORD), ("lpstrFileTitle", wintypes.LPWSTR),
+        ("nMaxFileTitle", wintypes.DWORD), ("lpstrInitialDir", wintypes.LPCWSTR),
+        ("lpstrTitle", wintypes.LPCWSTR), ("Flags", wintypes.DWORD),
+        ("nFileOffset", wintypes.WORD), ("nFileExtension", wintypes.WORD),
+        ("lpstrDefExt", wintypes.LPCWSTR), ("lCustData", wintypes.LPARAM),
+        ("lpfnHook", wintypes.LPVOID), ("lpTemplateName", wintypes.LPCWSTR),
+        ("pvReserved", wintypes.LPVOID), ("dwReserved", wintypes.DWORD),
+        ("FlagsEx", wintypes.DWORD)]
+
+
+def pick_browser_exe():
+    """机器上一个 Chrome 内核浏览器都没有时, 弹文件框让用户自己挑一个 exe。
+
+    只在 Windows 上可用, 且整体包了兜底: 对话框出不来就返回 None,
+    调用方再退回系统默认浏览器, 绝不会卡住或崩掉。"""
+    if not _WIN:
+        return None
+    try:
+        import ctypes
+        from ctypes import wintypes, byref, create_unicode_buffer
+
+        user32 = ctypes.windll.user32
+        user32.MessageBoxW.restype = ctypes.c_int
+        user32.MessageBoxW.argtypes = [wintypes.HWND, wintypes.LPCWSTR,
+                                       wintypes.LPCWSTR, wintypes.UINT]
+        comdlg32 = ctypes.windll.comdlg32
+        comdlg32.GetOpenFileNameW.restype = wintypes.BOOL
+        comdlg32.GetOpenFileNameW.argtypes = [ctypes.POINTER(OPENFILENAMEW)]
+
+        user32.MessageBoxW(None,
+                           "没找到 Edge / Chrome。\n\n"
+                           "接下来请手动选一个浏览器程序(建议先把 Edge 或 Chrome 装上,\n"
+                           "那样的无地址栏独立窗口效果最好)。",
+                           APP_NAME, 0x40 | 0x1000)   # MB_ICONINFORMATION|MB_SETFOREGROUND
+
+        buf = create_unicode_buffer(4096)
+        ofn = OPENFILENAMEW()
+        ofn.lStructSize = ctypes.sizeof(OPENFILENAMEW)
+        ofn.lpstrFile = ctypes.cast(buf, wintypes.LPWSTR)
+        ofn.nMaxFile = 4096
+        ofn.lpstrFilter = "浏览器程序 (*.exe)\0*.exe\0所有文件 (*.*)\0*.*\0\0"
+        ofn.lpstrTitle = "选择用来打开界面的浏览器"
+        ofn.Flags = 0x00001000 | 0x00000800 | 0x00000004   # FILEMUSTEXIST|EXPLORER|HIDEREADONLY
+        if comdlg32.GetOpenFileNameW(byref(ofn)):
+            p = buf.value.strip()
+            return p if p and os.path.isfile(p) else None
+    except Exception as ex:
+        log("选择浏览器对话框不可用:", ex)
+    return None
+
+
+def _browser_profile():
+    """v1.5.20: 给本程序单独一个浏览器数据目录。
+
+    有了它, 界面浏览记录/缓存只写进这个专属目录, **不会进你自己的 Edge 历史**,
+    Edge 里再也搜不到 127.0.0.1 这些记录(用户反馈的历史残留问题)。
+    顺带把上一次残留的历史文件擦掉, 目录里始终只有本程序自己。"""
+    prof = os.path.join(DATA_DIR, "browser-profile")
+    try:
+        os.makedirs(prof, exist_ok=True)
+    except Exception:
+        return None
+    try:
+        d = os.path.join(prof, "Default")
+        for nm in ("History", "History-journal", "History Provider Cache",
+                   "Current Session", "Current Tabs", "Last Session",
+                   "Last Tabs", "Sessions", "Shortcuts", "Visited Links"):
+            for p in (os.path.join(d, nm), os.path.join(d, nm + "-journal")):
+                if os.path.isfile(p):
+                    try:
+                        os.remove(p)
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+    return prof
+
+
+def open_app_window(url, size=None, browser=None):
+    """用 Edge/Chrome 的 --app 模式开独立窗口(秒开, 无地址栏/标签栏)。
+    默认**打开就全屏**(最大化); 设置里把 win_size 写成 1000,700 才用固定尺寸(居中)。
+    用户手动选了别的浏览器(非 Chrome 内核)时退化成普通标签页打开, 保证至少能用。"""
+    b = browser or find_browser()
     maximize, size, pos = window_geometry(size)
+    if b and not is_chromium_exe(b):
+        # 火狐这类不认 --app, 直接用普通窗口打开
+        subprocess.Popen([b, url], close_fds=True)
+        log("已用用户指定的浏览器打开:", os.path.basename(b))
+        return
     if b:
         args = [b, "--app=" + url]
+        prof = _browser_profile()
+        if prof:
+            args.append("--user-data-dir=" + prof)
         if maximize:
             args.append("--start-maximized")
             sw, sh = screen_size()
@@ -3144,18 +3601,16 @@ def open_app_window(url, size=None):
                  "--no-first-run",
                  "--no-default-browser-check",
                  "--disable-features=Translate"]
-        try:
-            subprocess.Popen(args, close_fds=True)
-            log("已用独立窗口打开: %s  %s" % (os.path.basename(b),
-                                            "全屏" if maximize else ("尺寸=" + size)))
-            if maximize:
-                threading.Thread(target=_maximize_app_window_async,
-                                 daemon=True).start()
-            return True
-        except Exception as ex:
-            log("独立窗口启动失败, 改用默认浏览器:", ex)
-    webbrowser.open(url)
-    return False
+    try:
+        subprocess.Popen(args, close_fds=True)
+        log("已用独立窗口打开: %s  %s" % (os.path.basename(b),
+                                        "全屏" if maximize else ("尺寸=" + size)))
+        if maximize:
+            threading.Thread(target=_maximize_app_window_async,
+                             daemon=True).start()
+    except Exception as ex:
+        log("独立窗口启动失败, 改用默认浏览器:", ex)
+        webbrowser.open(url)
 
 
 # ===========================================================================
@@ -3337,6 +3792,9 @@ class App(object):
             "hide_preview": bool(self.cfg.get("hide_preview")),
             "hotkey": self.cfg.get("hotkey", "F9"),
             "hotkey_ok": self.hotkey.ok is not False,
+            "downloads_dir": gb_downloads_dir(self.cfg),
+            "show_translated": bool(self.cfg.get("show_translated", True)),
+            "tg_enabled": bool(TG_ENABLED),   # v1.5.22: 蓝飞机总开关(关=前端隐藏 tab)
             "update_repo": self.cfg.get("update_repo", UPDATE_REPO),
             "win_size": self.cfg.get("win_size") or "auto",
             "stats": s.stats, "categories": s.categories, "chars": s.chars,
@@ -3443,6 +3901,944 @@ def check_update(current_version, repo=None):
         return {"ok": False, "error": str(e)[:200]}
 
 
+# ===========================================================================
+# v1.5.12: GameBanana Mod 下载区
+# ---------------------------------------------------------------------------
+# 玩家在界面里点「⬇ 下载区」, 粘贴一个 GameBanana 链接(分类 / 游戏 mod 列表 / 单个 mod),
+# 后端去抓上面所有 mod 的名字、预览图、作者, 一键下载到本地下载目录。
+# 走的都是 GameBanana 公开 API(apiv11), 只读别人网站, 不碰本地任何 mod 文件。
+# 名字是英文的, 顺带翻译成中文(默认 MyMemory 免费接口, 结果本地缓存)。
+# ===========================================================================
+GB_API = "https://gamebanana.com/apiv11"
+GB_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+         "(KHTML, like Gecko) Chrome/120.0 Safari/537.36")
+GB_CAT_RE = re.compile(r"/mods/cats/(\d+)", re.I)
+GB_GAMEMODS_RE = re.compile(r"/mods/games/(\d+)", re.I)
+GB_GAME_RE = re.compile(r"/games/(\d+)", re.I)
+GB_MOD_RE = re.compile(r"/mods/(\d+)(?:[/?#]|$)", re.I)
+# v1.5.13: 角色分类。Character Skins(30305) 下有 62 个角色子分类
+GB_CHAR_CAT = 30305            # 「Character Skins」分类 id
+GB_SUBS_CACHE_PATH = os.path.join(DATA_DIR, "gb_subs_cache.json")
+GB_DL_HISTORY_PATH = os.path.join(DATA_DIR, "gb_dl_history.json")
+_gb_subs_cache = None
+_gb_dl_hist = None
+_gb_dl_hist_lock = threading.Lock()
+GB_IMG_CACHE = os.path.join(DATA_DIR, "gb_img_cache")
+GB_TRANS_CACHE_PATH = os.path.join(DATA_DIR, "gb_trans_cache.json")
+GB_JOBS = {}                 # 下载任务表: job_id -> 状态字典
+GB_JOBS_LOCK = threading.Lock()
+_gb_job_seq = [0]
+_gb_trans_cache = None
+_gb_trans_lock = threading.Lock()
+
+
+def gb_http_json(url, timeout=20):
+    """GET 一个 GameBanana JSON 接口, 失败重试 3 次(网络抖)。"""
+    last = None
+    for attempt in range(3):
+        try:
+            req = urllib.request.Request(
+                url, headers={"User-Agent": GB_UA,
+                              "Accept": "application/json"})
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return json.loads(r.read().decode("utf-8", "replace"))
+        except Exception as e:
+            last = e
+            time.sleep(0.6 * (attempt + 1))
+    raise last
+
+
+def gb_parse_url(raw):
+    """把玩家粘的链接(或纯编号)解析成 (kind, id, err)。
+    kind: 'category' 分类页 | 'game' 游戏的全部 mod | 'mod' 单个 mod。"""
+    s = (raw or "").strip()
+    if not s:
+        return None, None, "请输入 GameBanana 链接"
+    if re.fullmatch(r"\d+", s):
+        return "category", s, ""            # 纯数字默认当成分类 id
+    if not s.lower().startswith(("http://", "https://")):
+        s = "https://" + s
+    u = urllib.parse.urlparse(s)
+    host = (u.netloc or "").lower()
+    if "gamebanana.com" not in host:
+        return None, None, "只支持 gamebanana.com 的链接"
+    path = u.path or ""
+    m = GB_CAT_RE.search(path)
+    if m:
+        return "category", m.group(1), ""
+    m = GB_GAMEMODS_RE.search(path)
+    if m:
+        return "game", m.group(1), ""
+    m = GB_GAME_RE.search(path)
+    if m:
+        return "game", m.group(1), ""
+    m = GB_MOD_RE.search(path)
+    if m:
+        return "mod", m.group(1), ""
+    return None, None, "没认出链接类型(支持 分类页 / 游戏 mod 页 / 单个 mod 页)"
+
+
+def _gb_img_url(im, prefer=530):
+    base = (im or {}).get("_sBaseUrl") or ""
+    if not base:
+        return ""
+    f = (im.get("_sFile%d" % prefer) if prefer else "") or im.get("_sFile") or ""
+    if not f:
+        return ""
+    return base.rstrip("/") + "/" + f
+
+
+def _gb_item(rec):
+    """把一条 API 记录压成前端要用的字段。"""
+    imgs = ((rec.get("_aPreviewMedia") or {}).get("_aImages") or [])
+    prevs = []
+    for im in imgs:
+        u = _gb_img_url(im, 530)
+        if u:
+            prevs.append(u)
+    sub = rec.get("_aSubmitter") or {}
+    return {
+        "id": rec.get("_idRow"),
+        "name": rec.get("_sName") or "",
+        "url": rec.get("_sProfileUrl") or "",
+        "author": sub.get("_sName") or "",
+        "likes": rec.get("_nLikeCount") or 0,
+        "views": rec.get("_nViewCount") or 0,
+        "version": rec.get("_sVersion") or "",
+        "has_files": bool(rec.get("_bHasFiles")),
+        "preview": prevs[0] if prevs else "",
+        "previews": prevs[:8],
+        "added": rec.get("_tsDateAdded") or 0,
+    }
+
+
+def gb_list(kind, gid, page=1, perpage=30, cat=None):
+    """抓一页 mod 列表。perpage 上限 50(GameBanana 规定, 超过报 400)。
+
+    v1.5.13: cat 给出时强制按该分类过滤 —— 用于「角色分类」筛选
+    (点某个角色 -> 只列这个角色的 mod)。
+    """
+    try:
+        page = max(1, int(page))
+    except (TypeError, ValueError):
+        page = 1
+    try:
+        perpage = max(1, min(50, int(perpage)))
+    except (TypeError, ValueError):
+        perpage = 30
+    if cat:
+        key, gid = "Generic_Category", str(cat)
+    else:
+        key = "Generic_Category" if kind == "category" else "Generic_Game"
+    url = ("%s/Mod/Index?_aFilters[%s]=%s&_nPage=%d&_nPerpage=%d"
+           % (GB_API, key, gid, page, perpage))
+    d = gb_http_json(url)
+    recs = d.get("_aRecords") or []
+    meta = d.get("_aMetadata") or {}
+    return {
+        "kind": kind, "gid": gid, "page": page, "perpage": perpage,
+        "total": meta.get("_nRecordCount") or len(recs),
+        "items": [_gb_item(r) for r in recs],
+    }
+
+
+def gb_mod_files(mid):
+    """抓单个 mod 的文件清单(下载链接 + md5 + 杀毒结果)。"""
+    d = gb_http_json("%s/Mod/%s/ProfilePage" % (GB_API, mid))
+    files = []
+    for f in (d.get("_aFiles") or []):
+        files.append({
+            "name": f.get("_sFile") or "",
+            "size": f.get("_nFilesize") or 0,
+            "url": f.get("_sDownloadUrl") or "",
+            "md5": f.get("_sMd5Checksum") or "",
+            "av": f.get("_sAvResult") or "",
+        })
+    return {"id": mid, "name": d.get("_sName") or "",
+            "url": d.get("_sProfileUrl") or "",
+            "files": files, "text": d.get("_sText") or ""}
+
+
+def gb_downloads_dir(cfg):
+    """下载目录: 配置里指定, 否则默认 数据目录/downloads。始终保证存在。"""
+    p = (cfg.get("downloads_dir") or "").strip()
+    if not p:
+        p = os.path.join(DATA_DIR, "downloads")
+    try:
+        os.makedirs(p, exist_ok=True)
+    except Exception:
+        p = os.path.join(DATA_DIR, "downloads")
+        try:
+            os.makedirs(p, exist_ok=True)
+        except Exception:
+            pass
+    return p
+
+
+def gb_list_downloads(cfg):
+    d = gb_downloads_dir(cfg)
+    out = []
+    try:
+        names = os.listdir(d)
+    except OSError:
+        names = []
+    for n in sorted(names, key=lambda s: s.lower()):
+        p = os.path.join(d, n)
+        if not os.path.isfile(p):
+            continue
+        try:
+            st = os.stat(p)
+        except OSError:
+            continue
+        out.append({"name": n, "size": st.st_size,
+                    "size_h": human_size(st.st_size), "mtime": st.st_mtime})
+    return {"dir": d, "items": out}
+
+
+def gb_unique_path(folder, name):
+    """文件名消毒 + 重名自动加 (2) (3)…, 绝不覆盖已有文件。"""
+    name = os.path.basename((name or "").strip()) or "mod.zip"
+    name = re.sub(r'[\\/:*?"<>|]+', "_", name).strip() or "mod.zip"
+    p = os.path.join(folder, name)
+    if not os.path.exists(p):
+        return p
+    stem, ext = os.path.splitext(name)
+    i = 2
+    while True:
+        p = os.path.join(folder, "%s (%d)%s" % (stem, i, ext))
+        if not os.path.exists(p):
+            return p
+        i += 1
+
+
+def gb_new_job(mod_id, name):
+    with GB_JOBS_LOCK:
+        _gb_job_seq[0] += 1
+        jid = "gb%d" % _gb_job_seq[0]
+        GB_JOBS[jid] = {
+            "id": jid, "state": "queued", "mod_id": mod_id, "name": name or "",
+            "cur": 0, "total": 0, "received": 0, "size": 0, "pct": 0,
+            "done": 0, "ok_n": 0, "err_n": 0, "results": [],
+            "msg": "排队中…", "path": "", "ts": time.time(),
+        }
+        # 清掉 1 小时前就结束的老任务, 防表膨胀
+        for k in [k for k, v in GB_JOBS.items()
+                  if v.get("state") in ("done", "error")
+                  and time.time() - v.get("ts", 0) > 3600]:
+            GB_JOBS.pop(k, None)
+    return jid
+
+
+def gb_set_job(jid, **kw):
+    with GB_JOBS_LOCK:
+        j = GB_JOBS.get(jid)
+        if j:
+            j.update(kw)
+
+
+def gb_get_job(jid):
+    with GB_JOBS_LOCK:
+        j = GB_JOBS.get(jid)
+        return dict(j) if j else None
+
+
+def _gb_dl_one(url, dest, jid, idx, nfiles):
+    req = urllib.request.Request(url, headers={"User-Agent": GB_UA})
+    with urllib.request.urlopen(req, timeout=90) as r:
+        total = 0
+        try:
+            total = int(r.headers.get("Content-Length") or 0)
+        except (TypeError, ValueError):
+            total = 0
+        got = 0
+        with open(dest, "wb") as f:
+            while True:
+                chunk = r.read(65536)
+                if not chunk:
+                    break
+                f.write(chunk)
+                got += len(chunk)
+                gb_set_job(jid, received=got, size=total,
+                           pct=int(got * 100 / total) if total else 0,
+                           cur=idx, total=nfiles)
+    return got
+
+
+def gb_download_worker(jid, cfg, mod_id, picks=None):
+    """picks: 只下这些文件名(列表); None/空 = 全下。v1.5.13"""
+    try:
+        gb_set_job(jid, state="resolving", msg="正在解析下载地址…")
+        info = gb_mod_files(mod_id)
+        allf = [f for f in info["files"] if f.get("url")]
+        if not allf:
+            gb_set_job(jid, state="error", msg="这个 mod 没有可下载的文件")
+            return
+        if picks:
+            want = set(str(x) for x in picks)
+            files = [f for f in allf if (f.get("name") or "") in want]
+            if not files:
+                files = allf           # 名字对不上就别卡着, 退回全下
+        else:
+            files = allf
+        folder = gb_downloads_dir(cfg)
+        gb_set_job(jid, state="downloading", total=len(files),
+                   name=info.get("name") or "", done=0, ok_n=0, err_n=0,
+                   results=[])
+        last_path = ""
+        ok_n, err_n = 0, 0
+        results = []
+        for i, f in enumerate(files, 1):
+            fname = f.get("name") or ("mod_%s_%d.zip" % (mod_id, i))
+            dest = gb_unique_path(folder, fname)
+            gb_set_job(jid, cur=i, received=0, size=f.get("size") or 0, pct=0,
+                       path=dest,
+                       msg="下载中 %d/%d: %s" % (i, len(files), os.path.basename(dest)))
+            try:
+                _gb_dl_one(f["url"], dest, jid, i, len(files))
+                ok_n += 1
+                last_path = dest
+                gb_hist_mark(mod_id, fname, dest)
+                results.append({"file": fname, "ok": True, "path": dest,
+                                "size": os.path.getsize(dest)})
+            except Exception as fe:
+                err_n += 1
+                # 半截文件别留着骗人
+                try:
+                    if os.path.isfile(dest):
+                        os.remove(dest)
+                except OSError:
+                    pass
+                results.append({"file": fname, "ok": False,
+                                "msg": str(fe)[:160]})
+                log("GameBanana 下载失败 %s: %s" % (fname, str(fe)[:120]))
+            gb_set_job(jid, done=i, ok_n=ok_n, err_n=err_n, results=list(results))
+        if ok_n and not err_n:
+            gb_set_job(jid, state="done", pct=100, path=last_path,
+                       msg="完成: %d 个文件" % ok_n)
+        elif ok_n:
+            gb_set_job(jid, state="done", pct=100, path=last_path,
+                       msg="部分完成: 成功 %d, 失败 %d" % (ok_n, err_n))
+        else:
+            gb_set_job(jid, state="error",
+                       msg="全部失败(%d 个文件)" % err_n)
+        log("GameBanana 下载结束: 成功 %d 失败 %d" % (ok_n, err_n))
+    except Exception as e:
+        gb_set_job(jid, state="error", msg="下载失败: %s" % str(e)[:180])
+
+
+def gb_start_download(cfg, mod_id, name="", picks=None):
+    jid = gb_new_job(mod_id, name)
+    threading.Thread(target=gb_download_worker, args=(jid, cfg, mod_id, picks),
+                     daemon=True).start()
+    return jid
+
+
+def _gb_trans_load():
+    global _gb_trans_cache
+    if _gb_trans_cache is None:
+        d = read_json(GB_TRANS_CACHE_PATH, None)
+        _gb_trans_cache = d if isinstance(d, dict) else {}
+    return _gb_trans_cache
+
+
+def _gb_trans_save():
+    try:
+        write_json(GB_TRANS_CACHE_PATH, _gb_trans_cache or {})
+    except Exception:
+        pass
+
+
+def _gb_trans_fetch(t):
+    """只负责发翻译请求, 不碰缓存。翻不出来/失败一律返回原文。"""
+    url = ("https://api.mymemory.translated.net/get?q=%s&langpair=en|zh-CN"
+           % urllib.parse.quote(t[:480]))
+    for attempt in range(3):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": GB_UA})
+            with urllib.request.urlopen(req, timeout=15) as r:
+                d = json.loads(r.read().decode("utf-8", "replace"))
+            got = ((d.get("responseData") or {}).get("translatedText") or "").strip()
+            return got if (got and got.lower() != t.lower()) else t
+        except Exception:
+            time.sleep(0.4 * (attempt + 1))
+    return t
+
+
+def _gb_trans_prep(s):
+    """v1.5.22: 把"没法直译"的原始名清洗成能翻的短语。
+
+    实测坑: 下载区文件名(如 white_high_heels_recolor_3.zip)原样丢给机翻,
+    MyMemory 会整串吐回原文 = 等于没翻。GameBanana 文件对象里没有独立的
+    "文件简介"字段(网页文件那一行显示的就是文件名本身), 所以"看简介再翻"
+    落到实处就是这步清洗:
+      去后缀 -> 下划线/连字符换空格 -> 拆 camelCase -> 压缩空格
+      -> 去掉纯数字/版本号/扩展名碎片 -> 截前 6 个词(机翻短句更准)
+    """
+    s = str(s or "").strip()
+    if not s:
+        return ""
+    s = os.path.splitext(s)[0] if "." in s else s      # 去 .zip/.7z 等后缀
+    s = re.sub(r"[\.\_]+", " ", s)                      # 分隔符换空格
+    s = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", s)          # camelCase 拆词
+    s = re.sub(r"\s+", " ", s).strip()
+    keep = []
+    for tk in s.split(" "):
+        if not tk:
+            continue
+        if re.fullmatch(r"[0-9]+", tk):                 # 纯数字
+            continue
+        if re.fullmatch(r"v\d+(?:\.\d+)*", tk, re.I):   # 版本号 v1.0.7
+            continue
+        if tk.lower() in ("zip", "7z", "rar", "ini", "cfg"):
+            continue
+        keep.append(tk)
+    return " ".join(keep[:6]).strip()
+
+
+def _gb_trans_clean_fetch(t):
+    """v1.5.22: 文件名专用机翻。清洗后短语也翻不动就保留清洗前语义原样,
+    绝不让请求失败把整条翻译链打断。"""
+    p = _gb_trans_prep(t)
+    if not p:
+        return t
+    got = _gb_trans_fetch(p)
+    return got if (got and got != p) else t
+
+
+def _gb_trans_clean_map(texts):
+    """v1.5.22: 批量文件名翻译(走清洗版 fetch)。独立小缓存文件名空间,
+    不与标题缓存互踩。翻不出来原样返回, 绝不报错打断。"""
+    texts = [str(x) for x in (texts or [])][:40]
+    todo = [t for t in texts if t]
+    todo = list(dict.fromkeys(todo))
+    if not todo:
+        return {}
+    cache = _gb_trans_load()
+    out = {}
+    miss = []
+    for t in todo:
+        k = "\x00fn\x00" + t                 # 文件名独立命名空间, 防与标题串缓存
+        if k in cache:
+            out[t] = cache[k]
+        else:
+            miss.append((t, k))
+    if miss:
+        try:
+            import concurrent.futures as _cf
+            with _cf.ThreadPoolExecutor(max_workers=4) as ex:
+                futs = {ex.submit(_gb_trans_clean_fetch, t): (t, k) for t, k in miss}
+                for fu in _cf.as_completed(futs):
+                    t, k = futs[fu]
+                    try:
+                        out[t] = fu.result()
+                    except Exception:
+                        out[t] = t
+            with _gb_trans_lock:
+                c = _gb_trans_load()
+                if len(c) > 8000:
+                    c.clear()
+                for t, k in miss:
+                    c[k] = out.get(t, t)
+            _gb_trans_save()
+        except Exception:
+            for t, k in miss:
+                out.setdefault(t, _gb_trans_clean_fetch(t))
+    for t in texts:
+        out.setdefault(t, t)
+    return out
+
+
+def gb_translate_one(text):
+    """英->中 翻译, 带本地缓存。翻不出来就原样返回, 绝不报错打断。"""
+    t = (text or "").strip()
+    if not t:
+        return ""
+    cache = _gb_trans_load()
+    if t in cache:
+        return cache[t]
+    res = _gb_trans_fetch(t)
+    with _gb_trans_lock:
+        c = _gb_trans_load()
+        if len(c) > 8000:            # 防膨胀
+            c.clear()
+        c[t] = res
+    _gb_trans_save()
+    return res
+
+
+def gb_translate_many(texts):
+    """批量翻译(单次上限 40 条, 先吃缓存)。返回 {原文: 译文}。
+    缓存没命中的会小并发去翻(4 线程), 免得 30 个名字串行等十几秒。"""
+    out = {}
+    texts = [str(x) for x in (texts or [])][:40]
+    cache = _gb_trans_load()
+    todo = []
+    for t in texts:
+        if t in cache:
+            out[t] = cache[t]
+        elif t and t not in todo:
+            todo.append(t)
+    if todo:
+        try:
+            import concurrent.futures as _cf
+            with _cf.ThreadPoolExecutor(max_workers=4) as ex:
+                futs = {ex.submit(_gb_trans_fetch, t): t for t in todo}
+                for fu in _cf.as_completed(futs):
+                    t = futs[fu]
+                    try:
+                        out[t] = fu.result()
+                    except Exception:
+                        out[t] = t
+            with _gb_trans_lock:
+                c = _gb_trans_load()
+                if len(c) > 8000:
+                    c.clear()
+                c.update(out)
+            _gb_trans_save()
+        except Exception:
+            for t in todo:
+                out.setdefault(t, _gb_trans_fetch(t))
+    for t in texts:
+        out.setdefault(t, t)
+    return out
+
+
+# ---------------------------------------------------------------------------
+# v1.5.13: 角色子分类 / 批量文件清单 / 下载历史
+# ---------------------------------------------------------------------------
+
+# v1.5.14: 绝区零角色官方中文名对照(英文转写 -> 中文)。
+# 角色下拉里光看英文名认不出是谁(用户实测反馈), 内置一份对照表最准且零网络依赖。
+# 表里没有的(新角色/联动)再回落 MyMemory 机翻。
+GB_CHAR_CN = {
+    "hoshimi miyabi": "星见雅",
+    "belle": "铃",
+    "nicole demara": "妮可·德玛拉",
+    "yixuan": "仪玄",
+    "jane doe": "简·杜",
+    "ellen joe": "艾莲·乔",
+    "astra yao": "耀嘉音",
+    "yanagi tsukishiro": "月城柳",
+    "anby demara": "安比·德玛拉",
+    "remielle dan": "蕾米尔·丹",
+    "burnice white": "柏妮思·怀特",
+    "evelyn chevalier": "伊芙琳·舒瓦利耶",
+    "luciana de montefio": "露西娅娜·德·蒙特菲奥",
+    "alice thymefield": "爱丽丝·泰姆菲尔德",
+    "qingyi": "青衣",
+    "vivian banshee": "薇薇安·班希",
+    "zhu yuan": "朱鸢",
+    "caesar king": "凯撒·金",
+    "yuzuha ukinami": "浮波柚叶",
+    "piper wheel": "派派·韦尔",
+    "ye shunguang": "叶瞬光",
+    "alexandrina sebastiane": "亚历山德丽娜·塞巴斯蒂安",
+    "trigger": "扳机",
+    "ju fufu": "橘福福",
+    "velina airgid": "维琳娜·艾尔吉德",
+    "seed": "席德",
+    "soldier 11": "十一号",
+    "grace howard": "格莉丝·霍华德",
+    "dialyn": "黛琳",
+    "wise": "哲",
+    "yidhari murphy": "伊德海莉·墨菲",
+    "lucia elowen": "露西亚·艾洛温",
+    "koleda belobog": "珂蕾妲·贝洛伯格",
+    "zhao": "照",
+    "nekomiya mana": "猫又",
+    "soldier 0 anby": "零号·安比",
+    "claret flint": "克莱尔·弗林特",
+    "pulchra fellini": "波可娜·费里尼",
+    "orphie magnusson": "奥菲·马格努松",
+    "sigrid de l'azur": "希格莉德·德·拉祖尔",
+    "cissia": "希希娅",
+    "billy kid": "比利·奇德",
+    "corin wickes": "可琳·威克斯",
+    "soukaku": "苍角",
+    "aria": "爱芮雅",
+    "lighter": "莱特",
+    "sunna": "桑娜",
+    "promeia": "普罗米娅",
+    "von lycaon": "冯·莱卡恩",
+    "komano manato": "猯野天斗",
+    "nangong yu": "南宫羽",
+    "norma hollowell": "诺玛·霍洛韦尔",
+    "seth lowell": "赛斯·洛威尔",
+    "asaba harumasa": "浅羽悠真",
+    "anton ivanov": "安东·伊万诺夫",
+    "banyue": "半月",
+    "pyrois": "皮洛伊斯",
+    "hugo vlad": "雨果·弗拉德",
+    "ben bigger": "本·比格",
+    "starlight billy": "星辉比利",
+    "pan yinhu": "潘引壶",
+    "roxy ifrita pryce": "萝克茜·伊芙莉塔·普莱斯",
+}
+
+
+def gb_char_cn(name):
+    """角色英文名 -> 官方中文名。对照表命中就用表, 否则机翻, 都失败返回原文。"""
+    n = (name or "").strip()
+    if not n:
+        return ""
+    k = re.sub(r"\s+", " ", n).lower()
+    if k in GB_CHAR_CN:
+        return GB_CHAR_CN[k]
+    # 去掉常见后缀再试一次(如 "Anby (ZZZ)")
+    k2 = re.sub(r"[\(\[].*?[\)\]]", "", k).strip()
+    if k2 in GB_CHAR_CN:
+        return GB_CHAR_CN[k2]
+    try:
+        tr = gb_translate_one(n)
+        return tr if (tr and tr.lower() != n.lower()) else n
+    except Exception:
+        return n
+
+
+def gb_subcategories(cat=GB_CHAR_CAT, refresh=False):
+    """拉某个分类下的子分类(角色列表)。本地缓存 1 天, 失败回落缓存。
+
+    返回 [{"id":30336, "name":"Anby Demara", "cn":"安比",
+           "count":130, "url":...}, ...]
+
+    v1.5.14: 加 `cn` —— 角色名官方中文译名。英文名(Latin 转写)用户认不出,
+    所以内置一份绝区零角色对照表(比机器翻译准, 且零网络依赖);
+    表里没有的(新角色/联动)再回落 MyMemory 机翻, 也塞进 cn。
+    """
+    global _gb_subs_cache
+    path = GB_SUBS_CACHE_PATH
+    if not refresh:
+        if _gb_subs_cache is None:
+            d = read_json(path, None)
+            if isinstance(d, dict) and d.get("ts") and d.get("items"):
+                if time.time() - d["ts"] < 86400:
+                    _gb_subs_cache = d
+        if _gb_subs_cache:
+            return _gb_subs_cache.get("items") or []
+    items = []
+    try:
+        url = "%s/ModCategory/%s/SubCategories" % (GB_API, cat)
+        d = gb_http_json(url)
+        recs = d if isinstance(d, list) else (d.get("_aRecords") or [])
+        for r in recs:
+            u = r.get("_sUrl") or ""
+            m = re.search(r"/cats/(\d+)", u)
+            cid = int(m.group(1)) if m else None
+            if not cid:
+                continue
+            nm = r.get("_sName") or ""
+            items.append({
+                "id": cid,
+                "name": nm,
+                "cn": gb_char_cn(nm),
+                "count": r.get("_nItemCount") or 0,
+                "url": u,
+                "icon": r.get("_sIconUrl") or "",
+            })
+        items.sort(key=lambda x: -(x["count"] or 0))
+    except Exception as e:
+        log("GameBanana 子分类拉取失败: %s" % str(e)[:120])
+        d = read_json(path, None)
+        if isinstance(d, dict):
+            return d.get("items") or []
+        return []
+    _gb_subs_cache = {"ts": time.time(), "cat": cat, "items": items}
+    try:
+        write_json(path, _gb_subs_cache)
+    except Exception:
+        pass
+    return items
+
+
+# ===================== v1.5.17: 蓝飞机(Telegram) 导入 =====================
+# 用 telethon(userbot) 拉「自己已加入的频道」里的 mod 文件(zip/ini)。
+# 凭据(api_id/api_hash)只存本机 config, 不进日志、不分发。
+# telethon 未安装时所有接口优雅降级(返回清晰错误, 不崩)。
+# 分类: Telegram 无原生分类, 按频道 + 文件名/角色名推断; 预览: 下载消息里的 photo。
+# v1.5.22: **总开关** —— 功能未实测通过前暂时整体关闭(作者拍板: 等 API 申请
+# 下来测通了再开)。所有 /api/tg_* 直接返回「暂未开放」, 前端隐藏整个 tab。
+# 恢复只需把 TG_ENABLED 改回 True。
+import threading as _tg_threading
+
+TG_ENABLED = False
+
+TG_LOCK = _tg_threading.Lock()
+TG_STATE = {"client": None, "phone_code_hash": "", "phone": ""}
+TG_SESSION = os.path.join(DATA_DIR, "tg", "tg_session")
+TG_EXTS = (".zip", ".ini", ".7z", ".rar", ".cfg")
+
+
+def _tg_proxy(proxy):
+    if not proxy:
+        return None
+    m = re.match(r"^(socks5|socks4|http)://([^:/]+):(\d+)$", (proxy or "").strip())
+    if not m:
+        return None
+    return (m.group(1), m.group(2), int(m.group(3)))
+
+
+def _tg_client(app):
+    """创建/复用 telethon client(进程内缓存)。无 telethon 或没配凭据 -> None。"""
+    with TG_LOCK:
+        if TG_STATE["client"] is not None:
+            return TG_STATE["client"]
+        t = app.cfg.get("tg") or {}
+        try:
+            api_id = int(t.get("api_id") or 0)
+        except Exception:
+            api_id = 0
+        api_hash = (t.get("api_hash") or "").strip()
+        if not api_id or not api_hash:
+            return None
+        try:
+            from telethon import TelegramClient
+        except Exception:
+            return None
+        try:
+            os.makedirs(os.path.dirname(TG_SESSION), exist_ok=True)
+        except Exception:
+            pass
+        proxy = _tg_proxy(t.get("proxy") or "")
+        c = TelegramClient(TG_SESSION, api_id, api_hash, proxy=proxy)
+        TG_STATE["client"] = c
+        return c
+
+
+def _tg_run(client, coro):
+    return client.loop.run_until_complete(coro)
+
+
+def _tg_trunc(e):
+    return (str(e) or type(e).__name__).replace("\n", " ").strip()[:200]
+
+
+def tg_status(app):
+    have = False
+    try:
+        import telethon  # noqa
+        have = True
+    except Exception:
+        pass
+    t = app.cfg.get("tg") or {}
+    configured = bool(t.get("api_id") and t.get("api_hash"))
+    logged_in = False
+    c = _tg_client(app)
+    if c is not None:
+        try:
+            with TG_LOCK:
+                _tg_run(c, c.connect())
+                logged_in = _tg_run(c, c.is_user_authorized())
+        except Exception:
+            logged_in = False
+    return {"ok": True, "telethon": have, "configured": configured,
+            "logged_in": bool(logged_in),
+            "api_id": t.get("api_id", ""), "api_hash": t.get("api_hash", ""),
+            "proxy": t.get("proxy", "")}
+
+
+def tg_save_cfg(app, api_id, api_hash, proxy):
+    t = app.cfg.setdefault("tg", {})
+    t["api_id"] = (api_id or "").strip()
+    t["api_hash"] = (api_hash or "").strip()
+    t["proxy"] = (proxy or "").strip()
+    with TG_LOCK:
+        TG_STATE["client"] = None
+    app.save_config()
+    return {"ok": True}
+
+
+def tg_send_code(app, phone):
+    with TG_LOCK:
+        c = _tg_client(app)
+        if c is None:
+            return {"ok": False, "msg": "未配置 api_id/api_hash 或后端未安装 telethon"}
+        try:
+            _tg_run(c, c.connect())
+            sent = _tg_run(c, c.send_code_request(phone))
+            TG_STATE["phone_code_hash"] = getattr(sent, "phone_code_hash", "")
+            TG_STATE["phone"] = phone
+            return {"ok": True, "phone_code_hash": TG_STATE["phone_code_hash"]}
+        except Exception as e:
+            return {"ok": False, "msg": _tg_trunc(e)}
+
+
+def tg_sign_in(app, phone, code, password, phone_code_hash):
+    with TG_LOCK:
+        c = _tg_client(app)
+        if c is None:
+            return {"ok": False, "msg": "未配置或未安装 telethon"}
+        try:
+            if password:
+                _tg_run(c, c.sign_in(password=password))
+            else:
+                ph = phone_code_hash or TG_STATE["phone_code_hash"]
+                _tg_run(c, c.sign_in(phone, code, phone_code_hash=ph))
+            ok = _tg_run(c, c.is_user_authorized())
+            return {"ok": bool(ok), "logged_in": bool(ok), "need_password": (not ok)}
+        except Exception as e:
+            msg = _tg_trunc(e)
+            if re.search(r"password|2fa|two.step|two-step", msg, re.I):
+                return {"ok": False, "need_password": True, "msg": "需要两步验证密码"}
+            return {"ok": False, "msg": msg}
+
+
+def tg_list(app):
+    with TG_LOCK:
+        c = _tg_client(app)
+        if c is None:
+            return {"ok": False, "msg": "未配置或未安装 telethon"}
+        try:
+            _tg_run(c, c.connect())
+            if not _tg_run(c, c.is_user_authorized()):
+                return {"ok": False, "msg": "未登录，请先发验证码登录"}
+            dialogs = _tg_run(c, c.get_dialogs())
+            items = []
+            for d in dialogs:
+                ent = d.entity
+                uname = getattr(ent, "username", None) or ""
+                title = getattr(ent, "title", None) or getattr(ent, "first_name", "") or ""
+                items.append({"id": getattr(ent, "id", 0), "title": title,
+                              "username": uname, "type": type(ent).__name__})
+            items.sort(key=lambda x: (x["type"] != "Channel", x["title"].lower()))
+            return {"ok": True, "items": items}
+        except Exception as e:
+            return {"ok": False, "msg": _tg_trunc(e)}
+
+
+def tg_import(app, channel, prev):
+    with TG_LOCK:
+        c = _tg_client(app)
+        if c is None:
+            return {"ok": False, "msg": "未配置或未安装 telethon"}
+        try:
+            _tg_run(c, c.connect())
+            if not _tg_run(c, c.is_user_authorized()):
+                return {"ok": False, "msg": "未登录，请先发验证码登录"}
+            ent = _tg_run(c, c.get_entity(channel))
+            d = gb_downloads_dir(app.cfg)
+            prev_dir = os.path.join(d, "tg_previews")
+            if prev:
+                try:
+                    os.makedirs(prev_dir, exist_ok=True)
+                except Exception:
+                    pass
+            items = []
+            seen_prev = set()
+            msgs = _tg_run(c, c.get_messages(ent, limit=200))
+            for m in msgs:
+                if m.document:
+                    fn = (m.file.name if m.file else None) or ("file_%s" % m.id)
+                    if not fn.lower().endswith(TG_EXTS):
+                        continue
+                    dest = gb_unique_path(d, fn)
+                    _tg_run(c, c.download_media(m, file=dest))
+                    size = os.path.getsize(dest) if os.path.exists(dest) else 0
+                    sub = (m.message or "")[:90]
+                    if not sub and size:
+                        sub = "%.1f MB" % (size / 1048576.0)
+                    items.append({"name": os.path.basename(dest), "path": dest, "sub": sub})
+                elif prev and m.photo:
+                    pid = getattr(m.photo, "id", m.id)
+                    if pid in seen_prev:
+                        continue
+                    seen_prev.add(pid)
+                    ppath = os.path.join(prev_dir, "prev_%s.jpg" % pid)
+                    try:
+                        _tg_run(c, c.download_media(m, file=ppath))
+                    except Exception:
+                        pass
+            msg = ("导入 %d 个文件" % len(items)) if items else "最近消息里没有 zip/ini 文件"
+            return {"ok": True, "items": items, "msg": msg}
+        except Exception as e:
+            return {"ok": False, "msg": _tg_trunc(e)}
+
+
+def tg_open(app, path):
+    try:
+        if path and os.path.exists(path):
+            open_in_explorer(os.path.dirname(path))
+            return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "msg": _tg_trunc(e)}
+    return {"ok": False, "msg": "文件不存在"}
+
+
+def gb_files_batch(mod_ids, limit=40, workers=6):
+    """并发取多个 mod 的文件清单, 返回 {mod_id: {"files":[...], "name":...}}。
+    失败/超时的 mod 会被静默跳过(前端显示「取不到文件」)。"""
+    out = {}
+    ids = []
+    for x in (mod_ids or [])[:limit]:
+        try:
+            ids.append(int(x))
+        except (TypeError, ValueError):
+            continue
+    if not ids:
+        return out
+
+    def one(mid):
+        try:
+            return mid, gb_mod_files(mid)
+        except Exception:
+            return mid, None
+
+    try:
+        import concurrent.futures as _cf
+        with _cf.ThreadPoolExecutor(max_workers=workers) as ex:
+            for mid, info in ex.map(one, ids):
+                if info:
+                    out[str(mid)] = {"name": info.get("name") or "",
+                                     "files": info.get("files") or []}
+    except Exception:
+        for mid in ids:
+            try:
+                info = gb_mod_files(mid)
+                out[str(mid)] = {"name": info.get("name") or "",
+                                 "files": info.get("files") or []}
+            except Exception:
+                pass
+    return out
+
+
+def _gb_hist_load():
+    global _gb_dl_hist
+    if _gb_dl_hist is None:
+        d = read_json(GB_DL_HISTORY_PATH, None)
+        _gb_dl_hist = d if isinstance(d, dict) else {}
+    return _gb_dl_hist
+
+
+def _gb_hist_save():
+    try:
+        write_json(GB_DL_HISTORY_PATH, _gb_dl_hist or {})
+    except Exception:
+        pass
+
+
+def gb_hist_mark(mod_id, fname, path=""):
+    """记一笔「这个文件下过了」。key = '<mod_id>:<文件名>'。"""
+    global _gb_dl_hist
+    k = "%s:%s" % (mod_id, fname or "")
+    with _gb_dl_hist_lock:
+        h = _gb_hist_load()
+        if len(h) > 4000:
+            h.clear()
+        h[k] = {"ts": time.time(), "path": path, "mod_id": str(mod_id), "file": fname or ""}
+    _gb_hist_save()
+
+
+def gb_hist_get():
+    with _gb_dl_hist_lock:
+        return dict(_gb_hist_load())
+
+
+def gb_hist_clear():
+    global _gb_dl_hist
+    with _gb_dl_hist_lock:
+        _gb_dl_hist = {}
+    _gb_hist_save()
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "ZZMIManager/" + VERSION
     app = None
@@ -3533,6 +4929,34 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/update_check":
                 repo = self.app.cfg.get("update_repo") or UPDATE_REPO
                 return self._json(check_update(VERSION, repo))
+            if path == "/api/gb_crawl":
+                return self._json(self.gb_crawl(qs))
+            if path == "/api/gb_subs":
+                return self._json({
+                    "ok": True,
+                    "char_cat": GB_CHAR_CAT,
+                    "items": gb_subcategories(
+                        qs.get("cat") or GB_CHAR_CAT,
+                        refresh=(qs.get("refresh") == "1"))})
+            if path == "/api/gb_files":
+                ids = [x for x in (qs.get("ids") or "").split(",") if x.strip()]
+                return self._json({"ok": True,
+                                   "map": gb_files_batch(ids),
+                                   "history": gb_hist_get()})
+            if path == "/api/gb_history":
+                return self._json({"ok": True, "map": gb_hist_get()})
+            if path == "/api/gb_dl":
+                return self._json({"ok": True,
+                                   "job": gb_get_job(qs.get("job") or "")})
+            if path == "/api/gb_downloads":
+                return self._json(gb_list_downloads(self.app.cfg))
+            if path == "/api/tg_status":
+                if not TG_ENABLED:
+                    return self._json({"ok": False, "disabled": True,
+                                       "msg": "蓝飞机接口暂未开放，敬请期待"})
+                return self._json(tg_status(self.app))
+            if path == "/gbimg":
+                return self.gb_serve_img(qs)
             if path == "/thumb":
                 return self.serve_thumb(qs)
             return self._json({"error": "not found"}, 404)
@@ -3751,6 +5175,122 @@ class Handler(BaseHTTPRequestHandler):
                 app.rescan()
                 return self._json({"ok": True, "state": app.state()})
 
+            # ---- v1.5.12: GameBanana 下载区 ---------------------------------
+            if act == "gb_download":
+                mid = body.get("mod_id")
+                if not mid:
+                    return self._json({"ok": False, "msg": "缺少 mod_id"})
+                picks = body.get("picks") or None
+                if isinstance(picks, str):
+                    picks = [picks]
+                if picks is not None and not isinstance(picks, list):
+                    picks = None
+                jid = gb_start_download(app.cfg, mid, body.get("name") or "",
+                                        picks=picks)
+                return self._json({"ok": True, "job": jid})
+
+            if act == "gb_hist_clear":
+                gb_hist_clear()
+                return self._json({"ok": True, "msg": "已清空下载记录"})
+
+            if act == "pick_dir":
+                base = gb_downloads_dir(app.cfg)
+                # v1.5.15: 把界面窗口 hwnd 传进去当 owner —— 选择框就是它的子窗口,
+                # 天然压在浏览器之上; 再加看门狗反复置顶, 双保险。
+                hwnd = None
+                try:
+                    hwnd = find_manager_window()
+                    if hwnd:
+                        _bring_to_front(hwnd)
+                except Exception:
+                    hwnd = None
+                p = pick_folder(base, owner=hwnd)
+                if not p:
+                    return self._json({"ok": False, "msg": "没选文件夹(或系统选择框不可用)"})
+                return self._json({"ok": True, "path": p, "msg": "已选中 %s" % p})
+
+            if act == "gb_translate":
+                return self._json({"ok": True,
+                                   "map": gb_translate_many(body.get("texts") or [])})
+
+            if act == "gb_translate_files":
+                # v1.5.22: 下载区文件名翻译(先清洗下划线/后缀/版本号再翻)
+                return self._json({"ok": True,
+                                   "map": _gb_trans_clean_map(body.get("texts") or [])})
+
+            if act == "gb_dl_delete":
+                name = os.path.basename(body.get("name") or "")
+                d = gb_downloads_dir(app.cfg)
+                p = os.path.join(d, name)
+                if not name or not os.path.isfile(p):
+                    return self._json({"ok": False, "msg": "文件不存在"})
+                try:
+                    os.remove(p)
+                except Exception as ex:
+                    return self._json({"ok": False, "msg": "删除失败: %s" % ex})
+                # 顺手把下载记录里指向这个文件的条目标掉
+                with _gb_dl_hist_lock:
+                    h = _gb_hist_load()
+                    pn = os.path.normcase(os.path.abspath(p))
+                    for k in [k for k, v in h.items()
+                              if os.path.normcase(os.path.abspath(v.get("path") or "")) == pn]:
+                        h.pop(k, None)
+                _gb_hist_save()
+                return self._json({"ok": True, "msg": "已删除 %s" % name,
+                                   "downloads": gb_list_downloads(app.cfg)})
+
+            if act == "gb_open_dl":
+                d = gb_downloads_dir(app.cfg)
+                nm = os.path.basename(body.get("name") or "")
+                if nm:
+                    fp = os.path.join(d, nm)
+                    if os.path.isfile(fp):
+                        ok = open_in_explorer(fp, select=True)
+                    else:
+                        ok = open_in_explorer(d)
+                else:
+                    ok = open_in_explorer(d)
+                return self._json({"ok": ok, "dir": d,
+                                   "msg": "已打开下载目录" if ok else "打不开文件夹"})
+
+            if act == "gb_set_dl_dir":
+                raw = (body.get("path") or "").strip()
+                if not raw:
+                    app.cfg["downloads_dir"] = ""
+                    app.save_config()
+                    return self._json({"ok": True, "dir": gb_downloads_dir(app.cfg),
+                                       "msg": "已恢复默认下载目录"})
+                # v1.5.15: 先剥掉资源管理器给的引号, 再判绝对路径。
+                # 以前带引号会被当成相对路径 -> 拼到 cwd 后面 -> 报「建不了」。
+                clean = strip_path_quotes(strip_abs_prefix(raw))
+                if re.match(r"^[A-Za-z]:$", clean):
+                    clean = clean + "\\"            # "D:" -> "D:\"
+                if not is_abs_path(clean):
+                    return self._json({
+                        "ok": False,
+                        "msg": "请填完整路径(例如 D:\\mod下载), 相对路径不知道该放哪"})
+                p = os.path.abspath(clean)
+                if not p or os.path.dirname(p) == p:
+                    return self._json({"ok": False, "msg": "路径不合法(不能直接用盘符根目录)"})
+                try:
+                    os.makedirs(p, exist_ok=True)
+                except Exception as ex:
+                    return self._json({"ok": False, "msg": "建不了这个文件夹: %s" % ex})
+                if not os.path.isdir(p):
+                    return self._json({"ok": False, "msg": "这个路径不是文件夹: %s" % p})
+                app.cfg["downloads_dir"] = p
+                app.save_config()
+                return self._json({"ok": True, "dir": p,
+                                   "downloads": gb_list_downloads(app.cfg),
+                                   "msg": "下载目录已改为 %s" % p})
+
+            if act == "gb_show_trans":
+                app.cfg["show_translated"] = bool(body.get("on"))
+                app.save_config()
+                return self._json({"ok": True,
+                                   "show_translated":
+                                       bool(app.cfg.get("show_translated"))})
+
             if act == "launch":
                 ok, msg = launch_game(app.cfg)
                 return self._json({"ok": ok, "msg": msg})
@@ -3823,6 +5363,7 @@ class Handler(BaseHTTPRequestHandler):
                 e = app.scan.by_id.get(body.get("id") or "")
                 if not e:
                     return self._json({"ok": False, "msg": "找不到该 mod"})
+                old_rel = e["path"]
                 res = do_rename(app.mods_dir(), e, body.get("name"))
                 # v1.5.8: 成功时是 3 元组 (True, msg, {renamed, target_name, seq})
                 if len(res) == 3:
@@ -3830,6 +5371,13 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     ok, msg, extra = res[0], res[1], None
                 app.rescan()
+                # v1.5.20: 把封面/角色覆盖键迁到新路径, 用户选过的封面不跟丢
+                if ok and extra and extra.get("target_name"):
+                    d = old_rel.rsplit("/", 1)
+                    new_rel = (d[0] + "/" + extra["target_name"]) if len(d) == 2 \
+                        else extra["target_name"]
+                    _migrate_override_keys(app.cfg, old_rel, new_rel)
+                    app.save_config()
                 out = {"ok": ok, "msg": msg, "state": app.state()}
                 if ok and extra and extra.get("renamed"):
                     out["renamed"] = True
@@ -3899,6 +5447,27 @@ class Handler(BaseHTTPRequestHandler):
                 except Exception as ex:
                     return self._json({"ok": False, "msg": str(ex)})
 
+            # ---- v1.5.17: 蓝飞机(Telegram) 导入 ---------------------------------
+            # v1.5.22: TG_ENABLED=False 时整组接口不可用(测通后恢复)
+            if act.startswith("tg_") and not TG_ENABLED:
+                return self._json({"ok": False, "disabled": True,
+                                   "msg": "蓝飞机接口暂未开放，敬请期待"})
+            if act == "tg_save_cfg":
+                return self._json(tg_save_cfg(app, body.get("api_id", ""),
+                                              body.get("api_hash", ""), body.get("proxy", "")))
+            if act == "tg_send_code":
+                return self._json(tg_send_code(app, body.get("phone", "")))
+            if act == "tg_sign_in":
+                return self._json(tg_sign_in(app, body.get("phone", ""),
+                                            body.get("code", ""), body.get("password", ""),
+                                            body.get("phone_code_hash", "")))
+            if act == "tg_list":
+                return self._json(tg_list(app))
+            if act == "tg_import":
+                return self._json(tg_import(app, body.get("channel", ""), bool(body.get("prev"))))
+            if act == "tg_open":
+                return self._json(tg_open(app, body.get("path", "")))
+
             return self._json({"error": "not found"}, 404)
         except Exception:
             log("POST error:\n" + traceback.format_exc())
@@ -3953,9 +5522,22 @@ class Handler(BaseHTTPRequestHandler):
         if full:
             tp, cache, cap = p, "max-age=300", 30 * 1024 * 1024
         else:
-            tp = cached_thumb(p) or p
-            if tp == p:
-                _thumb_q.put(p)
+            tp = cached_thumb(p)
+            if tp is None:
+                # v1.5.20: 没有现成缩略图就**当场生成**(毫秒级), 不再把几 MB 的
+                # 原图直接怼给页面 —— 以前刚重命名/刚扫描完的第一次请求会收到
+                # 整张原图(实测有 7MB), 叠加后台批量压图抢 CPU, 卡片就是一片灰
+                # 半天出不来, 看起来像"图丢了"。
+                try:
+                    os.makedirs(THUMB_DIR, exist_ok=True)
+                    dst = os.path.join(THUMB_DIR, thumb_key(p))
+                except OSError:
+                    dst = ""
+                if dst and make_thumb(p, dst):
+                    tp = dst
+                else:
+                    tp = p
+                    _thumb_q.put(p)   # 生成失败, 交给后台重试, 这次先送原图顶着
             cache, cap = "max-age=86400", 14 * 1024 * 1024
         try:
             if os.path.getsize(tp) > cap:
@@ -3967,6 +5549,71 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(500, b"", "text/plain")
         ctype = mimetypes.guess_type(tp)[0] or "application/octet-stream"
         return self._send(200, data, ctype, extra={"Cache-Control": cache})
+
+    def gb_crawl(self, qs):
+        """爬 GameBanana 一页 mod 列表 / 单个 mod 的文件清单。
+
+        v1.5.13: 可带 cat=<分类id> 直接锁定某个角色分类(角色筛选),
+        此时 url 参数可以留空。
+        """
+        raw = qs.get("url") or ""
+        page = qs.get("page") or "1"
+        cat = (qs.get("cat") or "").strip()
+        if cat and re.fullmatch(r"\d+", cat):
+            try:
+                data = gb_list("category", cat, page, 30, cat=cat)
+                data["ok"] = True
+                data["cat"] = cat
+                return data
+            except Exception as e:
+                return {"ok": False, "msg": "爬取失败: %s" % str(e)[:180]}
+        kind, gid, err = gb_parse_url(raw)
+        if err:
+            return {"ok": False, "msg": err}
+        try:
+            if kind == "mod":
+                return {"ok": True, "kind": "mod", "mod": gb_mod_files(gid)}
+            data = gb_list(kind, gid, page, 30)
+            data["ok"] = True
+            return data
+        except Exception as e:
+            return {"ok": False, "msg": "爬取失败: %s" % str(e)[:180]}
+
+    def gb_serve_img(self, qs):
+        """代理 GameBanana 预览图(只放行 images.gamebanana.com), 本地缓存一天。
+        走代理是为了同源 + 免得浏览器直连外网图床卡顿/被挡。"""
+        u = qs.get("u") or ""
+        if not u.startswith("https://images.gamebanana.com/"):
+            return self._send(403, b"", "text/plain")
+        key = hashlib.sha1(u.encode("utf-8")).hexdigest()
+        ext = os.path.splitext(urllib.parse.urlparse(u).path)[1].lower()
+        if ext not in IMAGE_EXTS:
+            ext = ".jpg"
+        cache_p = os.path.join(GB_IMG_CACHE, key + ext)
+        cap = 12 * 1024 * 1024
+        data = None
+        if os.path.isfile(cache_p):
+            try:
+                data = read_bytes_shared(cache_p, cap=cap + 1)
+            except Exception:
+                data = None
+        if data is None or len(data) > cap:
+            try:
+                req = urllib.request.Request(u, headers={"User-Agent": GB_UA})
+                with urllib.request.urlopen(req, timeout=20) as r:
+                    data = r.read(cap + 1)
+                try:
+                    os.makedirs(GB_IMG_CACHE, exist_ok=True)
+                    with open(cache_p, "wb") as f:
+                        f.write(data)
+                except Exception:
+                    pass
+            except Exception:
+                return self._send(502, b"", "text/plain")
+        if len(data) > cap:
+            return self._send(413, b"", "text/plain")
+        ctype = mimetypes.guess_type(cache_p)[0] or "image/jpeg"
+        return self._send(200, data, ctype, extra={"Cache-Control": "max-age=604800"})
 
     def detail(self, mid):
         app = self.app
@@ -4574,8 +6221,21 @@ def main():
     log("  关掉界面窗口(或界面「设置」里的退出)即可结束程序")
     log("")
     if not os.environ.get("ZZMI_NO_BROWSER"):
-        threading.Timer(0.6, lambda: open_app_window(
-            url, app.cfg.get("win_size") or "auto")).start()
+        size = app.cfg.get("win_size") or "auto"
+        b = find_browser((app.cfg.get("browser_path") or "").strip() or None)
+        if not b:
+            # Edge 和 Chrome 都没有: 弹窗让用户自己挑一个浏览器, 选过一次就记住
+            picked = pick_browser_exe()
+            if picked:
+                app.cfg["browser_path"] = picked
+                app.save_config()
+                b = picked
+        if b:
+            threading.Timer(0.6, lambda: open_app_window(url, size, b)).start()
+        else:
+            # 用户取消选择, 或什么都调不出来: 至少用系统默认浏览器把界面开出来
+            log("没有可用浏览器, 退回系统默认浏览器打开(普通标签页)")
+            threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     # v1.5.7: 界面起来之后就把命令窗口藏掉, 不再挡在桌面上
     if os.environ.get("ZZMI_KEEP_CONSOLE") != "1":
         threading.Thread(target=hide_console, args=(1.8,), daemon=True).start()
@@ -4588,8 +6248,20 @@ def main():
     if app.cfg.get("hotkey"):
         log("全局快捷键: %s%s" % (app.cfg["hotkey"],
                                  "" if ok_hk else "  (注册失败: %s)" % msg_hk))
+    # v1.5.20: HTTP 服务转到后台线程(界面窗口由主线程负责拉起)。
+    # 这里把异常吃掉: 进程退出瞬间 socket 回收会让 serve_forever 抛一次,
+    # 那是正常收尾, 不该在命令行里甩一段吓人的 traceback。
+    def _serve():
+        try:
+            httpd.serve_forever()
+        except Exception:
+            pass
+    threading.Thread(target=_serve, daemon=True).start()
+    if _WIN:
+        log("  关掉界面窗口即可结束程序")
     try:
-        httpd.serve_forever()
+        while True:
+            time.sleep(1)
     except KeyboardInterrupt:
         log("bye")
 

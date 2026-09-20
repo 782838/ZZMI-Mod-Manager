@@ -158,7 +158,7 @@ select.sel{background:var(--panel);border:1px solid var(--line);border-radius:va
 .banner b{color:var(--txt)}
 .scroll{overflow-y:auto;padding:13px 16px 80px;flex:1 1 auto}
 
-.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(216px,1fr))}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(min(216px,100%),1fr))}
 .grid.list{grid-template-columns:1fr}
 .card{
   background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
@@ -190,9 +190,9 @@ html[data-theme="light"] .tag.char{color:#6b8000}
 .tag.warn{background:rgba(255,176,46,.16);color:var(--warn)}
 .grid.list .cardinner{display:flex;gap:12px;align-items:stretch}
 .grid.list .cardbody{justify-content:center}
-.cardfoot{display:flex;gap:6px;align-items:center;margin-top:auto}
+.cardfoot{display:flex;gap:6px;align-items:center;margin-top:auto;flex-wrap:wrap}
 .mini{padding:5px 9px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);
-  font-size:12px;color:var(--txt2);transition:.13s}
+  font-size:12px;color:var(--txt2);transition:.13s;flex:1 1 auto;white-space:nowrap;text-align:center}
 .mini:hover{background:var(--panel3);color:var(--txt);border-color:var(--line2)}
 .sw{margin-left:auto;width:44px;height:24px;border-radius:999px;background:var(--line2);
   position:relative;transition:.18s;flex:0 0 auto}
@@ -321,6 +321,97 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
   border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:-2px}
 @keyframes sp{to{transform:rotate(360deg)}}
 
+/* v1.5.12: GameBanana 下载区 */
+.gbmodal{width:min(1140px,96vw);max-height:92vh}
+/* v1.5.17: 蓝飞机(Telegram) 下载区 */
+.gbtabs{display:flex;gap:6px;padding:10px 14px 0;border-bottom:1px solid var(--line)}
+.gbtab{flex:0 0 auto;padding:8px 14px;border:1px solid var(--line);border-bottom:none;
+  background:var(--panel3);color:var(--txt2);border-radius:10px 10px 0 0;cursor:pointer;font-size:13px}
+.gbtab.on{background:var(--panel);color:var(--txt);font-weight:600;position:relative;top:1px;
+  border-color:var(--line)}
+.tgwrap{padding:12px 14px;display:flex;flex-direction:column;gap:12px}
+.tgtut{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--panel3)}
+.tgtut summary{cursor:pointer;font-weight:600;font-size:13px}
+.tgtutol{margin:8px 0 4px;padding-left:20px;display:flex;flex-direction:column;gap:7px;
+  font-size:12.5px;color:var(--txt2);line-height:1.5}
+.tgtutol code{background:var(--panel);padding:1px 5px;border-radius:5px;color:var(--accent);font-size:11.5px}
+.tgwarn{margin:6px 0 0;color:#d9734a;font-size:12px}
+.tgcfg{display:flex;flex-direction:column;gap:8px}
+.gblist{display:flex;flex-direction:column;gap:8px;max-height:42vh;overflow:auto;margin-top:2px}
+.gbitem{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);
+  border-radius:10px;background:var(--panel)}
+.gbitem .meta{flex:1;min-width:0}
+.gbitem .nm{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gbitem .sub{font-size:11px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gbitem .acts{display:flex;gap:6px;flex:0 0 auto}
+.gbitem .acts .btn{flex:0 0 auto;padding:5px 9px;font-size:12px}
+.gbbody{padding:12px 14px}
+.gburl{display:flex;gap:8px;align-items:center}
+.gburl .inp{flex:1;min-width:0}
+.gbhint{margin:7px 2px 9px}
+.gbbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.gbbar .sp{margin-left:auto}
+/* v1.5.23: 底部翻页条 */
+.gbbar-btm{margin:12px 0 2px;padding-top:10px;border-top:1px dashed var(--line)}
+.gbtog{display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--txt2);cursor:pointer;
+  user-select:none}
+.gbtog input{accent-color:var(--accent)}
+.gbgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.gbcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;
+  display:flex;flex-direction:column}
+.gbcard .im{position:relative;aspect-ratio:16/10;background:var(--panel3);cursor:zoom-in;overflow:hidden}
+.gbcard .im img{width:100%;height:100%;object-fit:cover;display:block}
+.gbcard .im .noimg{position:absolute;inset:0;display:grid;place-items:center;color:var(--dim);font-size:12px}
+.gbcard .bd{padding:8px 9px 9px;display:flex;flex-direction:column;gap:4px;flex:1}
+.gbcard .nm{font-size:12.5px;font-weight:600;line-height:1.35;word-break:break-word;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.gbcard .zn{font-size:12px;color:var(--accent);line-height:1.35;word-break:break-word;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.gbcard .zn.off{display:none}
+.gbcard .meta{font-size:11px;color:var(--txt2);display:flex;gap:8px;flex-wrap:wrap}
+.gbcard .acts{display:flex;gap:6px;margin-top:auto;padding-top:5px}
+.gbcard .acts .btn{flex:1;padding:5px 8px;font-size:12px;justify-content:center;text-align:center}
+.gbcard .acts .btn.mini2{flex:0 0 auto;padding:5px 9px}
+.gbprog{height:5px;background:var(--panel3);border-radius:3px;overflow:hidden;margin-top:5px;display:none}
+.gbprog.on{display:block}
+.gbprog i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.gbprogt{font-size:10.5px;color:var(--txt2);margin-top:3px;word-break:break-all}
+.gbmod{display:flex;gap:14px;flex-wrap:wrap}
+.gbmod .lft{flex:0 0 auto}
+.gbmod .rgt{flex:1 1 320px;min-width:0}
+.gbdlrow{display:flex;align-items:center;gap:9px;padding:8px 10px;border-bottom:1px solid var(--line);
+  font-size:12.5px}
+.gbdlrow:last-child{border-bottom:0}
+.gbdlrow:nth-child(odd){background:var(--panel)}
+.gbdlrow .nm{flex:1;min-width:0;word-break:break-all}
+.gbdlrow .sz{color:var(--txt2);font-size:11.5px;white-space:nowrap}
+/* ---- v1.5.13: 角色筛选 / 文件勾选 / 已下载标记 ---- */
+.gbsubbar{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.gbsubbar .sel{flex:1;min-width:0;max-width:400px}
+.gbsubbar .btn.mini3{padding:5px 10px;font-size:12px}
+.gbfiles{border-top:1px dashed var(--line);margin-top:5px;padding-top:5px;
+  display:flex;flex-direction:column;gap:3px;max-height:158px;overflow:auto}
+.gbfiles .hd{font-size:10.5px;color:var(--txt2);display:flex;align-items:center;gap:6px}
+.gbfiles .hd a{color:var(--accent);cursor:pointer;text-decoration:none}
+.gbfile{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:11px;line-height:1.4}
+.gbfile input{accent-color:var(--accent);flex:0 0 auto;margin:0}
+.gbfile .fn{flex:1 1 auto;min-width:0;word-break:break-all;color:var(--txt)}
+/* v1.5.22: 文件行下方的中文译名(清洗机翻, 翻不出不显示), flex 内独占一行
+   ⚠️ 必须配合 .gbfile 的 flex-wrap:wrap —— 否则 basis:100% 会把 .fn 挤成 1 字符宽(竖排) */
+.gbfile .zfn{flex:0 0 100%;order:5;display:block;font-size:10.5px;line-height:1.3;
+  color:var(--accent);word-break:break-word}
+.gbfile .zfn.off{display:none}
+.gbfile .fs{color:var(--txt2);white-space:nowrap;font-size:10.5px}
+.gbfile .av{font-size:10px;padding:1px 4px;border-radius:4px;white-space:nowrap;
+  background:var(--panel3);color:var(--txt2)}
+.gbfile .av.good{color:#39b54a}
+.gbfile .av.bad{color:#e5484d}
+.gbfile .got{font-size:10px;color:#39b54a;white-space:nowrap}
+.gbfiles .ld{font-size:11px;color:var(--txt2);padding:3px 0}
+.gbreg{display:inline-block;font-size:10px;color:#39b54a;margin-left:2px}
+.gbmod .res{margin-top:7px;font-size:11.5px}
+.gbmod .res .r{display:flex;align-items:center;gap:7px;padding:3px 0}
+.gbmod .res .r .sz{color:var(--txt2);font-size:11px}
 #dead{position:fixed;inset:0;z-index:200;background:var(--bg);display:none;
   place-items:center;padding:30px}
 #dead.on{display:grid}
@@ -346,6 +437,7 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
     <button class="btn" id="btnUndo" title="撤销上一步操作">↶ 撤销</button>
     <button class="btn" id="btnRescan" title="重新扫描 Mods 目录">⟳ 重新扫描</button>
     <button class="btn ghost" id="btnLib" title="管理 Mods 外面的仓库目录">🗄 仓库</button>
+    <button class="btn ghost" id="btnGB" title="GameBanana 下载区: 抓取 mod 列表和预览图, 一键下载">⬇ 下载区</button>
     <button class="btn ghost" id="btnUpd" title="检查有没有新版本">⬆ 检查更新</button>
     <button class="btn ghost" id="btnSet" title="设置">⚙</button>
   </header>
@@ -560,6 +652,134 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
   </div>
 </div>
 
+<!-- v1.5.12: GameBanana Mod 下载区 -->
+<div class="mask" id="gbMask"></div>
+<div class="modal gbmodal" id="mGB">
+  <div class="dh"><h3>⬇ Mod 下载区</h3>
+    <button class="xbtn" id="gbCloseX">✕</button></div>
+  <div class="gbtabs">
+    <button class="gbtab on" data-tab="banana">⬇ 香蕉网</button>
+    <button class="gbtab" data-tab="tg" id="gbTgTab">✈ 蓝飞机 (Telegram)</button>
+  </div>
+  <div class="dbody gbbody" id="gbBananaPane">
+    <div class="gburl">
+      <input class="inp" id="gbUrl" type="text" autocomplete="off" spellcheck="false"
+        placeholder="粘贴 GameBanana 链接, 例如 https://gamebanana.com/mods/cats/30305" />
+      <button class="btn primary" id="gbGo">开始爬取</button>
+    </div>
+    <div class="gbhint hint">支持: 分类页 <code>/mods/cats/数字</code> ·
+      游戏全部 mod <code>/mods/games/数字</code> · 单个 mod <code>/mods/数字</code>。
+      mod 名会自动翻译成中文(可关)。</div>
+    <!-- v1.5.13: 角色筛选 -->
+    <div class="gbsubbar">
+      <span class="hint" style="white-space:nowrap">角色</span>
+      <select class="inp sel" id="gbSub"><option value="">全部角色(不过滤)</option></select>
+      <button class="btn mini3" id="gbSubReload" title="重新从香蕉网拉一次角色列表">↻ 刷新</button>
+      <span class="hint" id="gbSubInfo"></span>
+    </div>
+    <div class="gbbar">
+      <span id="gbCount" class="hint"></span>
+      <label class="gbtog" title="显示/隐藏中文译名"><input type="checkbox" id="gbTr" checked /> 中文译名</label>
+      <label class="gbtog" title="自动列出每个 mod 的文件供勾选(请求变多, 稍慢)">
+        <input type="checkbox" id="gbFilesTog" checked /> 列出文件</label>
+      <span class="sp"></span>
+      <button class="btn gbPrev" id="gbPrev">‹ 上一页</button>
+      <span id="gbPage" class="hint gbPage"></span>
+      <button class="btn gbNext" id="gbNext">下一页 ›</button>
+      <button class="btn" id="gbDlDir">🗂 下载目录</button>
+    </div>
+    <div id="gbGrid" class="gbgrid"></div>
+    <div id="gbEmpty" class="empty">输入 GameBanana 链接后点「开始爬取」</div>
+    <!-- v1.5.23: 底部翻页条 —— 列表很长时不必滑回顶部才能翻页 -->
+    <div class="gbbar gbbar-btm" id="gbPagerBtm" style="display:none">
+      <span class="sp"></span>
+      <button class="btn gbPrev">‹ 上一页</button>
+      <span class="hint gbPage"></span>
+      <button class="btn gbNext">下一页 ›</button>
+    </div>
+  </div>
+  <div class="dbody gbbody" id="gbTgPane" style="display:none">
+    <div class="tgwrap">
+      <details class="tgtut" open>
+        <summary>📖 使用教程（首次必读）</summary>
+        <ol class="tgtutol">
+          <li><b>申请 API 凭据</b>：打开 <code>https://my.telegram.org</code> 登录 → <b>API development tools</b> → 填 App title / Short name（随便写）→ 拿到 <code>api_id</code>（数字）和 <code>api_hash</code>（字符串）。这是你个人的，<b>只存本机，别分享</b>。</li>
+          <li><b>代理</b>：国内直连不通。填代理软件的本地端口，如 <code>socks5://127.0.0.1:7890</code>（clash）或 <code>socks5://127.0.0.1:10808</code>（v2ray）。打开代理软件看「本地端口 / SOCKS」。</li>
+          <li><b>登录验证</b>：填 api_id / api_hash / 代理 / 手机号 → 点「发送验证码」→ Telegram 把码发到手机或桌面端 → 填进「验证码」→ 点「登录」。要两步验证密码也填进去。登录后生成本机 session，之后免验证。</li>
+          <li><b>导入群组</b>：登录后，粘贴 <code>@用户名</code> 或 <code>t.me/xxx</code>（公开频道），或已加入的私有频道名 → 点「验证导入」→ 自动拉最近带附件的消息、下载 zip/ini 到下载目录（预览图可选）。</li>
+        </ol>
+        <p class="hint tgwarn">⚠️ 只爬你已加入的频道 / 作者公开频道，不碰私有无授权。只读不发送。下载只进工具自己的下载目录，<b>不碰 Mods</b>。</p>
+      </details>
+
+      <div class="field tgcfg">
+        <div class="gburl">
+          <input class="inp" id="tgApiId" type="text" inputmode="numeric" autocomplete="off" placeholder="api_id（my.telegram.org 申请）" />
+          <input class="inp" id="tgApiHash" type="text" autocomplete="off" placeholder="api_hash" />
+        </div>
+        <div class="gburl">
+          <input class="inp" id="tgProxy" type="text" autocomplete="off" spellcheck="false" placeholder="代理 socks5://127.0.0.1:7890（国内必填，留空=直连）" />
+        </div>
+        <div class="gburl">
+          <input class="inp" id="tgPhone" type="text" autocomplete="off" placeholder="手机号 含国家码 如 8613800138000" />
+          <button class="btn" id="tgSendCode">发送验证码</button>
+        </div>
+        <div class="gburl">
+          <input class="inp" id="tgCode" type="text" inputmode="numeric" autocomplete="off" placeholder="验证码（发到手机/桌面端）" />
+          <input class="inp" id="tgPw" type="text" autocomplete="off" placeholder="两步验证密码（若需要）" />
+          <button class="btn primary" id="tgSignIn">登录</button>
+        </div>
+        <div class="hint" id="tgLoginStat"></div>
+      </div>
+
+      <div class="gbsubbar">
+        <span class="hint" style="white-space:nowrap">频道 / 群组</span>
+        <input class="inp" id="tgChannel" type="text" autocomplete="off" spellcheck="false"
+          placeholder="@用户名 或 t.me/xxx 或已加入的私有频道名" />
+        <button class="btn mini3" id="tgMyChats" title="列出我已加入的频道/群组">我的频道</button>
+      </div>
+      <div class="gbbar">
+        <span id="tgCount" class="hint"></span>
+        <label class="gbtog" title="同时把消息里的预览图下载到 下载目录/tg_previews（备查）"><input type="checkbox" id="tgPrev" checked /> 预览图</label>
+        <span class="sp"></span>
+        <button class="btn primary" id="tgImport">✈ 验证导入</button>
+      </div>
+      <div id="tgList" class="gblist"></div>
+      <div id="tgEmpty" class="empty">登录后粘贴频道，点「验证导入」</div>
+    </div>
+  </div>
+  <div class="dfoot">
+    <span id="gbFoot" class="hint"></span>
+    <button class="btn primary" id="gbCloseF">关闭</button>
+  </div>
+</div>
+
+<!-- v1.5.12: 下载目录管理 -->
+<div class="modal" id="mGBdl">
+  <div class="dh"><h3>🗂 下载目录与记录</h3><button class="xbtn" id="gbDlClose">✕</button></div>
+  <div class="dbody">
+    <div class="field">
+      <label>下载保存到</label>
+      <div class="gburl">
+        <input class="inp" id="gbDlPath" type="text" autocomplete="off" spellcheck="false"
+          placeholder="留空 = 默认(数据目录\\downloads)" />
+        <button class="btn" id="gbDlPick">📁 选择…</button>
+        <button class="btn" id="gbDlSet">改到这里</button>
+        <button class="btn" id="gbDlOpen">📂 打开</button>
+      </div>
+      <div class="hint">改目录只写配置, 不搬动已下载的文件。<br />
+        不会用「📁 选择…」的话, 也可以直接从资源管理器地址栏复制路径粘到上面输入框
+        (带引号也没关系, 会自动去掉), 再点「改到这里」。</div>
+    </div>
+    <div class="gbbar">
+      <span class="hint" id="gbDlStat"></span>
+      <span class="sp"></span>
+      <button class="btn mini3" id="gbDlClearHist" title="只清「已下载」标记, 不删文件">清空下载记录</button>
+    </div>
+    <div id="gbDlList"></div>
+  </div>
+  <div class="dfoot"><button class="btn primary" id="gbDlDone">完成</button></div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -650,6 +870,19 @@ function renderAll(){
     + (S.hotkey ? " · 呼出键 " + S.hotkey : "");
   renderPath(); renderChars(); renderCats(); renderPresets();
   renderBanners(); renderScopebar(); renderCards(); observeThumbs();
+  // v1.5.22: 蓝飞机接口未开放 -> 下载区整个 tab 隐藏, 只留香蕉网
+  const tt = $("#gbTgTab");
+  if (tt){
+    if (S.tg_enabled === false){
+      tt.style.display = "none";
+      $$(".gbtab").forEach(x => x.classList.toggle("on", x.dataset.tab === "banana"));
+      const bp = $("#gbBananaPane"), tp = $("#gbTgPane");
+      if (bp) bp.style.display = "";
+      if (tp) tp.style.display = "none";
+    } else {
+      tt.style.display = "";
+    }
+  }
 }
 
 function renderPath(){
@@ -2007,6 +2240,7 @@ async function openLib(){
 function closeAll(){
   if (_askResolve) closeAsk(null);   // v1.5.10: 关闭任意弹窗时也关掉输入弹窗
   $("#mask").classList.remove("on");
+  const gm = $("#gbMask"); if (gm) gm.classList.remove("on");   // v1.5.12
   $("#drawer").classList.remove("on");
   $$(".modal").forEach(m => m.classList.remove("on"));
 }
@@ -2057,6 +2291,697 @@ document.addEventListener("keydown", e => {
 });
 window.openSetup = openSetup; window.autoDetect = autoDetect;
 window.showConflicts = showConflicts; window.setTheme = setTheme; window.setHide = setHide;
+
+/* ===================== v1.5.12: GameBanana 下载区 ===================== */
+const gbS = {
+  url:"", page:1, perpage:30, total:0, items:[], kind:"", gid:"", mode:"list",
+  loaded:false, showTr:true, trLoaded:false, trMap:{},
+  trFMap:{},            // v1.5.22: 文件名 -> 中文译名(清洗后机翻)
+  trFReq:{},            // 防重复请求
+  curMod:null,          // v1.5.22: 单 mod 详情视图的当前 mod
+  job:null, jobMid:null, timer:null,
+  /* v1.5.13 */
+  cat:"",              // 当前选中的角色分类 id (空=不过滤)
+  subs:null,           // 角色列表缓存
+  files:{},            // mod_id -> {files:[], name:""}
+  filesLoading:{},     // mod_id -> true
+  hist:{},             // "mod_id:文件名" -> {ts,path}
+  listFiles:true,      // 自动列出文件
+  results:{},          // job -> [{file,ok,msg}]
+};
+function gbImg(u){ return "/gbimg?t=" + encodeURIComponent(T) + "&u=" + encodeURIComponent(u); }
+
+function gbOpen(){
+  const m = $("#gbMask"), p = $("#mGB");
+  if (!m || !p) return;
+  m.classList.add("on"); p.classList.add("on");
+  const inp = $("#gbUrl");
+  if (inp && !inp.value) inp.value = gbS.url;
+  if (!gbS.subs) gbLoadSubs();
+  if (gbS.items.length === 0 && !gbS.loaded && (gbS.url || gbS.cat)){ gbCrawl(1); }
+  setTimeout(() => { try { inp.focus(); inp.select(); } catch(e){} }, 40);
+}
+function gbClose(){ $("#gbMask").classList.remove("on"); $("#mGB").classList.remove("on"); }
+
+/* v1.5.23: 顶部 + 底部两套翻页控件同步(底部只在列表模式显示) */
+function gbPager(pageText, prevDis, nextDis, showBtm){
+  $$("#gbBananaPane .gbPage").forEach(el => el.textContent = pageText);
+  $$("#gbBananaPane .gbPrev").forEach(el => el.disabled = prevDis);
+  $$("#gbBananaPane .gbNext").forEach(el => el.disabled = nextDis);
+  const b = $("#gbPagerBtm"); if (b) b.style.display = showBtm ? "" : "none";
+}
+function gbScrollTop(){ const p = $("#gbBananaPane"); if (p) p.scrollTop = 0; }
+
+async function gbCrawl(page){
+  const url = ($("#gbUrl").value || "").trim();
+  /* v1.5.13: 选了角色分类时不需要链接 */
+  if (!url && !gbS.cat){ toast("请先粘贴 GameBanana 链接, 或选一个角色"); return; }
+  if (url) gbS.url = url;
+  gbS.page = page || 1; gbS.trLoaded = false;
+  $("#gbEmpty").style.display = "none";
+  $("#gbGrid").innerHTML = '<div class="empty"><span class="spin"></span> 正在爬取…</div>';
+  $("#gbCount").textContent = ""; gbPager("", true, true, false);
+  $("#gbFoot").textContent = "正在请求 GameBanana…";
+  try{
+    const q = "/api/gb_crawl?url=" + encodeURIComponent(url) + "&page=" + gbS.page
+            + "&cat=" + encodeURIComponent(gbS.cat || "");
+    const d = await api(q);
+    gbS.loaded = true;
+    if (!d.ok){ gbFail(d.msg || "爬取失败"); return; }
+    if (d.kind === "mod"){ gbRenderMod(d.mod); return; }
+    gbS.kind = d.kind; gbS.gid = d.gid; gbS.page = d.page;
+    gbS.perpage = d.perpage || 30; gbS.total = d.total || 0; gbS.items = d.items || [];
+    gbS.mode = "list";
+    gbS.files = {}; gbS.filesLoading = {};
+    gbRender(); gbTranslateNames(); gbLoadFiles(); gbScrollTop();
+  }catch(e){ gbFail("爬取失败: " + e.message + "（若无法连接 GameBanana，请检查网络或开启代理/魔法后重试）"); }
+}
+function gbFail(msg){
+  $("#gbGrid").innerHTML = "";
+  const em = $("#gbEmpty"); em.style.display = ""; em.textContent = msg;
+  gbPager("", true, true, false);
+  $("#gbFoot").textContent = "";
+}
+function gbRender(){
+  if (gbS.mode === "mod"){ return; }
+  const box = $("#gbGrid");
+  if (!gbS.items.length){ gbFail("这一页没有 mod"); return; }
+  $("#gbEmpty").style.display = "none";
+  const t0 = (gbS.page - 1) * gbS.perpage + 1;
+  const t1 = t0 + gbS.items.length - 1;
+  $("#gbCount").textContent = "共 " + gbS.total + " 个 (本页 " + t0 + "-" + t1 + ")";
+  const pages = Math.max(1, Math.ceil((gbS.total || gbS.items.length) / gbS.perpage));
+  gbPager(gbS.page + " / " + pages, gbS.page <= 1, gbS.page >= pages, true);
+  $("#gbFoot").textContent = "来源: " + gbS.kind + " " + gbS.gid
+    + (gbS.cat ? (" · 角色分类 " + gbS.cat) : "");
+  box.innerHTML = gbS.items.map(it => {
+    const img = it.preview
+      ? '<img loading="lazy" src="' + gbImg(it.preview) + '" alt="">'
+      : '<div class="noimg">无预览图</div>';
+    const meta = [];
+    if (it.author) meta.push("@" + esc(it.author));
+    if (it.likes) meta.push("♥ " + it.likes);
+    if (it.views) meta.push("👁 " + it.views);
+    const key = String(it.id);
+    const fl = gbS.files[key];
+    const nf = fl ? (fl.files || []).length : 0;
+    const my = gbS.filesLoading[key];
+    /* 文件区: 加载中 / 已列出可勾选 / 取不到 */
+    let fbox = "";
+    if (gbS.listFiles){
+      if (my){ fbox = '<div class="gbfiles"><div class="ld"><span class="spin"></span> 正在取文件清单…</div></div>'; }
+      else if (fl && nf){
+        const rows = fl.files.map((f, ix) => {
+          const got = !!gbS.hist[key + ":" + (f.name || "")];
+          const avc = (f.av === "clean") ? "good" : (f.av ? "bad" : "");
+          return '<label class="gbfile">'
+            + '<input type="checkbox" data-fpick="' + esc(key) + '" value="' + esc(f.name) + '" checked />'
+            + '<span class="fn" title="' + esc(f.name) + '">' + esc(f.name)
+            + (got ? '<span class="gbreg" title="之前下过同一个文件">已下载</span>' : '') + '</span>'
+            + '<span class="fs">' + esc(human(f.size)) + '</span>'
+            + (f.av ? '<span class="av ' + avc + '">' + esc(f.av) + '</span>' : '')
+            + '<span class="zfn off" data-fen="' + esc(f.name) + '"></span>'
+            + '</label>';
+        }).join("");
+        fbox = '<div class="gbfiles" data-fbox="' + esc(key) + '">'
+          + '<div class="hd"><span>文件 ' + nf + ' 个</span> <a data-all="' + esc(key) + '">全选</a>'
+          + '<a data-none="' + esc(key) + '">全不选</a></div>'
+          + rows + '</div>';
+      } else if (fl){ fbox = '<div class="gbfiles"><div class="ld">这个 mod 没有可下载的文件</div></div>'; }
+      else if (!it.has_files){ fbox = '<div class="gbfiles"><div class="ld">该 mod 没有文件</div></div>'; }
+    }
+    if (!it.has_files){
+      fbox += '<div class="gbfiles"><div class="ld">GameBanana 标记: 无可下载文件</div></div>';
+    }
+    const dis = it.has_files ? "" : ' disabled title="该 mod 没有可下载的文件"';
+    return '<div class="gbcard" data-mid="' + esc(key) + '">'
+      + '<div class="im" data-zoom="' + esc(it.preview || "") + '" title="点开看大图">' + img + '</div>'
+      + '<div class="bd">'
+      +   '<div class="nm" title="' + esc(it.name) + '">' + esc(it.name) + '</div>'
+      +   '<div class="zn off" data-en="' + esc(it.name) + '"></div>'
+      +   '<div class="meta">' + meta.map(esc).join(" · ") + '</div>'
+      +   fbox
+      +   '<div class="acts">'
+      +     '<button class="btn primary" data-dl="' + esc(key) + '" data-name="' + esc(it.name) + '"' + dis + '>⬇ 下载</button>'
+      +     '<button class="btn mini2" data-page="' + esc(it.url) + '" title="在浏览器里打开该 mod 主页">↗</button>'
+      +   '</div>'
+      +   '<div class="gbprog" data-prog="' + esc(key) + '"><i></i></div>'
+      +   '<div class="gbprogt" data-progt="' + esc(key) + '"></div>'
+      +   '<div class="gbres" data-res="' + esc(key) + '"></div>'
+      + '</div></div>';
+  }).join("");
+  box.querySelectorAll(".im img").forEach(im => { im.onerror = () => { im.style.display = "none"; }; });
+  box.querySelectorAll("[data-zoom]").forEach(el => el.onclick = () => {
+    const u = el.dataset.zoom; if (u) gbZoom(u, "预览图");
+  });
+  box.querySelectorAll("[data-dl]").forEach(b => b.onclick = () => gbDownload(b.dataset.dl, b.dataset.name, b));
+  box.querySelectorAll("[data-page]").forEach(b => b.onclick = () => {
+    try { window.open(b.dataset.page, "_blank"); } catch(e){}
+  });
+  /* 全选 / 全不选 */
+  box.querySelectorAll("[data-all]").forEach(a => a.onclick = () => {
+    const id = a.dataset.all;
+    box.querySelectorAll('input[data-fpick="' + id + '"]').forEach(c => { c.checked = true; });
+  });
+  box.querySelectorAll("[data-none]").forEach(a => a.onclick = () => {
+    const id = a.dataset.none;
+    box.querySelectorAll('input[data-fpick="' + id + '"]').forEach(c => { c.checked = false; });
+  });
+  gbApplyTr();
+  gbApplyHist();
+}
+/* v1.5.13: 批量拉本页所有 mod 的文件清单, 填到卡片里供勾选 */
+async function gbLoadFiles(){
+  if (!gbS.listFiles || gbS.mode !== "list") return;
+  const ids = gbS.items.filter(it => it.has_files).map(it => it.id);
+  if (!ids.length) return;
+  ids.forEach(id => { gbS.filesLoading[String(id)] = true; });
+  gbRefreshFileBoxes();
+  try{
+    const d = await api("/api/gb_files?ids=" + encodeURIComponent(ids.join(",")));
+    if (d && d.ok){
+      gbS.files = Object.assign(gbS.files || {}, d.map || {});
+      gbS.hist = Object.assign(gbS.hist || {}, d.history || {});
+    }
+  }catch(e){ /* 失败就当取不到, 卡片上不显示文件区 */ }
+  ids.forEach(id => { delete gbS.filesLoading[String(id)]; });
+  gbRefreshFileBoxes();
+  gbApplyHist();
+  // v1.5.22: 文件清单出来后, 把文件名送去翻译(可翻则翻, 翻不出不显示)
+  const fnames = [];
+  Object.keys(gbS.files || {}).forEach(k => {
+    ((gbS.files[k] || {}).files || []).forEach(f => { if (f && f.name) fnames.push(f.name); });
+  });
+  gbTranslateFiles(fnames);
+}
+/* 只重画每张卡片的「文件区」, 不动整页(避免闪) */
+function gbRefreshFileBoxes(){
+  if (gbS.mode !== "list") return;
+  $$("#gbGrid .gbcard").forEach(card => {
+    const key = card.dataset.mid;
+    const bd = card.querySelector(".bd");
+    if (!bd) return;
+    const oldBox = bd.querySelector(".gbfiles");
+    if (oldBox) oldBox.remove();
+    const my = gbS.filesLoading[key];
+    const fl = gbS.files[key];
+    let html = "";
+    if (my){
+      html = '<div class="gbfiles"><div class="ld"><span class="spin"></span> 正在取文件清单…</div></div>';
+    } else if (fl && (fl.files || []).length){
+      const rows = fl.files.map(f => {
+        const got = !!gbS.hist[key + ":" + (f.name || "")];
+        const avc = (f.av === "clean") ? "good" : (f.av ? "bad" : "");
+        return '<label class="gbfile">'
+          + '<input type="checkbox" data-fpick="' + esc(key) + '" value="' + esc(f.name) + '" checked />'
+          + '<span class="fn" title="' + esc(f.name) + '">' + esc(f.name)
+          + (got ? '<span class="gbreg" title="之前下过同一个文件">已下载</span>' : '') + '</span>'
+          + '<span class="fs">' + esc(human(f.size)) + '</span>'
+          + (f.av ? '<span class="av ' + avc + '">' + esc(f.av) + '</span>' : '')
+          + '<span class="zfn off" data-fen="' + esc(f.name) + '"></span>'
+          + '</label>';
+      }).join("");
+      html = '<div class="gbfiles" data-fbox="' + esc(key) + '">'
+        + '<div class="hd"><span>文件 ' + fl.files.length + ' 个</span> <a data-all="' + esc(key) + '">全选</a>'
+        + '<a data-none="' + esc(key) + '">全不选</a></div>' + rows + '</div>';
+    } else if (fl){
+      html = '<div class="gbfiles"><div class="ld">这个 mod 没有可下载的文件</div></div>';
+    }
+    if (!html) return;
+    const acts = bd.querySelector(".acts");
+    if (acts) acts.insertAdjacentHTML("beforebegin", html);
+    else bd.insertAdjacentHTML("beforeend", html);
+  });
+  const box = $("#gbGrid");
+  box.querySelectorAll("[data-all]").forEach(a => a.onclick = () => {
+    box.querySelectorAll('input[data-fpick="' + a.dataset.all + '"]').forEach(c => { c.checked = true; });
+  });
+  box.querySelectorAll("[data-none]").forEach(a => a.onclick = () => {
+    box.querySelectorAll('input[data-fpick="' + a.dataset.none + '"]').forEach(c => { c.checked = false; });
+  });
+}
+/* v1.5.13: 角色下拉 */
+async function gbLoadSubs(force){
+  const sel = $("#gbSub");
+  if (!sel) return;
+  if (gbS.subs && !force){ gbFillSubs(); return; }
+  $("#gbSubInfo").textContent = "正在拉角色列表…";
+  try{
+    const d = await api("/api/gb_subs" + (force ? "?refresh=1" : ""));
+    if (d && d.ok){ gbS.subs = d.items || []; }
+  }catch(e){}
+  gbFillSubs();
+}
+function gbFillSubs(){
+  const sel = $("#gbSub");
+  if (!sel) return;
+  const items = gbS.subs || [];
+  sel.innerHTML = '<option value="">全部角色(不过滤)</option>'
+    + items.map(x => {
+        // v1.5.14: 优先显示官方中文名, 后面括号补英文+数量
+        const cn = x.cn || "";
+        const label = cn
+          ? (cn + " · " + x.name + " (" + x.count + ")")
+          : (x.name + " (" + x.count + ")");
+        return '<option value="' + esc(x.id) + '">' + esc(label) + '</option>';
+      }).join("");
+  sel.value = gbS.cat || "";
+  const info = $("#gbSubInfo");
+  if (info){
+    info.textContent = items.length
+      ? (items.length + " 个角色 · 点角色只爬该角色的 mod")
+      : "角色列表拉取失败(可直接用链接爬)";
+  }
+}
+/* v1.5.13: 下拉选角色 -> 重新爬第 1 页 */
+function gbPickSub(){
+  const sel = $("#gbSub");
+  if (!sel) return;
+  gbS.cat = sel.value || "";
+  gbS.page = 1;
+  if (!gbS.cat && !($("#gbUrl").value || "").trim()){
+    toast("先粘贴一个链接, 或选个角色", "err"); return;
+  }
+  gbCrawl(1);
+}
+/* 勾选了哪些文件(空数组 = 全下) */
+function gbPicks(mid){
+  const box = document.querySelector('[data-fbox="' + mid + '"]');
+  if (!box) return null;
+  const all = Array.from(box.querySelectorAll('input[data-fpick]'));
+  if (!all.length) return null;
+  const on = all.filter(c => c.checked).map(c => c.value);
+  if (on.length === all.length) return null;   // 全勾 = 不下 picks, 走全量
+  return on;
+}
+/* 把「已下载」标记刷到当前卡片上(不重绘, 只改角标) */
+function gbApplyHist(){
+  $$("#gbGrid [data-fbox]").forEach(box => {
+    const mid = box.dataset.fbox;
+    box.querySelectorAll("label.gbfile").forEach(lb => {
+      const c = lb.querySelector("input[data-fpick]");
+      if (!c) return;
+      const got = !!gbS.hist[mid + ":" + c.value];
+      let b = lb.querySelector(".gbreg");
+      if (got && !b){
+        b = document.createElement("span");
+        b.className = "gbreg"; b.title = "之前下过同一个文件"; b.textContent = "已下载";
+        const fn = lb.querySelector(".fn");
+        if (fn) fn.appendChild(b);
+      } else if (!got && b){ b.remove(); }
+    });
+  });
+}
+
+function gbRenderMod(mod){
+  gbS.mode = "mod"; gbS.items = [];
+  $("#gbCount").textContent = ""; gbPager("", true, true, false);
+  const pv = (mod.files || []).length;
+  const text = String(mod.text || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 400);
+  $("#gbFoot").textContent = "单个 mod 模式";
+  const rows = (mod.files || []).length
+    ? (mod.files || []).map(f =>
+        '<div class="gbdlrow"><span class="nm"><div>' + esc(f.name) + '</div>'
+        + '<span class="zfn off" data-fen="' + esc(f.name) + '"></span></span>'
+        + '<span class="sz">' + esc(human(f.size)) + (f.av ? " · " + esc(f.av) : "") + '</span>'
+        + '<button class="btn primary" data-dl1="' + esc(mod.id) + '" data-name="' + esc(mod.name) + '">⬇ 下载</button>'
+        + '</div>').join("")
+    : '<div class="empty">这个 mod 没有文件</div>';
+  $("#gbGrid").innerHTML = '<div style="grid-column:1/-1">'
+    + '<div style="font-weight:700;font-size:15px;margin-bottom:4px">' + esc(mod.name) + '</div>'
+    + '<div class="hint" style="margin-bottom:10px">' + esc(mod.url) + '</div>'
+    + (text ? '<div class="hint" style="margin-bottom:10px">' + esc(text) + '…</div>' : '')
+    + rows
+    + '</div>';
+  $("#gbEmpty").style.display = "none";
+  $("#gbGrid").querySelectorAll("[data-dl1]").forEach(b => b.onclick = () => gbDownload(b.dataset.dl1, b.dataset.name, b));
+  // v1.5.22: 单 mod 视图的文件名也翻译
+  gbTranslateFiles((mod.files || []).map(f => f && f.name).filter(Boolean));
+}
+function human(n){
+  n = Number(n) || 0;
+  const u = ["B","KB","MB","GB"]; let i = 0;
+  while (n >= 1024 && i < u.length - 1){ n /= 1024; i++; }
+  return (i === 0 ? n : n.toFixed(1)) + " " + u[i];
+}
+function gbZoom(u, caption){
+  if (!u) return;
+  $("#lbImg").src = gbImg(u);
+  $("#lbCap").textContent = caption || "";
+  $("#lightbox").classList.add("on");
+}
+async function gbTranslateNames(){
+  if (!gbS.showTr || gbS.trLoaded || gbS.mode === "mod"){ gbApplyTr(); return; }
+  const names = gbS.items.map(i => i.name).filter(Boolean).slice(0, 40);
+  if (!names.length){ return; }
+  gbS.trLoaded = true;
+  try{
+    const d = await api("/api/gb_translate", { texts: names });
+    if (d && d.ok && d.map) gbS.trMap = Object.assign(gbS.trMap || {}, d.map);
+  }catch(e){ gbS.trLoaded = false; }
+  gbApplyTr();
+}
+function gbApplyTr(){
+  $$("#gbGrid .zn").forEach(el => {
+    const en = el.dataset.en || "";
+    const zh = (gbS.trMap || {})[en];
+    if (gbS.showTr && zh && zh !== en){ el.textContent = "译: " + zh; el.classList.remove("off"); }
+    else el.classList.add("off");
+  });
+  // v1.5.22: 文件名译名(清洗后机翻), 与标题译名共用「中文译名」开关
+  $$("#gbGrid .zfn").forEach(el => {
+    const en = el.dataset.fen || "";
+    const zh = (gbS.trFMap || {})[en];
+    if (gbS.showTr && zh && zh !== en){ el.textContent = "译: " + zh; el.classList.remove("off"); }
+    else el.classList.add("off");
+  });
+}
+/* v1.5.22: 翻当前页/详情里所有文件名。翻不动(机翻原样吐回)就不显示, 交后端清洗。 */
+async function gbTranslateFiles(names){
+  if (!gbS.showTr) return;
+  const uniq = [...new Set((names || []).filter(Boolean))]
+    .filter(n => !(n in gbS.trFMap) && !gbS.trFReq[n]).slice(0, 40);
+  if (!uniq.length) return;
+  uniq.forEach(n => { gbS.trFReq[n] = true; });
+  try{
+    const d = await api("/api/gb_translate_files", { texts: uniq });
+    if (d && d.ok && d.map){
+      gbS.trFMap = Object.assign(gbS.trFMap || {}, d.map);
+      gbApplyTr();
+    }
+  }catch(e){ /* 失败就不显示译名, 不打断 */ }
+  finally{ uniq.forEach(n => { delete gbS.trFReq[n]; }); }
+}
+async function gbDownload(mid, name, btn){
+  if (!mid) return;
+  const picks = gbPicks(mid);
+  if (picks && picks.length === 0){
+    toast("一个文件都没勾, 请至少勾一个", "err");
+    return;
+  }
+  if (btn){ btn.disabled = true; btn.textContent = "启动中…"; }
+  try{
+    const d = await api("/api/gb_download", { mod_id: mid, name: name || "",
+                                              picks: picks || null });
+    if (!d.ok){ toast(d.msg || "下载启动失败", "err"); if (btn){ btn.disabled = false; btn.textContent = "⬇ 下载"; } return; }
+    toast("已开始下载, 进度显示在卡片上");
+    gbWatch(d.job, mid);
+  }catch(e){
+    toast("下载启动失败: " + e.message, "err");
+    if (btn){ btn.disabled = false; btn.textContent = "⬇ 下载"; }
+  }
+}
+function gbWatch(job, mid){
+  gbS.job = job; gbS.jobMid = mid;
+  if (gbS.timer) clearInterval(gbS.timer);
+  gbS.timer = setInterval(gbPoll, 900);
+  gbPoll();
+}
+async function gbPoll(){
+  const job = gbS.job; if (!job) return;
+  let d; try{ d = await api("/api/gb_dl?job=" + encodeURIComponent(job)); }catch(e){ return; }
+  const j = d && d.job;
+  if (!j) return;
+  const mid = String(j.mod_id == null ? "" : j.mod_id);
+  const prog = $('[data-prog="' + mid + '"]');
+  const ptxt = $('[data-progt="' + mid + '"]');
+  if (prog){ prog.classList.add("on"); const i = prog.querySelector("i"); if (i) i.style.width = (j.pct || 0) + "%"; }
+  if (ptxt) ptxt.textContent = (j.msg || "") + (j.size ? " (" + human(j.received) + "/" + human(j.size) + ")" : "");
+  /* v1.5.13: 逐文件结果 */
+  const rbox = $('[data-res="' + mid + '"]');
+  if (rbox && (j.results || []).length){
+    rbox.innerHTML = '<div class="res">' + j.results.map(r =>
+      '<div class="r">' + (r.ok ? '<span style="color:#39b54a">✓</span>' : '<span style="color:#e5484d">✗</span>')
+      + '<span class="fn">' + esc(r.file) + '</span>'
+      + '<span class="sz">' + (r.ok ? esc(human(r.size)) : esc(r.msg || "失败")) + '</span>'
+      + '</div>').join("") + '</div>';
+  }
+  if (j.state === "done" || j.state === "error"){
+    clearInterval(gbS.timer); gbS.timer = null; gbS.job = null;
+    const ok = j.state === "done";
+    toast(ok ? (j.msg || "下载完成") : (j.msg || "下载失败"), ok ? "ok" : "err");
+    const b = $('[data-dl="' + mid + '"]') || $('[data-dl1="' + mid + '"]');
+    if (b){ b.disabled = false; b.textContent = ok ? "⬇ 重新下载" : "⬇ 重试"; }
+    /* 刷新「已下载」标记 */
+    if (ok){
+      try{
+        const h = await api("/api/gb_history");
+        if (h && h.ok){ gbS.hist = h.map || {}; gbApplyHist(); }
+      }catch(e){}
+    }
+  }
+}
+
+/* ---- 下载目录 ---- */
+async function gbOpenDl(){
+  $("#gbMask").classList.add("on"); $("#mGBdl").classList.add("on");
+  $("#gbDlList").innerHTML = '<div class="empty"><span class="spin"></span> 读取中…</div>';
+  await gbRefreshDl();
+}
+function gbCloseDl(){ $("#mGBdl").classList.remove("on"); $("#gbMask").classList.remove("on"); }
+async function gbRefreshDl(){
+  try{
+    const d = await api("/api/gb_downloads");
+    $("#gbDlPath").value = d.dir || "";
+    /* v1.5.13: 显示总数/总大小/位置, 让用户一眼知道下到哪、下了多少 */
+    const items = d.items || [];
+    const tot = items.reduce((a, x) => a + (x.size || 0), 0);
+    if ($("#gbDlStat")){
+      $("#gbDlStat").textContent = "目录里 " + items.length + " 个文件 · 共 " + human(tot)
+        + " · 位置 " + (d.dir || "");
+    }
+    if (!items.length){ $("#gbDlList").innerHTML = '<div class="empty">下载目录还是空的</div>'; return; }
+    $("#gbDlList").innerHTML = '<div class="tree">' + items.map(it =>
+      '<div class="gbdlrow"><span class="nm">' + esc(it.name) + '</span>'
+      + '<span class="sz">' + esc(it.size_h) + '</span>'
+      + '<button class="btn mini2" data-open="' + esc(it.name) + '" title="在文件夹里定位">📂</button>'
+      + '<button class="btn danger mini2" data-del="' + esc(it.name) + '">删</button>'
+      + '</div>').join("") + '</div>';
+    $("#gbDlList").querySelectorAll("[data-del]").forEach(b => b.onclick = async () => {
+      const nm = b.dataset.del;
+      const yes = await gbConfirm("确定删除下载目录里的这个文件吗?\n" + nm + "\n(只删下载区下载的文件, 不动 Mods 里的 mod)");
+      if (!yes) return;
+      const r = await api("/api/gb_dl_delete", { name: nm });
+      toast(r.msg || (r.ok ? "已删除" : "删除失败"), r.ok ? "ok" : "err");
+      await gbRefreshDl();
+    });
+    $("#gbDlList").querySelectorAll("[data-open]").forEach(b => b.onclick = async () => {
+      try{
+        const r = await api("/api/gb_open_dl", { name: b.dataset.open });
+        if (r.ok) toast("已在文件夹里定位: " + b.dataset.open);
+        else toast((r.msg || "打不开") + " —— 目录: " + (r.dir || "?"), "err");
+      }catch(e){ toast("打开失败: " + e.message, "err"); }
+    });
+  }catch(e){
+    $("#gbDlList").innerHTML = '<div class="empty">读取失败: ' + esc(e.message) + '</div>';
+  }
+}
+async function gbConfirm(msg){
+  const inp = $("#mAskInput");
+  const prev = inp.style.display;
+  inp.style.display = "none";
+  let r = null;
+  try{ r = await ask(msg); }finally{ inp.style.display = prev; }
+  return r != null;
+}
+
+if ($("#btnGB")) $("#btnGB").onclick = gbOpen;
+if ($("#gbCloseX")) $("#gbCloseX").onclick = gbClose;
+if ($("#gbCloseF")) $("#gbCloseF").onclick = gbClose;
+if ($("#gbMask")) $("#gbMask").onclick = () => { gbCloseDl(); gbClose(); };
+if ($("#gbGo")) $("#gbGo").onclick = () => gbCrawl(1);
+if ($("#gbUrl")) $("#gbUrl").addEventListener("keydown", e => {
+  if (e.key === "Enter"){ e.preventDefault(); gbCrawl(1); }
+});
+/* v1.5.23: 顶部和底部两套翻页按钮都绑(底部在 #gbPagerBtm 里) */
+$$("#gbBananaPane .gbPrev").forEach(b => b.onclick = () => { if (gbS.page > 1) gbCrawl(gbS.page - 1); });
+$$("#gbBananaPane .gbNext").forEach(b => b.onclick = () => gbCrawl(gbS.page + 1));
+if ($("#gbTr")) $("#gbTr").onchange = e => {
+  gbS.showTr = e.target.checked; gbApplyTr();
+  api("/api/gb_show_trans", { on: gbS.showTr }).catch(()=>{});
+};
+if ($("#gbSub")) $("#gbSub").onchange = gbPickSub;
+if ($("#gbSubReload")) $("#gbSubReload").onclick = () => gbLoadSubs(true);
+if ($("#gbFilesTog")){
+  gbS.listFiles = $("#gbFilesTog").checked;
+  $("#gbFilesTog").onchange = e => {
+    gbS.listFiles = e.target.checked;
+    if (gbS.listFiles) gbLoadFiles();
+    else { $$("#gbGrid .gbfiles").forEach(x => x.remove()); }
+  };
+}
+if ($("#gbDlDir")) $("#gbDlDir").onclick = gbOpenDl;
+if ($("#gbDlClose")) $("#gbDlClose").onclick = gbCloseDl;
+if ($("#gbDlDone")) $("#gbDlDone").onclick = gbCloseDl;
+if ($("#gbDlOpen")) $("#gbDlOpen").onclick = async () => {
+  // v1.5.15: 打开成功也提示一下, 否则用户不知道到底动了没(实测反馈「没用」)
+  try{
+    const r = await api("/api/gb_open_dl", {});
+    if (r.ok){
+      toast("已打开下载目录: " + (r.dir || ""));
+    }else{
+      toast((r.msg || "打不开") + " —— 路径: " + (r.dir || "?"), "err");
+    }
+  }catch(e){ toast("打开失败: " + e.message, "err"); }
+};
+if ($("#gbDlPick")) $("#gbDlPick").onclick = async () => {
+  const btn = $("#gbDlPick");
+  // v1.5.15: 选择框是模态的, 返回前页面就卡住了 —— 先把按钮置灰+提示画出来
+  btn.disabled = true;
+  const old = btn.textContent;
+  btn.textContent = "选择中…";
+  toast("已弹出文件夹选择框 —— 若没看到, 请按 Alt+Tab 切一下窗口");
+  try{
+    const r = await api("/api/pick_dir", {});
+    if (r && r.ok && r.path){
+      $("#gbDlPath").value = r.path;
+      // 选完直接生效, 不用再点「改到这里」
+      const r2 = await api("/api/gb_set_dl_dir", { path: r.path });
+      toast(r2.msg || "下载目录已更新", r2.ok ? "ok" : "err");
+      if (r2.ok) await gbRefreshDl();
+    } else if (r && r.msg){
+      toast(r.msg + " —— 也可以直接把路径粘到输入框, 点「改到这里」", "err");
+    }
+  }catch(e){ toast("选择文件夹失败: " + e.message, "err"); }
+  finally{ btn.disabled = false; btn.textContent = old; }
+};
+if ($("#gbDlClearHist")) $("#gbDlClearHist").onclick = async () => {
+  const yes = await gbConfirm("清空「已下载」记录吗?\n(只清标记, 不会删任何文件)");
+  if (!yes) return;
+  try{
+    await api("/api/gb_hist_clear", {});
+    gbS.hist = {};
+    gbApplyHist();
+    toast("下载记录已清空");
+  }catch(e){ toast("清空失败", "err"); }
+};
+if ($("#gbDlSet")) $("#gbDlSet").onclick = async () => {
+  const btn = $("#gbDlSet");
+  const p = ($("#gbDlPath").value || "").trim();
+  if (!p){
+    // 空 = 恢复默认, 这是有意的功能, 但要问一句免得误触
+    const yes = await gbConfirm("输入框是空的。要恢复成默认下载目录吗?");
+    if (!yes) return;
+  }
+  btn.disabled = true;
+  const old = btn.textContent;
+  btn.textContent = "设置中…";
+  try{
+    const r = await api("/api/gb_set_dl_dir", { path: p });
+    toast(r.msg || (r.ok ? "已设置" : "设置失败"), r.ok ? "ok" : "err");
+    if (r.ok) await gbRefreshDl();
+  }catch(e){
+    toast("设置失败: " + e.message, "err");
+  }finally{ btn.disabled = false; btn.textContent = old; }
+};
+
+// ===== v1.5.17: 下载区 tab 切换 + 蓝飞机(Telegram) 面板 =====
+$$(".gbtab").forEach(b => b.onclick = () => {
+  const tab = b.dataset.tab;
+  // v1.5.22: 蓝飞机暂时关闭(S.tg_enabled=false)时, 点它无效
+  if (tab === "tg" && S && S.tg_enabled === false) return;
+  $$(".gbtab").forEach(x => x.classList.toggle("on", x === b));
+  $("#gbBananaPane").style.display = tab === "banana" ? "" : "none";
+  $("#gbTgPane").style.display = tab === "tg" ? "" : "none";
+  if (tab === "tg") tgOnShow();
+});
+
+let tgPhoneHash = "";
+function tgSetStat(t, cls){
+  const e = $("#tgLoginStat");
+  if (!e) return;
+  e.textContent = t;
+  e.style.color = cls === "err" ? "#d9734a" : (cls === "ok" ? "var(--accent)" : "var(--txt2)");
+}
+async function tgOnShow(){
+  try{
+    const r = await api("/api/tg_status", {});
+    if (!r) return;
+    if (r.api_id) $("#tgApiId").value = r.api_id;
+    if (r.api_hash) $("#tgApiHash").value = r.api_hash;
+    if (r.proxy) $("#tgProxy").value = r.proxy;
+    if (r.logged_in){
+      tgSetStat("✅ 已登录（本机 session 有效），可直接导入", "ok");
+      const imp = $("#tgImport"); if (imp) imp.disabled = false;
+    } else if (r.configured){
+      tgSetStat("已保存凭据，请填手机号发验证码登录", "");
+    } else if (!r.telethon){
+      tgSetStat("⚠️ 后端未安装 telethon，蓝飞机导入不可用（见发布说明）", "err");
+    } else {
+      tgSetStat("首次使用：请填写上面的设置并登录", "");
+    }
+  }catch(e){ tgSetStat("状态读取失败: " + e.message, "err"); }
+}
+if ($("#tgSendCode")) $("#tgSendCode").onclick = async () => {
+  const api_id = ($("#tgApiId").value || "").trim();
+  const api_hash = ($("#tgApiHash").value || "").trim();
+  const proxy = ($("#tgProxy").value || "").trim();
+  const phone = ($("#tgPhone").value || "").trim();
+  if (!api_id || !api_hash){ toast("先填 api_id / api_hash", "err"); return; }
+  if (!phone){ toast("填手机号（含国家码）", "err"); return; }
+  await api("/api/tg_save_cfg", { api_id, api_hash, proxy });
+  const btn = $("#tgSendCode"); btn.disabled = true; const old = btn.textContent; btn.textContent = "发送中…";
+  try{
+    const r = await api("/api/tg_send_code", { phone });
+    if (r.ok){ tgPhoneHash = r.phone_code_hash || ""; tgSetStat("✅ 验证码已发到 " + phone + "，请填到「验证码」", "ok"); }
+    else tgSetStat("发送失败: " + (r.msg || "?") + "（连接问题请确认代理/魔法已开启）", "err");
+  }catch(e){ tgSetStat("发送失败: " + e.message, "err"); }
+  finally{ btn.disabled = false; btn.textContent = old; }
+};
+if ($("#tgSignIn")) $("#tgSignIn").onclick = async () => {
+  const phone = ($("#tgPhone").value || "").trim();
+  const code = ($("#tgCode").value || "").trim();
+  const pw = ($("#tgPw").value || "").trim();
+  if (!code && !pw){ toast("填验证码（或两步验证密码）", "err"); return; }
+  const btn = $("#tgSignIn"); btn.disabled = true; const old = btn.textContent; btn.textContent = "登录中…";
+  try{
+    const r = await api("/api/tg_sign_in", { phone, code, password: pw, phone_code_hash: tgPhoneHash });
+    if (r.ok && r.logged_in){ tgSetStat("✅ 登录成功，可导入", "ok"); toast("登录成功"); }
+    else if (r.need_password){ tgSetStat("需要两步验证密码，请填到「两步验证密码」再点登录", "err"); }
+    else tgSetStat("登录失败: " + (r.msg || "?"), "err");
+  }catch(e){ tgSetStat("登录失败: " + e.message, "err"); }
+  finally{ btn.disabled = false; btn.textContent = old; }
+};
+if ($("#tgMyChats")) $("#tgMyChats").onclick = async () => {
+  const btn = $("#tgMyChats"); btn.disabled = true; const old = btn.textContent; btn.textContent = "读取中…";
+  try{
+    const r = await api("/api/tg_list", {});
+    if (r && r.ok && r.items && r.items.length){
+      const pick = window.prompt("选择要导入的频道（输入序号）:\n" +
+        r.items.map((c,i)=>`${i+1}. ${c.title}${c.username?" @"+c.username:""}`).join("\n"), "");
+      if (pick){ const m = pick.match(/\d+/); if (m){ const c = r.items[parseInt(m[1],10)-1]; if (c) $("#tgChannel").value = c.username ? "@"+c.username : (c.title || String(c.id)); } }
+    } else if (r && r.msg){ toast(r.msg, "err"); }
+    else toast("没读到频道（先登录；连接问题请确认代理/魔法已开启）", "err");
+  }catch(e){ toast("读取失败: " + e.message, "err"); }
+  finally{ btn.disabled = false; btn.textContent = old; }
+};
+if ($("#tgImport")) $("#tgImport").onclick = async () => {
+  const channel = ($("#tgChannel").value || "").trim();
+  const prev = $("#tgPrev") && $("#tgPrev").checked;
+  if (!channel){ toast("填频道 @用户名 / t.me/xxx", "err"); return; }
+  const btn = $("#tgImport"); btn.disabled = true; const old = btn.textContent; btn.textContent = "导入中…";
+  try{
+    const r = await api("/api/tg_import", { channel, prev });
+    if (r && r.ok){
+      if (r.items && r.items.length){
+        $("#tgEmpty").style.display = "none";
+        $("#tgList").innerHTML = r.items.map(it => `<div class="gbitem">
+          <div class="meta"><div class="nm">${esc(it.name)}</div>
+          <div class="sub">${esc(it.sub || "")}</div></div>
+          <div class="acts"><button class="btn" data-open="${esc(it.path||"")}">打开</button></div></div>`).join("");
+        $("#tgList").querySelectorAll("[data-open]").forEach(b => b.onclick = () => {
+          const p = b.dataset.open; if (p) api("/api/tg_open", { path: p });
+        });
+        $("#tgCount").textContent = "导入 " + r.items.length + " 个文件";
+        toast("导入完成 " + r.items.length + " 个文件", "ok");
+      } else {
+        $("#tgCount").textContent = r.msg || "没有可导出的文件";
+        toast(r.msg || "没有可导出的文件", "ok");
+      }
+    } else toast((r && r.msg) || "导入失败", "err");
+  }catch(e){ toast("导入失败: " + e.message, "err"); }
+  finally{ btn.disabled = false; btn.textContent = old; }
+};
 
 load();
 setInterval(async () => {
