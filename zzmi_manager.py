@@ -2188,8 +2188,8 @@ CYCLE_LABEL_CN = {
     "waist": "腰饰", "yanse": "颜色",
 }
 
-_KEY_MOD_MAP = (("no_win", None), ("no_ctrl", None), ("no_alt", None),
-                ("no_shift", None), ("no_modifiers", None),
+_KEY_MOD_MAP = (("no_win", "!Win"), ("no_ctrl", "!Ctrl"), ("no_alt", "!Alt"),
+                ("no_shift", "!Shift"), ("no_modifiers", "!Mod"),
                 ("ctrl", "Ctrl"), ("alt", "Alt"), ("shift", "Shift"),
                 ("win", "Win"))
 
@@ -2265,17 +2265,46 @@ _VK_MAP = {
 
 def _pretty_keys(keyval):
     """3DMigoto 的 key 行: 空格分隔 = 同时按下的组合键。
-    'ctrl alt y 6' -> ['Ctrl+Alt+Y+6'], 'no_ctrl h' -> ['H'], 'h' -> ['H'],
-    'VK_CAPITAL' -> ['大写锁定'], 'VK_RBUTTON' -> ['鼠标右键']。
-    no_* 是『不能按某修饰键』的排除项, 不参与显示; VK_* 一律翻译成中文键名。"""
+    'ctrl alt y 6' -> ['Ctrl+Alt+Y+6'], 'no_ctrl h' -> ['H(无Ctrl)'],
+    'h' -> ['H'], 'VK_CAPITAL' -> ['大写锁定'], 'VK_RBUTTON' -> ['鼠标右键']。
+    no_* 是『不能按某修饰键』的排除项, 显示为「无X」后缀; VK_* 一律翻译成中文键名。
+    支持引号包裹的空格: \"' '\" -> ['空格']。"""
     parts = []
-    for t in (keyval or "").strip().split():
+    neg_parts = []
+    # 用 shlex 风格的简单解析: 保留引号内的内容作为整体
+    tokens = []
+    raw = (keyval or "").strip()
+    i = 0
+    while i < len(raw):
+        if raw[i] in ('"', "'"):
+            quote = raw[i]
+            j = i + 1
+            while j < len(raw) and raw[j] != quote:
+                j += 1
+            tokens.append(raw[i+1:j])  # 去掉引号
+            i = j + 1
+        elif raw[i].isspace():
+            i += 1
+        else:
+            j = i
+            while j < len(raw) and not raw[j].isspace() and raw[j] not in ('"', "'"):
+                j += 1
+            tokens.append(raw[i:j])
+            i = j
+    for t in tokens:
+        # 引号包裹的空格 -> 空格键
+        if t == ' ':
+            parts.append("空格")
+            continue
         tl = t.lower()
         hit = False
         for name, disp in _KEY_MOD_MAP:
             if tl == name:
                 if disp:
-                    parts.append(disp)
+                    if disp.startswith("!"):
+                        neg_parts.append(disp[1:])  # !Ctrl -> Ctrl (later shown as 无Ctrl)
+                    else:
+                        parts.append(disp)
                 hit = True
                 break
         if hit:
@@ -2291,7 +2320,10 @@ def _pretty_keys(keyval):
         parts.append(t if len(t) > 1 else t.upper())
     if not parts:
         return []
-    return ["+".join(parts)]
+    result = "+".join(parts)
+    if neg_parts:
+        result += "(无" + "+".join(neg_parts) + ")"
+    return [result]
 
 
 def parse_cycle_vars(abs_root):
