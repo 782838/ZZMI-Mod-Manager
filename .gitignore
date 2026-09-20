@@ -63,3 +63,6 @@ screenshots/preview-censored.png
 
 # 一次性交接文档(含本机绝对路径, 不入库)
 交接任务-*.md
+
+# 测试期改动清单(本地留存, 不入库)
+更新名单.md
