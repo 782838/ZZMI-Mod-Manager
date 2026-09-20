@@ -5,6 +5,137 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.11 更新
+-----------
+* **修复: 深色主题下输入弹窗文字看不清**: 弹窗的说明文字和输入框文字误用了按钮黑字色(--ink),
+  深色主题下变成黑底黑字。现改为主题文字色(--txt), 深浅两套主题都清晰
+* **mod 卡片新增「✎ 重命名」按钮**: 以前重命名要点进"详情"再按按钮, 现在卡片上直接一点就改,
+  和详情里的入口共用同一套逻辑(名字被占用仍会自动加序号并弹窗说明)
+
+v1.5.10 更新
+-----------
+* **关掉界面 = 程序真的退出了**: 以前关浏览器界面后, 真正的程序(那个被隐藏的命令窗口)
+  还在后台跑、占着文件锁, 导致新安装包覆盖不了、还杀不掉(它是提权进程, 普通方式拒绝对)。
+  现在界面窗口一关, 程序会在几秒后自动退出; 刷新页面(F5)不会误杀
+* **输入弹窗换成自制窗(标题「ZZMI MOD 管家」)**: 以前那些"输入名字"的框是浏览器原生 prompt,
+  标题栏显示的是网址、没法改。现在统一用自制弹窗, 标题就是「ZZMI MOD 管家」
+* **更新提醒加了注意事项**: 发现新版本时, 提醒条里写明"更新前请先关掉本程序", 避免装不上
+* **以后只发安装包, 不再单独发便携版 exe**: 安装包自带程序, 少一份文件、少一次 UAC
+
+v1.5.9 更新
+-----------
+* **修掉「同名 mod 启不了」的最后一个坑**: 同一个 mod 的「启用套」和「禁用套」同时存在时
+  (比如「蜜西皮肤」和「DISABLED_蜜西皮肤」都在), 点禁用那套的开关会报
+  「找不到目录(可能已被移动)」—— 根因是重名条目的内部编号带了 #1 后缀, 找目录时没剥掉。
+  现在: 禁用套能正常启用(重名就自动排成 XXX (2) 并弹窗), 启用套也不会被认错
+* **图标换成绝区零官方图标**: exe / 安装包 / 界面窗口 / 任务栏全部统一,
+  界面窗口之前显示的「地球」图标就是因为没配网页图标, 现在随程序带上
+
+v1.5.8 更新
+-----------
+* **重名不再失败, 自动加序号**: 启用/禁用/重命名的时候, 如果目标名字已经被别的文件夹占了
+  (最典型的就是「露西皮肤」和「DISABLED_露西皮肤」两套同时在), 以前会直接报错失败,
+  现在**自动在后面加 (2) (3)…** —— 和 Windows 复制文件一个逻辑, 依次类推, 绝不覆盖任何一个
+* **弹窗告诉你改成了什么**: 自动改名后会弹一个说明窗, 写清「你想叫 X → 实际叫 X (2)」,
+  不满意就地重命名即可; 批量操作/套用方案时会一次性列出所有被改名的项
+* 已经带 (2) 的名字会**接着往下排**(变成 (3)), 不会叠成「XXX (2) (2)」这种套娃名
+* 单个 ini 文件、子目录的启停同样处理
+
+v1.5.7 更新
+-----------
+* **不再有黑窗口挡着**: 以前每次打开都会弹一个黑色命令窗口(关掉它程序就退出了),
+  现在界面一起来**命令窗口会自动藏掉**, 桌面上只留界面本身
+* 日志没丢 —— 全部同时写进 `数据目录/zzmi.log`(超过 512KB 自动轮转成 .old),
+  出问题时在界面「设置」里可以一键把命令窗口调回来看, 或手动加 `--console` 启动
+
+v1.5.6 更新
+-----------
+* **改不了名的时候手把手教你**: 启用/禁用某个 mod 时如果文件夹改名失败(游戏还开着、
+  被资源管理器占着、或是只读/杀软锁着), 除了原来那行提示, 现在会**弹一个教程弹窗**:
+  说清是「被占用」还是「没权限」, 直接告诉你该把文件夹名改成什么, 附 4 步操作说明
+* **一键复制 DISABLED_**: 弹窗里有「📋 复制 DISABLED_」, 点一下就把这串字符放进剪贴板,
+  到资源管理器里粘贴到文件夹名最前面即可; 旁边「📂 去改名」直接打开那个 mod 所在的文件夹,
+  并且**像「打开文件夹」一样把窗口顶到屏幕最前面**, 不用自己一层层翻进去
+* **启用失败则反过来**: 启用失败(要删掉名字前面的 DISABLED_)时是同一套弹窗, 只是教程
+  反过来 —— 教你**把 DISABLED_ 删掉**, 按钮变成「📂 去回删」
+* 这套教程对**批量启用/禁用、全选启用/禁用、套用方案**同样生效(哪个卡住了就教你改哪个)
+
+v1.5.5 更新
+-----------
+* **仓库可以自己加了**: 「🗑 仓库管理」面板里新增「添加仓库」—— 既能**在 ZZMI 目录下新建**,
+  也能**锁定一个磁盘上已存在的文件夹**(任意盘符都行, 不必在 ZZMI 目录里); 加过的会一直留在
+  下拉列表里, 想移出就点「移除」(只去列表, 磁盘文件夹一个都不删)
+* **仓库列表空了也不迷路**: 仓库页在"还没发现仓库目录"时给出「＋ 添加仓库 / 📁 手动寻找
+  仓库路径」入口, 不用再去别的地方绕一圈才能建仓库
+
+v1.5.4 更新
+-----------
+* **变体一键改键**: 详情页「变体提示」那一行的每个变体后面多了「⌨ 改键」—— 输入
+  「修饰键 空格 主键」(例如 ctrl a / shift f1 / 小键盘0) 即可改掉游戏内的循环切换键;
+  工具自己去 ini 里找 `key =` 那行**只换键位**, 注释/换行/编码原样保留, 改前整文件备份,
+  顶栏「撤销」可还原
+* **仓库可以删了**: 搬运下拉新增「🗑 删除仓库…」, 仓库和自定义文件夹都能逐项移除 ——
+  只从列表里去掉, 磁盘上的文件夹和 mod 一个都不会删
+* **新装默认不带仓库**: 不再自动塞几个探测到的仓库, 列表从空开始, 想用自己加
+
+v1.5.3 更新
+-----------
+* **mod 直接从 Mods 根开始找**: 以前只认「Mods\\分类\\mod」这种两层结构, 直接把 mod
+  文件夹丢进 Mods 里会被当成内部子目录(名字显示成 resources/sub), 现在会自动收拢
+  成 mod 本身并归到「(根目录)」; ini 直接散落在 Mods 根目录的也会合成一条, 不再报错
+* **自定义文件夹(搬运目标)**: 仓库下拉新增「📁 自定义文件夹…」, 弹出文件夹浏览器 ——
+  可层层点进去、可跳盘符/桌面/文档/下载、可在当面位置新建文件夹, 选完即可搬;
+  用过的路径会记住, 下次直接选。不再局限于 ZZMI 目录下的仓库
+
+v1.5.2 更新
+-----------
+* 窗口改成**打开就全屏**(最大化)。之前按"屏幕一半居中"太小了, 现在:
+  --start-maximized 起步, 并额外用 Win32 把它最大化一次(有些 Edge/Chrome 版本
+  在 --app 模式下不认 start-maximized); 想固定尺寸就把设置里的 win_size 写成
+  1000,700 这种, 此时仍按该尺寸居中打开
+
+v1.5.1 更新
+-----------
+* 「打开文件夹」直接弹到最前面, 不用再点一次任务栏。本程序常以管理员身份运行,
+  这时系统的 SetForegroundWindow 会被拒绝 —— 现在改用「topmost 闪一下 + 敲 ALT 解前台锁」
+  的方式把目标窗口顶到最前
+* 窗口默认按**屏幕的二分之一大小 + 正中间**打开(自动跟随屏幕分辨率, 换显示器也对);
+  想固定尺寸就在设置里把 win_size 写成 1000,700 这种(此时仍会居中), 写 auto 就跟着屏幕走
+  —— (注: 该默认值已在 v1.5.2 改成打开即全屏, 见上)
+
+v1.5 更新
+---------
+* 一键搬运: 在卡片上勾选多个 mod(或按当前筛选全选), 选好仓库, 一次搬过去 ——
+  搬走的 mod 不再留在 Mods 里被扫描、被游戏加载; 目标仓库同名自动加 (2) 绝不覆盖;
+  每次搬运都写日志, 顶栏「撤销」可回退
+* 禁用/改名不再怕「拒绝访问(WinError 5)」: 被占用时自动重试并告诉你到底是谁挡着
+  (游戏还开着 / 资源管理器开着那个目录 / 杀软拦截), 本工具自己读图片时也改成
+  「允许删除共享」, 保证自己永远不会成为占用方
+
+v1.4.9 更新
+-----------
+* 收藏置顶: mod / 角色 / 分类都能标 ⭐ —— 卡片右上角、侧栏列表行、详情页都有开关;
+  侧栏「总览」新增「⭐ 收藏」入口, 收藏过的永远排在最前面
+* 默认排序改为「使用时间最近」: 每次启用 mod / 切变体都会记下使用时间(文件很少被改,
+  按修改时间排基本看不出先后), 没记录过的回退用修改时间
+
+v1.4.8 更新
+-----------
+* 列表顺序: 已启用在前、未启用在后, 同组内按修改时间从新到旧
+* 预览图: 可点开大图、可一键换封面(把照片存进 mod 文件夹)、可在文件夹已有的
+  图片里自己挑一张当封面; 并**彻底禁用把 .dds 当预览图**(贴图/模型资源一律不读)
+* 角色归并: 名字里的括号附属说明先剥掉(希格莉德{…}=希格莉德、月城柳（…）=月城柳),
+  「功能/工具/修复…」类 mod 统一归成一个名字, 「NPC/NoName/Name…」占位名统一归成 NPC
+
+v1.4 更新
+---------
+* 变体键全识别: VK_* 虚拟键码(如 VK_CAPITAL→大写锁定、VK_RBUTTON→鼠标右键、
+  VK_F1~F24、鼠标侧键、小键盘、OEM 键等)全部翻译成中文键名, 不再显示裸名
+* 预览图读全层级: 递归扫描 mod 所有层级(第 1/2/3 层…), 深层里的样本图也能被读到并做封面;
+  封面优先级改为「预览/封面/示例等关键词 > 截图 > 其他」, 不再被顶层贴图分页名(1/0)压住
+* 检查更新: 界面顶部有「检查更新」按钮, 启动时也会自动查一次;
+  发现新版本会弹提醒条(带下载链接), 设置里可改更新仓库(owner/repo)
+
 v1.3 更新
 ---------
 * 热键循环变体: 解析 ini 里 [Key*] 段的 `$var = 0,1,2` + `type = cycle`
@@ -41,7 +172,9 @@ ZZMI_MANAGER_DATA  自定义数据目录
 ZZMI_NO_BROWSER=1  不自动打开窗口
 """
 
+import base64
 import hashlib
+import io
 import json
 import mimetypes
 import os
@@ -56,17 +189,29 @@ import threading
 import time
 import traceback
 import urllib.parse
+import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.4.5"
+VERSION = "1.5.11"
 APP_NAME = "ZZMI Mod 管家"
+
+# GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
+UPDATE_REPO = "782838/ZZMI-Mod-Manager"
 
 DISABLED_PREFIX = "DISABLED_"
 DISABLED_TEST = re.compile(r"^(?:disabled|禁用)", re.IGNORECASE)
 
 IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".avif")
-PREVIEW_PRIORITY = ("preview", "cover", "thumb", "screenshot", "default", "1", "0")
+# 永远不当作预览图的扩展名 —— .dds 是游戏贴图/模型资源, 拿来当封面只会选到模型文件, 直接禁用
+NEVER_IMAGE_EXTS = (".dds",)
+# 「一键添加预览图」写进 mod 文件夹的文件名前缀: 优先级最高, 保证用户选的封面一定生效
+COVER_STEM = "zzmi_cover"
+# 单个 mod 最多扫多少张候选图片(给「切换预览图」列表用)
+MAX_CANDIDATE_IMAGES = 60
+# 预览图优先级关键词(命中即 rank 0, 最优先做封面; 含中英文样本图命名)
+PREVIEW_PRIORITY = ("preview", "cover", "thumb", "showcase", "sample",
+                    "预览", "示例", "样例", "展示", "封面", "说明图", "pic")
 
 DATA_DIR = (os.environ.get("ZZMI_MANAGER_DATA")
             or os.path.join(os.path.expanduser("~"), ".zzmi-manager"))
@@ -86,6 +231,10 @@ def _res_dir():
 
 UI_PATH = os.path.join(_res_dir(), "ui.html")
 BG_PATH = os.path.join(_res_dir(), "bg.jpg")
+# v1.5.9 绝区零图标 favicon: 打包后在资源根, 源码运行时在 installer/ 下
+ICON_PATH = os.path.join(_res_dir(), "app.ico")
+if not os.path.isfile(ICON_PATH):
+    ICON_PATH = os.path.join(_res_dir(), "installer", "app.ico")
 
 DEFAULT_CONFIG = {
     "zzmi_root": "",
@@ -94,11 +243,19 @@ DEFAULT_CONFIG = {
     "game_exe": "",
     "mods_dir": "",
     "libraries": [],
+    "libs_abs": [],         # 锁定为仓库的绝对路径(可以在任意盘, 不必在 ZZMI 目录下)
+    "custom_dirs": [],      # 「自定义文件夹」最近用过的目标(完整路径)
     "theme": "dark",
     "hide_preview": False,
     "char_overrides": {},
-    "win_size": "1320,880",
+    "thumb_overrides": {},
+    "pinned_mods": [],
+    "pinned_cats": [],
+    "pinned_chars": [],
+    "usage": {},
+    "win_size": "auto",
     "hotkey": "F9",
+    "update_repo": UPDATE_REPO,
 }
 
 ROOT_SKIP = {"resources", "themes", "locale", "backups", "dds", "bin",
@@ -113,10 +270,19 @@ LIB_NAME_SKIP = ("reshade", "preset", "shader", "cache", "backup", "debug",
 # ===========================================================================
 
 def log(*a):
+    line = "[%s] %s" % (time.strftime("%H:%M:%S"), " ".join(str(x) for x in a))
     try:
-        sys.stdout.write("[%s] %s\n" % (time.strftime("%H:%M:%S"),
-                                        " ".join(str(x) for x in a)))
+        sys.stdout.write(line + "\n")
         sys.stdout.flush()
+    except Exception:
+        pass
+    # v1.5.7: 命令窗口会藏起来, 所以日志同时落盘一份, 出问题好排查
+    try:
+        p = os.path.join(DATA_DIR, "zzmi.log")
+        if os.path.isfile(p) and os.path.getsize(p) > 512 * 1024:
+            os.replace(p, p + ".old")          # 超过 512KB 就轮转一次
+        with open(p, "a", encoding="utf-8", errors="replace") as f:
+            f.write(line + "\n")
     except Exception:
         pass
 
@@ -188,29 +354,270 @@ def safe_join(base, rel):
     return p
 
 
-def resolve_rel_dir(base, rel):
-    """按相对路径找目录, 允许任意一段带 DISABLED_ / disabled 前缀。"""
+# 重名条目的 id 会被 scan_mods 加上 "#1" "#2" 后缀(见 entries 去重那段),
+# 解析路径时必须剥掉, 否则永远「找不到目录」。
+_TAIL_NUM_ID_RE = re.compile(r"^(.*)#\d{1,3}$")
+
+
+def resolve_rel_dir(base, rel, prefer=None):
+    """按相对路径找目录, 允许任意一段带 DISABLED_ / disabled 前缀。
+
+    v1.5.9: 同一个 mod 的「启用套 + 禁用套」同时存在时, 两个条目的 id 都来自
+    同一个名字(其中一个带 #N)。剥掉后缀后 stripped 名字能同时匹配两个目录,
+    这时用 prefer(= 扫描时记录的真实目录名)精确选中, 不认错套。
+    prefer 只作用于最后一段 —— 它是条目自己的目录名, 和上级目录无关。
+    """
+    parts = [p for p in norm_rel(rel).split("/") if p]
+    if parts:
+        m = _TAIL_NUM_ID_RE.match(parts[-1])
+        if m:
+            parts[-1] = m.group(1)
+    last = len(parts) - 1
     cur = base
-    for part in norm_rel(rel).split("/"):
-        if not part:
-            continue
+    for idx, part in enumerate(parts):
         try:
             names = os.listdir(cur)
         except OSError:
             return None
-        if part in names and os.path.isdir(os.path.join(cur, part)):
+        # v1.5.9: 同名两套(启用套+禁用套)的 stripped 名字一模一样,
+        # 走 exact 匹配会认错套(典型: 想启用 DISABLED_套, 却匹配到已启用的那套,
+        # 白返回一个「已是启用状态」)。所以最后一段且带着 prefer 时,
+        # 一律以 prefer(扫描时记录的真实目录名)为准, exact 只在 prefer==part 时直接用。
+        if part in names and os.path.isdir(os.path.join(cur, part)) \
+                and not (idx == last and prefer and part != prefer):
             cur = os.path.join(cur, part)
             continue
+        cands = [n for n in names
+                 if os.path.isdir(os.path.join(cur, n))
+                 and strip_disabled(n) == strip_disabled(part)]
         hit = None
-        for n in names:
-            if os.path.isdir(os.path.join(cur, n)) and \
-                    strip_disabled(n) == strip_disabled(part):
-                hit = n
-                break
+        if cands:
+            if prefer and idx == last and prefer in cands:
+                hit = prefer
+            elif part in cands:
+                hit = part
+            else:
+                hit = cands[0]
         if hit is None:
             return None
         cur = os.path.join(cur, hit)
     return cur
+
+
+def entry_root(mods_dir, e):
+    """按条目找它的真实目录(自动处理 id 的 #N 后缀 + 同名两套的精确选中)。"""
+    if not e:
+        return None
+    prefer = os.path.basename(norm_rel(e.get("path") or ""))
+    return resolve_rel_dir(mods_dir, e["id"], prefer=prefer or None)
+
+
+# ===========================================================================
+# Windows 文件占用 / 改名加固
+#
+# 为什么需要: 重命名一个文件夹, Windows 要求「文件夹本身可删 + 里面任何被打开的
+# 文件都允许删除共享(sharing delete)」。游戏(3DMigoto 加载着 ini)、资源管理器开着
+# 那个目录、杀软实时扫描、甚至本工具自己在读里面的图, 都会让改名报
+# [WinError 5] 拒绝访问 / 另一个程序正在使用 —— 而且往往只持续几十毫秒。
+# 所以: ①先探测到底为什么改不了 ②失败自动重试 ③本工具自己读文件时带上
+# FILE_SHARE_DELETE, 保证自己永远不会成为"占用方"。
+# ===========================================================================
+
+_WIN = (os.name == "nt")
+
+def _k32():
+    import ctypes
+    from ctypes import wintypes
+    k = ctypes.WinDLL("kernel32", use_last_error=True)
+    k.CreateFileW.restype = wintypes.HANDLE
+    k.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                              ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD,
+                              wintypes.HANDLE]
+    return k, ctypes, wintypes
+
+
+_DELETE = 0x00010000
+_SHARE_ALL = 0x1 | 0x2 | 0x4          # READ | WRITE | DELETE
+_SHARE_RWD = _SHARE_ALL
+_OPEN_EXISTING = 3
+_BACKUP_SEMANTICS = 0x02000000        # 打开目录必须带这个
+_INVALID = -1
+
+_LOCK_TEXT = {
+    5: "权限被拒绝(只读属性 / 杀软拦截 / 没有管理员权限)",
+    32: "正被别的程序占用(最可能是游戏还开着, 或资源管理器开着这个目录)",
+    33: "文件被锁定",
+}
+
+
+def _probe_delete(path):
+    """探测能否拿到 DELETE 权限(= 能不能改名/移动)。返回 (ok, 中文原因)"""
+    if not _WIN:
+        return True, ""
+    try:
+        k, ctypes, wintypes = _k32()
+        h = k.CreateFileW(path, _DELETE, _SHARE_ALL, None, _OPEN_EXISTING,
+                          _BACKUP_SEMANTICS, None)
+        bad = (h is None or h == wintypes.HANDLE(_INVALID).value or
+               h == ctypes.c_void_p(_INVALID).value)
+        if not bad:
+            k.CloseHandle(h)
+            return True, ""
+        e = ctypes.get_last_error()
+        return False, _LOCK_TEXT.get(e, "错误码 %d" % e)
+    except Exception:
+        return True, ""      # 探测本身失败就不下结论, 交给真正的改名去试
+
+
+def lock_reason(path, scan_files=40):
+    """给一个目录做体检: 是目录本身被占, 还是里面某个文件被占。"""
+    ok, why = _probe_delete(path)
+    if not ok:
+        return False, "目录本身" + why
+    if not os.path.isdir(path):
+        return True, ""
+    n = 0
+    for cur, dirs, files in os.walk(path):
+        for d in dirs:
+            if n >= scan_files:
+                break
+            ok2, why2 = _probe_delete(os.path.join(cur, d))
+            n += 1
+            if not ok2:
+                return False, "子目录「%s」%s" % (d, why2)
+        for f in files:
+            if n >= scan_files:
+                break
+            ok2, why2 = _probe_delete(os.path.join(cur, f))
+            n += 1
+            if not ok2:
+                return False, "里面的文件「%s」%s" % (f, why2)
+        if n >= scan_files:
+            break
+    return True, ""
+
+
+def read_bytes_shared(path, cap=None):
+    """读文件内容, 但用 FILE_SHARE_DELETE 打开 —— 本工具读图时不会挡住你改名。
+    cap 给出时超过就只读前 cap 字节(返回的 bytes 会被截断)。"""
+    if _WIN:
+        try:
+            k, ctypes, wintypes = _k32()
+            h = k.CreateFileW(path, 0x80000000, _SHARE_RWD, None, _OPEN_EXISTING,
+                              0x80 | 0x10000000, None)   # NORMAL|SEQUENTIAL
+            if h in (None, wintypes.HANDLE(_INVALID).value):
+                h = None
+            if h is not None:
+                ReadFile = k.ReadFile
+                ReadFile.argtypes = [wintypes.HANDLE, ctypes.c_void_p,
+                                     wintypes.DWORD, ctypes.POINTER(wintypes.DWORD),
+                                     ctypes.c_void_p]
+                buf = ctypes.create_string_buffer(1 << 16)
+                chunks, total = [], 0
+                while True:
+                    got = wintypes.DWORD(0)
+                    if not ReadFile(h, buf, len(buf), ctypes.byref(got), None):
+                        break
+                    if got.value == 0:
+                        break
+                    chunks.append(buf.raw[:got.value])
+                    total += got.value
+                    if cap and total >= cap:
+                        break
+                k.CloseHandle(h)
+                data = b"".join(chunks)
+                return data[:cap] if cap else data
+        except Exception:
+            pass
+    with open(path, "rb") as f:
+        return f.read(cap) if cap else f.read()
+
+
+def unique_path(dst, limit=60):
+    """目标已存在时自动加 (2) (3)…, 绝不覆盖已有文件。"""
+    if not os.path.exists(dst):
+        return dst
+    base, ext = os.path.splitext(dst)
+    for i in range(2, limit + 2):
+        cand = "%s (%d)%s" % (base, i, ext)
+        if not os.path.exists(cand):
+            return cand
+    return None
+
+
+# 已经被我们用过后缀的名字, 再重名就接着往后排: "露西皮肤 (2)" -> "露西皮肤 (3)"
+# 而不是叠成 "露西皮肤 (2) (2)"。只认半角/全角括号 + 纯数字结尾。
+_NUM_SUFFIX_RE = re.compile(r"^(.*?)[\s]*[（(](\d{1,3})[）)]$")
+
+
+def auto_unique_name(dst, limit=200):
+    """目标已存在时自动往后加 (2) (3)…
+
+    跟 unique_path 的区别: 这个**只管起名, 不落盘也不判断能不能写**,
+    返回 (最终路径, 用到的序号)。序号从 2 起, 也就是用户说的「依次类推」。
+    已带 (n) 后缀的名字会接着往下排, 避免出现 (2) (2) 这种套娃名。
+
+    返回值里 seq=None 表示原名没被占用, 不需要提示用户。
+    """
+    if not os.path.exists(dst):
+        return dst, None
+    d, name = os.path.split(dst)
+    m = _NUM_SUFFIX_RE.match(name)
+    stem, start = (m.group(1), int(m.group(2)) + 1) if m else (name, 2)
+    for i in range(start, start + limit):
+        cand = os.path.join(d, "%s (%d)" % (stem, i))
+        if not os.path.exists(cand):
+            return cand, i
+    return None, None
+
+
+def move_dir(src, dst, rec=None, tries=3):
+    """搬目录: 优先 os.rename(同盘瞬间完成), 失败自动重试, 跨盘回退 shutil.move。
+    成功写 journal(可撤销); 失败给出「到底被谁挡着」的中文原因。"""
+    if not src or not os.path.isdir(src):
+        return False, "源目录不存在"
+    if not dst:
+        return False, "目标路径不合法"
+    sa, da = os.path.abspath(src), os.path.abspath(dst)
+    if sa == da:
+        return False, "源和目标相同"
+    if da.startswith(sa + os.sep):
+        return False, "不能移动到自己的子目录里"
+    try:
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+    except OSError as ex:
+        return False, "建不了目标目录: %s" % ex
+    if os.path.exists(dst):
+        return False, "目标已存在: %s" % os.path.basename(dst)
+    last = None
+    for i in range(max(1, tries)):
+        try:
+            os.rename(src, dst)
+            if rec:
+                journal_append(rec)
+            return True, "ok"
+        except OSError as ex:
+            last = ex
+            # 跨盘(不同卷)时 rename 会失败, 用 shutil.move 复制+删除
+            if getattr(ex, "winerror", None) in (17, 18) or "different disk" in str(ex).lower():
+                try:
+                    shutil.move(src, dst)
+                    if rec:
+                        journal_append(rec)
+                    return True, "ok(跨盘复制)"
+                except Exception as ex2:
+                    last = ex2
+            ok, why = lock_reason(src, scan_files=12)
+            if not ok and i >= 1:
+                return False, "被占用: %s" % why
+            time.sleep(0.12 * (i + 1))
+    ok, why = lock_reason(src, scan_files=12)
+    if not ok:
+        return False, "被占用: %s" % why
+    msg = str(last or "")
+    if "另一个程序正在使用" in msg or "being used by another" in msg:
+        return False, "被占用(游戏或资源管理器开着这个目录), 关掉再试"
+    return False, "失败: %s" % msg
 
 
 # ===========================================================================
@@ -218,6 +625,16 @@ def resolve_rel_dir(base, rel):
 # ===========================================================================
 
 CHAR_VARIANT = {"零号", "异色", "sp", "邦布"}
+# 工具/功能类 mod: 推断出这些词就统一归到一个名字下, 否则一个功能 mod 就占侧栏一行
+CHAR_TOOL_WORDS = {
+    "功能": "功能", "工具": "工具", "修复": "修复", "补丁": "补丁", "整合": "整合",
+    "整合包": "整合", "其他": "其他", "其它": "其他", "杂项": "杂项", "未分类": "未分类",
+    "测试": "测试", "菜单": "菜单", "界面": "界面", "ui": "UI", "uid": "UID",
+    "mod": "Mod", "模组": "Mod",
+}
+# NPC / 占位名: 统一归到 NPC, 不然 Name / NoName / NPC / NPC2 会各占一行
+CHAR_NPC_WORDS = {"npc", "noname", "no name", "no_name", "name", "无名", "无名氏",
+                  "占位", "占位符", "placeholder", "undefined", "null"}
 CHAR_GENERIC_HEAD = {"功能", "工具", "修复", "整合", "其他", "杂项", "未分类",
                      "ui", "uid", "mod", "测试"}
 CHAR_WORDS = [
@@ -227,22 +644,53 @@ CHAR_WORDS = [
     "替换", "性感的牛", "美丽的豹子", "迷人", "性感", "全裸", "怀孕", "多切换",
     "暗影", "奶盖", "小围裙", "重制", "汉化", "整合", "修复", "逆兔", "正兔",
     "白丝", "黑丝", "破洞", "淫纹", "涂鸦", "写作", "菜单", "模式", "银兎",
+    "时装", "服饰", "套装", "礼服", "旗袍", "和服", "制服",
 ]
 CHAR_TAIL_DROP = re.compile(r"(v\d+(\.\d+)*|[0-9]+(\.[0-9]+)*|[a-zA-Z]+)$")
 STRIP_CHARS = " -_·—－・/."
+# 名字里的括号内容都是附属说明(如「希格莉德{隐隐约约…}」「月城柳（只能看到一点…）」),
+# 留着参与匹配只会把同一个角色拆成好几条, 所以先剥掉
+_BRACKET_BODY = r"[^）)\]】〕〉」》]*"
+BRACKET_PAIRS = re.compile(r"[（(\[{【〔〈「《]" + _BRACKET_BODY + r"[）)\]】〕〉」》]")
+BRACKET_OPEN_TAIL = re.compile(r"[（(\[{【〔〈「《]" + _BRACKET_BODY + r"$")
+
+
+def strip_brackets(s):
+    """剥掉名字里的括号附属说明: 希格莉德{隐隐约约…} -> 希格莉德; 月城柳（…） -> 月城柳。"""
+    s = BRACKET_PAIRS.sub("", s or "")
+    s = BRACKET_OPEN_TAIL.sub("", s)
+    return s.strip()
 
 
 def auto_char(name):
-    """从 mod 名推断角色名; 推断不出来就返回原名。"""
+    """从 mod 名推断角色名; 推断不出来就返回剥掉括号后的原名。
+
+    v1.4.7 起:
+      * 先剥掉括号/花括号等附属说明, 让「希格莉德」和「希格莉德{…}」归到一起;
+      * 「功能 / 工具 / 修复 …」这类统一归成一个名字(功能 Arc / 功能-隐藏UID -> 功能);
+      * 「NPC / NoName / Name …」这类占位名统一归成 NPC。
+    """
     base = strip_disabled(name or "").strip()
     if not base:
         return base
-    segs = [s for s in re.split(r"[-_·—－・/ &+]+", base) if s]
-    changed = False
+    core = strip_brackets(base).strip(STRIP_CHARS)
+    if not core:
+        return base
+    if core.lower() in CHAR_NPC_WORDS or core.lower().startswith("npc"):
+        return "NPC"
+    segs = [s for s in re.split(r"[-_·—－・/ &+]+", core) if s]
+    changed = (core != base)
     if len(segs) > 1 and segs[0].lower() in {v.lower() for v in CHAR_VARIANT}:
         segs = segs[1:]
         changed = True
-    h = segs[0] if segs else base
+    # 工具/功能类 -> 统一成一个名字(只看前两段, 避免误伤角色名里的字)
+    for seg in segs[:2]:
+        key = seg.strip().lower()
+        if key in CHAR_TOOL_WORDS:
+            return CHAR_TOOL_WORDS[key]
+        if key.startswith("npc"):
+            return "NPC"
+    h = segs[0] if segs else core
     for _ in range(5):
         before = h
         low = h.lower()
@@ -265,10 +713,68 @@ def auto_char(name):
             break
     h = h.strip(STRIP_CHARS)
     if not h or h.lower() in CHAR_GENERIC_HEAD:
-        return base
-    if h == base and not changed:
-        return base
+        return core          # 归不到具体角色: 用剥掉括号后的名字(也别退回带括号的原名)
     return h
+
+
+# ---------------------------------------------------------------------------
+# 层级判定: Mods 下第 1 层到底是"分类文件夹"还是"直接放在根下的 mod"
+# ---------------------------------------------------------------------------
+
+# ini 直接散落在 Mods 根目录时, 合出来这条 entry 用的标记
+ROOT_MOD_ID = "__mods_root__"
+ROOT_MOD_NAME = "(Mods 根目录散装)"
+
+# mod 内部常见的资源目录名 —— 见到这些名字, 说明它的上一层才是 mod 本身
+INNER_DIR_WORDS = (
+    "resources", "resource", "texture", "textures", "tex", "body", "face",
+    "hair", "weapon", "fx", "icons", "icon", "fonts", "font", "shader",
+    "shaders", "mesh", "models", "model", "main body", "mainbody",
+    "贴图", "资源", "身体", "脸", "头发", "武器", "特效", "材质",
+)
+
+# 分类文件夹常见的名字特征
+CLASSIFY_WORDS = (
+    "合集", "分类", "功能", "工具", "整合", "补丁", "全部", "未使用",
+    "备份", "仓库", "暂存", "收藏", "其它", "其他", "mods",
+)
+
+
+def looks_like_inner_dir(name):
+    """这一层看着像不像「mod 内部的资源目录」(而不是 mod 本身)。"""
+    n = (name or "").strip().lower()
+    if not n:
+        return False
+    for w in INNER_DIR_WORDS:
+        if n == w or n.startswith(w + " ") or n.endswith(" " + w):
+            return True
+    return False
+
+
+def is_classifier_dir(name, strong=False):
+    """Mods 下的第 1 层目录是「分类文件夹」还是「直接放在根下的 mod」。
+
+    返回 True = 它是分类(下面还有一层 mod), False = 它自己就是个 mod。
+    strong=True 时只用强判据(分类词 / 能提炼出角色名), 不再因为"没有中文"
+    就当成分类 —— 用于"这个目录下只有唯一一个分支"的场景, 那种情况它更可能
+    是一个 mod 而不是分类。
+    """
+    n = strip_disabled(name or "").strip()
+    if not n:
+        return True
+    low = n.lower()
+    for w in CLASSIFY_WORDS:
+        if w in low:
+            return True
+    body = strip_brackets(n)
+    c = auto_char(body)
+    if c and c != body and len(c) >= 2:
+        return False         # 能提炼出角色名 -> 它本身就是个 mod
+    if strong:
+        return False         # 没有强判据命中 + 只有单一分支 -> 当成 mod
+    if not any('\u4e00' <= c <= '\u9fff' for c in body):
+        return True          # 没有中文(纯编号/英文短名) -> 更像分类容器
+    return True
 
 
 # ===========================================================================
@@ -374,7 +880,8 @@ def autodetect_config(progress=None):
     cfg["importer"] = importer
     cfg["mods_dir"] = os.path.join(best_dir, importer, "Mods")
     cfg["game_exe"] = game_exe_from_launcher_config(info.get("config_json"), importer)
-    cfg["libraries"] = detect_libraries(best_dir, cfg["mods_dir"])
+    # v1.5.4: 不再自动探测仓库 —— 仓库由玩家自己添加(新建/自定义文件夹)
+    cfg["libraries"] = []
     return cfg, [{"root": d, "importers": hi.get("importers", [])}
                  for _, d, hi in hits[:12]]
 
@@ -525,7 +1032,11 @@ def make_thumb(src, dst, maxpx=THUMB_PX):
     if not Image:
         return False
     try:
-        with Image.open(src) as im:
+        # 用 SHARE_DELETE 读取: 我们读图时不会挡住用户改名/搬运
+        data = read_bytes_shared(src)
+        if not data:
+            return False
+        with Image.open(io.BytesIO(data)) as im:
             im = im.convert("RGB")
             im.thumbnail((maxpx, maxpx * 2))
             im.save(dst, "JPEG", quality=84)
@@ -620,8 +1131,15 @@ def find_mods_dir(cfg):
     return md or ""
 
 
-def scan_mods(mods_dir, char_overrides=None):
+def scan_mods(mods_dir, char_overrides=None, thumb_overrides=None, meta=None):
+    # meta: {"pinned_mods":[], "pinned_cats":[], "pinned_chars":[], "usage":{路径:秒}}
     char_overrides = char_overrides or {}
+    thumb_overrides = thumb_overrides or {}
+    meta = meta or {}
+    pm = set(meta.get("pinned_mods") or [])
+    pc = set(meta.get("pinned_cats") or [])
+    pch = set(meta.get("pinned_chars") or [])
+    usage = meta.get("usage") or {}
     t0 = time.time()
     res = ScanResult()
     res.root = mods_dir
@@ -639,7 +1157,10 @@ def scan_mods(mods_dir, char_overrides=None):
         rel = "" if rel == "." else rel
         parts = rel.split(os.sep) if rel else []
         local_ini = [f for f in files if f.lower().endswith(".ini")]
-        imgs = [f for f in files if f.lower().endswith(IMAGE_EXTS)]
+        # 注意: .dds 明确排除(见 NEVER_IMAGE_EXTS), 免得封面选到模型/贴图文件
+        imgs = [f for f in files
+                if f.lower().endswith(IMAGE_EXTS)
+                and not f.lower().endswith(NEVER_IMAGE_EXTS)]
         sz = 0
         for f in files:
             try:
@@ -670,30 +1191,63 @@ def scan_mods(mods_dir, char_overrides=None):
         return res
 
     def mod_root_for(d):
-        cur = d
-        for _ in range(8):
-            parent = os.path.dirname(cur)
-            if os.path.abspath(parent) == os.path.abspath(mods_dir):
-                break
-            pinfo = dir_info.get(parent)
-            if pinfo is None or pinfo["depth"] <= 1 or pinfo["ini"]:
-                break
-            cur = parent
-        return cur
+        """从「含 ini 的目录」往上归并出这个 mod 的根目录。
+
+        层级判定:
+          * ini 直接散落在 Mods 根目录   -> 就是 Mods 根自己(单独一条)
+          * 第 1 层是分类文件夹          -> mod 在第 2 层(更深的一律收到第 2 层)
+          * 第 1 层自己就是 mod(直接放根) -> mod 就是第 1 层, 不再往里钻
+        """
+        parts = dir_info[d]["parts"]
+        if not parts:
+            return d                  # ini 散落在 Mods 根目录
+        if len(parts) == 1:
+            return d                  # mod 直接放在 Mods 根下
+        top = os.path.join(mods_dir, parts[0])
+        # 第 2 层看着像 mod 内部的资源目录(resources/贴图/body…) -> 第 1 层才是 mod
+        if looks_like_inner_dir(parts[1]):
+            return top
+        # 第 1 层下面挂着多个含 ini 的分支 -> 它一定是分类文件夹
+        if len(branch_count.get(parts[0], ())) >= 2:
+            return os.path.join(mods_dir, parts[0], parts[1])
+        # 只有一个分支: 名字像分类才是分类, 否则第 1 层自己就是那个 mod
+        if is_classifier_dir(parts[0], strong=True):
+            return os.path.join(mods_dir, parts[0], parts[1])
+        return top                    # 第 1 层不是分类, 那它本身就是个 mod
 
     def is_ancestor(a, b):
         a, b = os.path.abspath(a), os.path.abspath(b)
         return b != a and b.startswith(a + os.sep)
 
+    # 每个「第 1 层目录」下面挂着几个含 ini 的分支 —— 用来判断它是分类还是单个 mod
+    branch_count = {}
+    for d in ini_dirs:
+        ps = dir_info[d]["parts"]
+        if not ps:
+            continue
+        branch_count.setdefault(ps[0], set()).add(ps[1] if len(ps) > 1 else "")
+
     cand = {}
     for d in ini_dirs:
         cand.setdefault(mod_root_for(d), []).append(d)
+
+    # 「ini 直接散落在 Mods 根」这条只代表根目录自己的那几个 ini。
+    # 它的路径是所有 mod 的父目录, 若混进去做"祖先去重"会把其它 mod 全吞掉,
+    # 所以先给普通 mod 去重, 再把散装这条单独放回去。
+    def _is_mods_root(p):
+        return os.path.abspath(p) == os.path.abspath(mods_dir)
+
     kept = []
-    for r in sorted(cand, key=lambda p: dir_info[p]["depth"]):
+    for r in sorted((p for p in cand if not _is_mods_root(p)),
+                    key=lambda p: dir_info[p]["depth"]):
         if not any(is_ancestor(k, r) for k in kept):
             kept.append(r)
+    if any(_is_mods_root(p) for p in cand):
+        kept.append(mods_dir)
+
     roots = {k: [d for d in ini_dirs
-                 if os.path.abspath(d) == os.path.abspath(k) or is_ancestor(k, d)]
+             if os.path.abspath(d) == os.path.abspath(k)
+             or (not _is_mods_root(k) and is_ancestor(k, d))]
              for k in kept}
 
     hashes_by_dir = collect_hashes(ini_dirs, dir_info)
@@ -725,13 +1279,29 @@ def scan_mods(mods_dir, char_overrides=None):
             })
         sub_dirs.sort(key=lambda s: s["local"].lower())
 
-        logical = [strip_disabled(p) for p in parts]
-        name = parts[-1]
-        cid = "/".join(logical)
+        if parts:
+            logical = [strip_disabled(p) for p in parts]
+            name = parts[-1]
+            cid = "/".join(logical)
+            cat = parts[0] if len(parts) > 1 else "(根目录)"
+        else:
+            # ini 直接散落在 Mods 根目录(没有子文件夹) —— 合成一条, 别让下标越界
+            logical = []
+            name = ROOT_MOD_NAME
+            cid = ROOT_MOD_ID
+            cat = "(根目录)"
         char_auto = auto_char(name)
         char = (char_overrides.get(cid) or char_overrides.get(norm_rel(info["rel"]))
                 or char_auto)
-        thumb_rel = pick_preview(root_abs, dir_info, sub_inis, mods_dir)
+        # 用户手动指定过封面(切换预览图 / 一键添加预览图)就优先用它, 失效则回退自动挑
+        thumb_rel = None
+        for _key in (cid, norm_rel(info["rel"])):
+            _cand = thumb_overrides.get(_key)
+            if _cand and os.path.isfile(os.path.join(mods_dir, _cand.replace("/", os.sep))):
+                thumb_rel = norm_rel(_cand)
+                break
+        if not thumb_rel:
+            thumb_rel = pick_preview(root_abs, dir_info, sub_inis, mods_dir)
 
         entries.append({
             "id": cid,
@@ -741,9 +1311,14 @@ def scan_mods(mods_dir, char_overrides=None):
             "char_manual": bool(cid in char_overrides
                                 or norm_rel(info["rel"]) in char_overrides),
             "path": norm_rel(info["rel"]),
-            "category": parts[0] if len(parts) > 1 else "(根目录)",
+            "category": cat,
             "depth": len(parts),
             "enabled": not info["disabled"],
+            # 收藏: mod 自身 / 所属分类 / 所属角色 任一被置顶, 这张卡就算置顶
+            "pinned": (cid in pm or norm_rel(info["rel"]) in pm
+                       or cat in pc or char in pch),
+            # 使用时间: 每次启用/切变体记录一次, 没有记录回退用目录修改时间
+            "usage": usage.get(cid) or usage.get(norm_rel(info["rel"])) or info["mtime"],
             "dir_disabled": info["disabled"],
             "partial": bool(not info["disabled"]
                             and any(s["disabled"] for s in sub_dirs)),
@@ -761,7 +1336,10 @@ def scan_mods(mods_dir, char_overrides=None):
             if os.path.isfile(ap):
                 res.thumb_srcs.append(ap)
 
-    entries.sort(key=lambda e: (e["char"].lower(), e["category"].lower(),
+    # 默认顺序: 收藏置顶最前, 其次已启用, 同组内按使用时间从新到旧
+    # (usage 没记录时回退为目录 mtime, 见上面 usage 字段)
+    entries.sort(key=lambda e: (not e["pinned"], not e["enabled"],
+                                -e["usage"], e["char"].lower(),
                                 e["name"].lower()))
     used = {}
     for e in entries:
@@ -780,18 +1358,21 @@ def scan_mods(mods_dir, char_overrides=None):
     for e in entries:
         cats.setdefault(e["category"], {}).setdefault(e["char"], []).append(e)
     cat_list = []
-    for cname in sorted(cats, key=lambda s: s.lower()):
+    # 收藏的分类置顶, 其余按名字; 组内同理(收藏的角色排在该分类最前)
+    for cname in sorted(cats, key=lambda s: (s not in pc, s.lower())):
         groups = cats[cname]
         glist = []
-        for gname in sorted(groups, key=lambda s: s.lower()):
+        for gname in sorted(groups, key=lambda s: (s not in pch, s.lower())):
             items = groups[gname]
             glist.append({"name": gname, "count": len(items),
                           "enabled": sum(1 for i in items if i["enabled"]),
-                          "partial": sum(1 for i in items if i["partial"])})
+                          "partial": sum(1 for i in items if i["partial"]),
+                          "pinned": gname in pch})
         allitems = [i for g in groups.values() for i in g]
         cat_list.append({"name": cname, "count": len(allitems),
                          "enabled": sum(1 for i in allitems if i["enabled"]),
                          "partial": sum(1 for i in allitems if i["partial"]),
+                         "pinned": cname in pc,
                          "groups": glist})
     res.categories = cat_list
 
@@ -800,13 +1381,17 @@ def scan_mods(mods_dir, char_overrides=None):
         ch.setdefault(e["char"], []).append(e)
     res.chars = [{"name": c, "count": len(v),
                   "enabled": sum(1 for i in v if i["enabled"]),
+                  "pinned": c in pch,
                   "multi": len(v) > 1}
-                 for c, v in sorted(ch.items(), key=lambda kv: kv[0].lower())]
+                 for c, v in sorted(ch.items(),
+                                    key=lambda kv: (kv[0] not in pch,
+                                                    kv[0].lower()))]
 
     res.stats = {
         "total": len(entries),
         "enabled": sum(1 for e in entries if e["enabled"]),
         "disabled": sum(1 for e in entries if not e["enabled"]),
+        "pinned": sum(1 for e in entries if e["pinned"]),
         "partial": sum(1 for e in entries if e["partial"]),
         "chars": len(res.chars),
         "multi_chars": sum(1 for c in res.chars if c["multi"]),
@@ -819,23 +1404,98 @@ def scan_mods(mods_dir, char_overrides=None):
 
 
 def _img_rank(stem):
-    for i, kw in enumerate(PREVIEW_PRIORITY):
-        if stem == kw or stem.startswith(kw):
-            return i
+    """给预览图打分: 越小越优先做封面。"""
+    # 0) 用户自己放进来的封面(「一键添加预览图」写的 zzmi_cover.*)永远排第一
+    if stem.startswith(COVER_STEM):
+        return -1
+    # 1) 明确的预览/封面类关键词(含中英文) —— 最优先, 且能命中深层样本图
+    for w in PREVIEW_PRIORITY:
+        if stem == w or stem.startswith(w):
+            return 0
+    # 2) 说明/帮助类 —— 排除, 不参与封面
     if any(h in stem for h in ("help", "readme", "说明", "使用", "教程",
-                               "按键", "菜单", "guide", "tutorial")):
+                               "按键", "菜单", "操作", "guide", "tutorial")):
         return 80
+    # 3) 截图
     if any(h in stem for h in ("screenshot", "截图", "screen")):
+        return 10
+    if stem == "default" or stem.startswith("default"):
         return 20
+    # "1"/"0" 常被用作贴图分页名, 不一定是预览, 优先级放低
+    if stem in ("1", "0"):
+        return 30
     return 40
 
 
+def iter_mod_images(abs_root, limit=MAX_CANDIDATE_IMAGES):
+    """列出这个 mod 文件夹里所有能当封面的图片(递归; 明确排除 .dds 等非图片),
+    按「更适合做封面」的顺序排列, 供界面里「切换预览图」挑选。
+    返回 [{rel, name, size, size_h, manual}] —— rel 相对 mod 文件夹。"""
+    out = []
+    if not os.path.isdir(abs_root):
+        return out
+    for cur, dirs, files in os.walk(abs_root):
+        dirs[:] = [d for d in dirs if d.lower() != "desktop.ini"]
+        for f in files:
+            low = f.lower()
+            if low.endswith(NEVER_IMAGE_EXTS) or not low.endswith(IMAGE_EXTS):
+                continue
+            fp = os.path.join(cur, f)
+            try:
+                sz = os.path.getsize(fp)
+            except OSError:
+                continue
+            out.append({"rel": norm_rel(os.path.relpath(fp, abs_root)),
+                        "name": f, "size": sz, "size_h": human_size(sz),
+                        "manual": low.startswith(COVER_STEM)})
+    out.sort(key=lambda x: (_img_rank(os.path.splitext(x["name"])[0].lower()),
+                            -x["size"], x["rel"].lower()))
+    return out[:limit]
+
+
+def write_mod_cover(abs_root, filename, data):
+    """「一键添加预览图」: 把用户选的照片写进 mod 文件夹根部, 命名 zzmi_cover.<ext>。
+
+    只写我们自己的 zzmi_cover.* (写之前先把旧的同名文件删掉), **从不碰用户原有的
+    图片和 ini**。返回 (相对文件名, 错误信息)。"""
+    ext = os.path.splitext(filename or "")[1].lower()
+    if ext not in IMAGE_EXTS:
+        return None, "只支持这些格式: " + " / ".join(IMAGE_EXTS)
+    if not data:
+        return None, "图片是空的"
+    if len(data) > 25 * 1024 * 1024:
+        return None, "图片太大(超过 25MB), 请先压缩一下"
+    if not os.path.isdir(abs_root):
+        return None, "mod 文件夹不存在"
+    for f in os.listdir(abs_root):
+        p = os.path.join(abs_root, f)
+        if f.lower().startswith(COVER_STEM) and os.path.isfile(p):
+            try:
+                os.remove(p)          # 这是本工具上一次生成的封面, 不是用户的文件
+            except OSError:
+                pass
+    dst = os.path.join(abs_root, COVER_STEM + ext)
+    try:
+        with open(dst, "wb") as fh:
+            fh.write(data)
+    except OSError as ex:
+        return None, "写入失败: %s" % ex
+    return COVER_STEM + ext, ""
+
+
 def pick_preview(root_abs, dir_info, sub_inis, rel_base):
-    local_dirs = set(sub_inis) | {root_abs}
+    """在 mod 子树(含所有层级, 不限第几层)里挑一张最适合做封面的图。
+
+    排序优先级:
+      1) 关键词优先级最高(preview/cover/预览/示例 等);
+      2) 同档时优先体积大的(更可能是作者放的真预览, 而非几 KB 的占位/图标);
+      3) 层级深度只作为最后的兜底, 不再惩罚深层文件夹 —— 这样第 2、3 层
+         里作者放的样本图也能被正确读到。"""
     best = None
     for k, v in dir_info.items():
         if k != root_abs and not k.startswith(root_abs + os.sep):
             continue
+        depth = v.get("depth", 0)
         for f in v["imgs"]:
             try:
                 size = os.path.getsize(os.path.join(k, f))
@@ -845,7 +1505,8 @@ def pick_preview(root_abs, dir_info, sub_inis, rel_base):
                 continue
             stem = os.path.splitext(f)[0].lower()
             rank = _img_rank(stem)
-            key = (rank, 0 if k in local_dirs else 1, size, f)
+            # rank 越小越优先; 同 rank 体积大优先(更可能是真预览); 最后才看层级
+            key = (rank, -size, depth, f)
             if best is None or key < best[0]:
                 best = (key, norm_rel(os.path.relpath(os.path.join(k, f), rel_base)))
     if best and best[0][0] < 80:
@@ -1118,22 +1779,85 @@ def journal_read(limit=500):
     return out[-limit:]
 
 
-def _rename_dir(src, dst, rec):
+def _rename_dir(src, dst, rec, tries=3):
+    """重命名目录(启用/禁用/改名都走这里)。
+    被占用时自动重试几次(占用往往是杀软/缩略图线程几十毫秒的事),
+    仍失败就用 lock_reason 告诉你到底是谁挡着。"""
     if os.path.exists(dst):
         return False, "目标名已存在: %s" % os.path.basename(dst)
+    last = None
+    for i in range(max(1, tries)):
+        try:
+            os.rename(src, dst)
+            journal_append(rec)
+            return True, "ok"
+        except OSError as ex:
+            last = ex
+            ok, why = lock_reason(src, scan_files=10)
+            if not ok and i >= 1:
+                return False, ("重命名失败 —— %s。\n"
+                               "把游戏 / 资源管理器窗口关掉(或稍等两秒)再点一次即可。"
+                               % why)
+            time.sleep(0.12 * (i + 1))
+    ok, why = lock_reason(src, scan_files=10)
+    if not ok:
+        return False, ("重命名失败 —— %s。\n"
+                       "把游戏 / 资源管理器窗口关掉(或稍等两秒)再点一次即可。" % why)
+    msg = str(last or "")
+    if "另一个程序正在使用" in msg or "being used by another" in msg:
+        msg = "文件被占用(游戏或资源管理器开着这个目录), 先关掉再试。"
+    return False, "重命名失败: %s" % msg
+
+
+def toggle_root_ini_files(mods_dir, enable):
+    """启用/禁用「直接散落在 Mods 根目录里」的 ini —— 没有子文件夹可改名,
+    所以改成逐个 ini 加/去 DISABLED_ 前缀。只改文件名, 不删任何文件。"""
     try:
-        os.rename(src, dst)
+        names = sorted(os.listdir(mods_dir))
     except OSError as ex:
-        msg = str(ex)
-        if "另一个程序正在使用" in msg or "being used by another" in msg:
-            msg = "文件被占用(游戏或资源管理器开着这个目录), 先关掉再试。"
-        return False, "重命名失败: %s" % msg
-    journal_append(rec)
-    return True, "ok"
+        return False, "读不了 Mods 目录: %s" % ex
+    inis = [n for n in names
+            if n.lower().endswith(".ini") and n.lower() != "desktop.ini"
+            and os.path.isfile(os.path.join(mods_dir, n))]
+    if not inis:
+        return False, "Mods 根目录里已经没有 ini 了"
+    done, errs = 0, []
+    for n in inis:
+        base = strip_disabled(n)
+        new = base if enable else (DISABLED_PREFIX + base)
+        if new == n:
+            continue
+        src, dst = os.path.join(mods_dir, n), os.path.join(mods_dir, new)
+        # v1.5.8: 根目录里同名 ini 也自动加后缀(unique_path 会保住 .ini 扩展名)
+        if os.path.exists(dst):
+            uniq = unique_path(dst)
+            if not uniq:
+                errs.append("%s: 同名太多, 先清理一下" % n)
+                continue
+            dst = uniq
+        try:
+            os.rename(src, dst)
+            journal_append({"kind": "toggle_file", "src": src, "dst": dst,
+                            "enable": bool(enable), "id": ROOT_MOD_ID,
+                            "name": n})
+            done += 1
+        except OSError as ex:
+            errs.append("%s: %s" % (n, ex))
+    if done:
+        msg = "已%s根目录的 %d 个 ini" % ("启用" if enable else "禁用", done)
+        if errs:
+            msg += " · %d 个没成: %s" % (len(errs), errs[0])
+        return True, msg
+    if errs:
+        return False, errs[0]
+    return True, "已经是目标状态了"
 
 
 def do_toggle(mods_dir, entry, enable):
-    cur = resolve_rel_dir(mods_dir, entry["id"])
+    # 散落在 Mods 根目录的 ini 没有目录可改名 -> 走 ini 级启停
+    if not (entry.get("path") or "").strip():
+        return toggle_root_ini_files(mods_dir, enable)
+    cur = entry_root(mods_dir, entry)
     if not cur or not os.path.isdir(cur):
         return False, "找不到目录(可能已被移动)"
     name = os.path.basename(cur)
@@ -1147,10 +1871,28 @@ def do_toggle(mods_dir, entry, enable):
     if new == name:
         return False, "名字已经是目标状态"
     dst = os.path.join(os.path.dirname(cur), new)
+    # v1.5.8: 同名的另一套还躺在同目录里(比如「露西皮肤」和「DISABLED_露西皮肤」),
+    # 直接改名会撞车。不报错, 自动加 (2) (3)… 并把最终名字交回前端提示玩家。
+    dst, seq = auto_unique_name(dst)
+    if not dst:
+        return False, "同名太多(已排到 200), 先去清理一下重复的 mod"
+    target = os.path.basename(dst)
+    renamed = seq is not None
     ok, msg = _rename_dir(cur, dst, {"kind": "toggle", "src": cur, "dst": dst,
                                      "enable": bool(enable), "id": entry["id"],
                                      "name": entry["name"]})
-    return (True, "已%s" % ("启用" if enable else "禁用")) if ok else (False, msg)
+    if ok:
+        out = "已%s" % ("启用" if enable else "禁用")
+        if renamed:
+            out += " —— 因为「%s」已被占用, 自动改名为「%s」" % (
+                base if enable else DISABLED_PREFIX + base, target)
+        return True, out, {"dir": os.path.dirname(cur), "cur": dst,
+                           "want": dst, "target_name": target,
+                           "enable": bool(enable), "renamed": renamed,
+                           "orig_name": base if enable else DISABLED_PREFIX + base,
+                           "seq": seq}
+    return False, msg, {"dir": os.path.dirname(cur), "cur": cur, "want": dst,
+                        "target_name": target, "enable": bool(enable)}
 
 
 def do_toggle_dir(mods_dir, rel, enable):
@@ -1168,9 +1910,21 @@ def do_toggle_dir(mods_dir, rel, enable):
     if new == name:
         return False, "名字已经是目标状态"
     dst = os.path.join(os.path.dirname(p), new)
+    # v1.5.8: 子目录重名同样自动加 (2) (3)…
+    dst, seq = auto_unique_name(dst)
+    if not dst:
+        return False, "同名太多(已排到 200), 先清理一下重复的目录"
+    target = os.path.basename(dst)
     ok, msg = _rename_dir(p, dst, {"kind": "toggle", "src": p, "dst": dst,
                                    "enable": bool(enable), "id": rel, "name": name})
-    return (True, "已%s %s" % ("启用" if enable else "禁用", name)) if ok else (False, msg)
+    if ok:
+        out = "已%s %s" % ("启用" if enable else "禁用", target)
+        if seq is not None:
+            out += "（因重名自动加 (%d)）" % seq
+        return True, out, {"renamed": seq is not None, "orig_name": new,
+                           "target_name": target, "seq": seq,
+                           "enable": bool(enable)}
+    return False, msg
 
 
 def do_toggle_file(abs_root, rel, enable):
@@ -1189,8 +1943,13 @@ def do_toggle_file(abs_root, rel, enable):
     base = strip_disabled(name)
     new = base if enable else (DISABLED_PREFIX + base)
     dst = os.path.join(os.path.dirname(p), new)
+    # v1.5.8: 单个 ini 重名也自动加 (2) (3)…(注意 ini 要保住 .ini 后缀, 所以用 unique_path)
+    renamed = False
     if os.path.exists(dst):
-        return False, "目标名已存在: %s" % new
+        uniq = unique_path(dst)
+        if not uniq:
+            return False, "同名太多, 先清理一下重复的 ini"
+        dst, renamed = uniq, True
     try:
         os.rename(p, dst)
     except OSError as ex:
@@ -1200,7 +1959,11 @@ def do_toggle_file(abs_root, rel, enable):
         return False, "重命名失败: %s" % msg
     journal_append({"kind": "file_toggle", "src": p, "dst": dst,
                     "enable": bool(enable), "id": rel, "name": name})
-    return True, "已%s %s" % ("启用" if enable else "禁用", base)
+    got = os.path.basename(dst)
+    out = "已%s %s" % ("启用" if enable else "禁用", got)
+    if renamed:
+        out += "（因重名自动加了后缀）"
+    return True, out
 
 
 def do_variant_select(abs_root, rel):
@@ -1315,10 +2078,80 @@ _KEY_MOD_MAP = (("no_win", None), ("no_ctrl", None), ("no_alt", None),
                 ("win", "Win"))
 
 
+# 3DMigoto 常用的 VK_* 虚拟键码 -> 中文/可读名 (键名大小写不敏感匹配)
+_VK_MAP = {
+    # 鼠标
+    "VK_LBUTTON": "鼠标左键", "VK_RBUTTON": "鼠标右键", "VK_MBUTTON": "鼠标中键",
+    "VK_XBUTTON1": "鼠标侧键1", "VK_XBUTTON2": "鼠标侧键2",
+    # 控制键
+    "VK_BACK": "退格", "VK_TAB": "Tab", "VK_CLEAR": "清除", "VK_RETURN": "回车",
+    "VK_ENTER": "回车", "VK_SHIFT": "Shift", "VK_CONTROL": "Ctrl", "VK_MENU": "Alt",
+    "VK_PAUSE": "暂停", "VK_CAPITAL": "大写锁定", "VK_KANA": "假名",
+    "VK_HANGUL": "韩文", "VK_JUNJA": "转换", "VK_FINAL": "终结",
+    "VK_HANJA": "汉字", "VK_KANJI": "汉字",
+    "VK_ESCAPE": "Esc", "VK_CONVERT": "转换", "VK_NONCONVERT": "非转换",
+    "VK_ACCEPT": "接受", "VK_MODECHANGE": "模式切换",
+    "VK_SPACE": "空格", "VK_PRIOR": "PageUp", "VK_NEXT": "PageDown",
+    "VK_END": "End", "VK_HOME": "Home",
+    "VK_LEFT": "←", "VK_UP": "↑", "VK_RIGHT": "→", "VK_DOWN": "↓",
+    "VK_SELECT": "选择", "VK_PRINT": "打印", "VK_EXECUTE": "执行",
+    "VK_SNAPSHOT": "截图键", "VK_INSERT": "Insert", "VK_DELETE": "Delete",
+    "VK_HELP": "帮助键",
+    # 数字
+    "VK_0": "0", "VK_1": "1", "VK_2": "2", "VK_3": "3", "VK_4": "4",
+    "VK_5": "5", "VK_6": "6", "VK_7": "7", "VK_8": "8", "VK_9": "9",
+    # 字母
+    "VK_A": "A", "VK_B": "B", "VK_C": "C", "VK_D": "D", "VK_E": "E", "VK_F": "F",
+    "VK_G": "G", "VK_H": "H", "VK_I": "I", "VK_J": "J", "VK_K": "K", "VK_L": "L",
+    "VK_M": "M", "VK_N": "N", "VK_O": "O", "VK_P": "P", "VK_Q": "Q", "VK_R": "R",
+    "VK_S": "S", "VK_T": "T", "VK_U": "U", "VK_V": "V", "VK_W": "W", "VK_X": "X",
+    "VK_Y": "Y", "VK_Z": "Z",
+    # 小键盘
+    "VK_NUMPAD0": "小键盘0", "VK_NUMPAD1": "小键盘1", "VK_NUMPAD2": "小键盘2",
+    "VK_NUMPAD3": "小键盘3", "VK_NUMPAD4": "小键盘4", "VK_NUMPAD5": "小键盘5",
+    "VK_NUMPAD6": "小键盘6", "VK_NUMPAD7": "小键盘7", "VK_NUMPAD8": "小键盘8",
+    "VK_NUMPAD9": "小键盘9",
+    "VK_MULTIPLY": "小键盘*", "VK_ADD": "小键盘+", "VK_SEPARATOR": "小键盘分隔",
+    "VK_SUBTRACT": "小键盘-", "VK_DECIMAL": "小键盘.", "VK_DIVIDE": "小键盘/",
+    # 功能键
+    "VK_F1": "F1", "VK_F2": "F2", "VK_F3": "F3", "VK_F4": "F4", "VK_F5": "F5",
+    "VK_F6": "F6", "VK_F7": "F7", "VK_F8": "F8", "VK_F9": "F9", "VK_F10": "F10",
+    "VK_F11": "F11", "VK_F12": "F12", "VK_F13": "F13", "VK_F14": "F14",
+    "VK_F15": "F15", "VK_F16": "F16", "VK_F17": "F17", "VK_F18": "F18",
+    "VK_F19": "F19", "VK_F20": "F20", "VK_F21": "F21", "VK_F22": "F22",
+    "VK_F23": "F23", "VK_F24": "F24",
+    # 锁定 / 左右区分
+    "VK_NUMLOCK": "小键盘锁定", "VK_SCROLL": "ScrollLock",
+    "VK_LSHIFT": "左Shift", "VK_RSHIFT": "右Shift", "VK_LCONTROL": "左Ctrl",
+    "VK_RCONTROL": "右Ctrl", "VK_LMENU": "左Alt", "VK_RMENU": "右Alt",
+    "VK_LWIN": "左Win", "VK_RWIN": "右Win",
+    # OEM 键
+    "VK_OEM_1": ";:", "VK_OEM_PLUS": "+", "VK_OEM_COMMA": ",",
+    "VK_OEM_MINUS": "-", "VK_OEM_PERIOD": ".", "VK_OEM_2": "/?", "VK_OEM_3": "`~",
+    "VK_OEM_4": "[", "VK_OEM_5": "\\", "VK_OEM_6": "]", "VK_OEM_7": "'\"",
+    "VK_OEM_8": "OEM8", "VK_OEM_102": "\\",
+    # 多媒体 / 浏览器
+    "VK_BROWSER_BACK": "浏览器后退", "VK_BROWSER_FORWARD": "浏览器前进",
+    "VK_BROWSER_REFRESH": "浏览器刷新", "VK_BROWSER_STOP": "浏览器停止",
+    "VK_BROWSER_SEARCH": "浏览器搜索", "VK_BROWSER_FAVORITES": "浏览器收藏",
+    "VK_BROWSER_HOME": "浏览器主页",
+    "VK_VOLUME_MUTE": "静音", "VK_VOLUME_DOWN": "音量-", "VK_VOLUME_UP": "音量+",
+    "VK_MEDIA_NEXT_TRACK": "下一曲", "VK_MEDIA_PREV_TRACK": "上一曲",
+    "VK_MEDIA_STOP": "停止", "VK_MEDIA_PLAY_PAUSE": "播放/暂停",
+    "VK_LAUNCH_MAIL": "邮件", "VK_LAUNCH_MEDIA_SELECT": "媒体选择",
+    "VK_LAUNCH_APP1": "启动应用1", "VK_LAUNCH_APP2": "启动应用2",
+    "VK_APPS": "右键菜单键", "VK_SLEEP": "休眠", "VK_ZOOM": "缩放",
+    "VK_ATTN": "Attn", "VK_CRSEL": "CrSel", "VK_EXSEL": "ExSel",
+    "VK_EREOF": "EraseEof", "VK_PLAY": "播放", "VK_PA1": "PA1",
+    "VK_OEM_CLEAR": "清除", "VK_PROCESSKEY": "IME处理键",
+}
+
+
 def _pretty_keys(keyval):
     """3DMigoto 的 key 行: 空格分隔 = 同时按下的组合键。
-    'ctrl alt y 6' -> ['Ctrl+Alt+Y+6'], 'no_ctrl h' -> ['H'], 'h' -> ['H']。
-    no_* 是『不能按某修饰键』的排除项, 不参与显示。"""
+    'ctrl alt y 6' -> ['Ctrl+Alt+Y+6'], 'no_ctrl h' -> ['H'], 'h' -> ['H'],
+    'VK_CAPITAL' -> ['大写锁定'], 'VK_RBUTTON' -> ['鼠标右键']。
+    no_* 是『不能按某修饰键』的排除项, 不参与显示; VK_* 一律翻译成中文键名。"""
     parts = []
     for t in (keyval or "").strip().split():
         tl = t.lower()
@@ -1329,8 +2162,17 @@ def _pretty_keys(keyval):
                     parts.append(disp)
                 hit = True
                 break
-        if not hit:
-            parts.append(t if len(t) > 1 else t.upper())
+        if hit:
+            continue
+        # VK_ 虚拟键码 -> 中文键名
+        if tl.startswith("vk_"):
+            parts.append(_VK_MAP.get(tl.upper(), t))
+            continue
+        # 0x41 这种十六进制原始键码
+        if re.match(r"^0x[0-9a-f]+$", tl):
+            parts.append("按键 " + t)
+            continue
+        parts.append(t if len(t) > 1 else t.upper())
     if not parts:
         return []
     return ["+".join(parts)]
@@ -1370,11 +2212,14 @@ def parse_cycle_vars(abs_root):
                         "var": var,
                         "label": base_label,
                         "label_cn": label_cn,
-                        "values": [], "keys": [], "files": [],
+                        "values": [], "keys": [], "keys_raw": [], "files": [],
                         "switchable": True})
                     for k in _pretty_keys(sec_key):
                         if k not in rec["keys"]:
                             rec["keys"].append(k)
+                    if (sec_key or "").strip() and \
+                            sec_key not in rec["keys_raw"]:
+                        rec["keys_raw"].append(sec_key)
                     if {"rel": rel, "line": ln} not in rec["files"]:
                         rec["files"].append({"rel": rel, "line": ln})
                     if raw == "?":
@@ -1401,7 +2246,8 @@ def parse_cycle_vars(abs_root):
                     continue
                 low = st.lower()
                 if low.startswith("key=") or low.startswith("key ="):
-                    sec_key = st.split("=", 1)[1].strip()
+                    # 行内注释(; # 后面)不是键名, 截掉再显示
+                    sec_key = re.split(r"[;#]", st.split("=", 1)[1])[0].strip()
                 elif low.startswith("type=") or low.startswith("type ="):
                     if "cycle" in low.split("=", 1)[1].lower():
                         sec_cycle = True
@@ -1439,7 +2285,7 @@ def do_cycle_set(abs_root, var, value):
             try:
                 if os.path.getsize(p) > 2 * 1024 * 1024:
                     continue
-                data = open(p, "rb").read()
+                data = read_bytes_shared(p)
             except Exception:
                 continue
             # latin-1 与字节 1:1, 便于用文本正则定位后回写原字节
@@ -1523,20 +2369,259 @@ def do_cycle_set(abs_root, var, value):
     return True, "已把默认变体设为 %d (改了 %d 个文件); 游戏内按 F10 或重启生效" % (value, changed)
 
 
+# ---------------------------------------------------------------------------
+# 变体一键改键: 玩家输入「键位 空格 键位」(如 ctrl a), 找到该变体 [Key*]
+# cycle 段里绑定的 key = 行, 把键值部分就地替换成新绑定。
+# 与 do_cycle_set 同一套安全机制: latin-1 字节级定位、只动键值那一段,
+# 编码/换行/BOM/注释原样保留, 改前整文件备份, 写 journal 可撤销。
+# ---------------------------------------------------------------------------
+
+# 用户输入的友好键名 -> 3DMigoto key 行里的写法 (全部小写匹配)
+_KEY_INPUT_MAP = {
+    "ctrl": "ctrl", "ctl": "ctrl", "control": "ctrl",
+    "shift": "shift", "alt": "alt", "win": "win", "windows": "win",
+    "tab": "VK_TAB", "enter": "VK_RETURN", "return": "VK_RETURN",
+    "回车": "VK_RETURN", "esc": "VK_ESCAPE", "escape": "VK_ESCAPE",
+    "space": "VK_SPACE", "spacebar": "VK_SPACE", "空格": "VK_SPACE",
+    "backspace": "VK_BACK", "退格": "VK_BACK",
+    "caps": "VK_CAPITAL", "capslock": "VK_CAPITAL", "大写锁定": "VK_CAPITAL",
+    "numlock": "VK_NUMLOCK", "小键盘锁定": "VK_NUMLOCK",
+    "scrolllock": "VK_SCROLL", "pause": "VK_PAUSE", "break": "VK_PAUSE",
+    "printscreen": "VK_SNAPSHOT", "prtsc": "VK_SNAPSHOT",
+    "up": "VK_UP", "down": "VK_DOWN", "left": "VK_LEFT", "right": "VK_RIGHT",
+    "上": "VK_UP", "下": "VK_DOWN", "左": "VK_LEFT", "右": "VK_RIGHT",
+    "pageup": "VK_PRIOR", "pgup": "VK_PRIOR", "上一页": "VK_PRIOR",
+    "pagedown": "VK_NEXT", "pgdn": "VK_NEXT", "下一页": "VK_NEXT",
+    "insert": "VK_INSERT", "ins": "VK_INSERT", "插入": "VK_INSERT",
+    "delete": "VK_DELETE", "del": "VK_DELETE", "删除": "VK_DELETE",
+    "home": "VK_HOME", "end": "VK_END",
+    "minus": "VK_OEM_MINUS", "-": "VK_OEM_MINUS",
+    "plus": "VK_OEM_PLUS", "=": "VK_OEM_PLUS",
+    "comma": "VK_OEM_COMMA", ",": "VK_OEM_COMMA",
+    "period": "VK_OEM_PERIOD", ".": "VK_OEM_PERIOD", "dot": "VK_OEM_PERIOD",
+    "slash": "VK_OEM_2", "/": "VK_OEM_2",
+    "semicolon": "VK_OEM_1", ";": "VK_OEM_1",
+    "quote": "VK_OEM_7", "'": "VK_OEM_7",
+    "backquote": "VK_OEM_3", "`": "VK_OEM_3",
+    "backslash": "VK_OEM_5", "\\": "VK_OEM_5",
+    "lbracket": "VK_OEM_4", "[": "VK_OEM_4",
+    "rbracket": "VK_OEM_6", "]": "VK_OEM_6",
+    "multiply": "VK_MULTIPLY", "add": "VK_ADD", "subtract": "VK_SUBTRACT",
+    "decimal": "VK_DECIMAL", "divide": "VK_DIVIDE",
+    "mouse1": "VK_LBUTTON", "lbutton": "VK_LBUTTON", "鼠标左键": "VK_LBUTTON",
+    "mouse2": "VK_RBUTTON", "rbutton": "VK_RBUTTON", "鼠标右键": "VK_RBUTTON",
+    "mouse3": "VK_MBUTTON", "mbutton": "VK_MBUTTON", "鼠标中键": "VK_MBUTTON",
+    "mouse4": "VK_XBUTTON1", "xbutton1": "VK_XBUTTON1", "鼠标侧键1": "VK_XBUTTON1",
+    "mouse5": "VK_XBUTTON2", "xbutton2": "VK_XBUTTON2", "鼠标侧键2": "VK_XBUTTON2",
+}
+for _i in range(1, 25):                     # f1..f24
+    _KEY_INPUT_MAP["f%d" % _i] = "VK_F%d" % _i
+for _i in range(10):                        # numpad0..9
+    _KEY_INPUT_MAP["numpad%d" % _i] = "VK_NUMPAD%d" % _i
+    _KEY_INPUT_MAP["小键盘%d" % _i] = "VK_NUMPAD%d" % _i
+
+_KEY_PLAIN_MODS = ("ctrl", "shift", "alt", "win")
+
+
+def parse_key_input(s):
+    """把玩家输入的按键串解析成 3DMigoto key = 行的值。
+    'ctrl a' -> 'ctrl a', 'shift f1' -> 'shift VK_F1', 'numpad0' -> 'VK_NUMPAD0',
+    'vk_up' -> 'VK_UP'。返回 (新值, None) 或 (None, 错误信息)。"""
+    toks = [t for t in re.split(r"[\s+]+", (s or "").strip()) if t]
+    if not toks:
+        return None, "按键不能为空。格式: 键位 空格 键位, 例如 ctrl a"
+    out = []
+    for t in toks:
+        tl = t.strip().lower()
+        if not tl:
+            continue
+        if tl.startswith("vk_"):            # 已是 VK 写法, 原样收下
+            out.append(tl.upper())
+            continue
+        if re.match(r"^0x[0-9a-f]+$", tl):  # 原始十六进制键码
+            out.append(tl)
+            continue
+        if tl in _KEY_INPUT_MAP:
+            out.append(_KEY_INPUT_MAP[tl])
+            continue
+        if len(tl) == 1 and ("a" <= tl <= "z" or "0" <= tl <= "9"):
+            out.append(tl)                  # 单个字母/数字直接用裸名(h 这种)
+            continue
+        return None, ("不认识的按键「%s」。\n可写: ctrl a / shift f1 / alt q / "
+                      "numpad0 / up / del / 鼠标侧键1 / VK_CAPITAL 等" % t)
+    if not out:
+        return None, "按键不能为空。格式: 键位 空格 键位, 例如 ctrl a"
+    if all(t in _KEY_PLAIN_MODS for t in out):
+        return None, "只按修饰键(Ctrl/Shift/Alt/Win)没有意义, 后面要跟一个主键, 例如 ctrl a"
+    return " ".join(out), None
+
+
+def do_cycle_rekey(abs_root, var, key_input):
+    """把循环变量 var 的绑定按键改成玩家输入的新键。
+    找 mod 内已启用 ini 中 [Key*] 且 type = cycle 且声明了 $var 的段,
+    段内所有 key = 行的键值部分就地替换。字节级 + 备份 + journal 可撤销。"""
+    var = (var or "").strip()
+    new_raw, err = parse_key_input(key_input)
+    if err:
+        return False, err
+    new_disp = "、".join(_pretty_keys(new_raw)) or new_raw
+    edits = []   # (path, abs_start, abs_end, newbytes, oldraw)
+    for cur, dirs, files in os.walk(abs_root):
+        dirs[:] = [d for d in dirs if d.lower() != "desktop.ini"]
+        for f in files:
+            if not f.lower().endswith(".ini") or is_disabled_name(f):
+                continue
+            p = os.path.join(cur, f)
+            try:
+                if os.path.getsize(p) > 2 * 1024 * 1024:
+                    continue
+                data = read_bytes_shared(p)
+            except Exception:
+                continue
+            text = data.decode("latin-1")   # latin-1 与字节 1:1, 可定位后回写
+            sec_name, sec_cycle, sec_var, sec_spans = None, False, False, []
+            pos = 0
+            for line in text.splitlines(True):
+                st = line.strip()
+                if st.startswith("[") and st.endswith("]"):
+                    if sec_name is not None and sec_cycle and sec_var:
+                        edits.extend((p, s, e, nb, old)
+                                     for (s, e, old) in sec_spans
+                                     for nb in [new_raw.encode("latin-1")]
+                                     if old != new_raw)
+                    sec_name = st[1:-1].strip()
+                    sec_cycle, sec_var, sec_spans = False, False, []
+                    pos += len(line)
+                    continue
+                if sec_name is None or not KEYSEC_RE.match(sec_name):
+                    pos += len(line)
+                    continue
+                low = st.lower()
+                if low.startswith("key=") or low.startswith("key ="):
+                    eq = line.find("=")
+                    after = line[eq + 1:]
+                    cm = re.search(r"[;#]", after)
+                    val_part = after if cm is None else after[:cm.start()]
+                    stripped = val_part.strip()
+                    if stripped:
+                        start = pos + eq + 1 + (len(val_part) - len(val_part.lstrip()))
+                        sec_spans.append((start, start + len(stripped), stripped))
+                    pos += len(line)
+                    continue
+                if low.startswith("type=") or low.startswith("type ="):
+                    if "cycle" in low.split("=", 1)[1].lower():
+                        sec_cycle = True
+                    pos += len(line)
+                    continue
+                dm = CYCLE_DECL_RE.match(st)
+                if dm and dm.group(1) == var:
+                    sec_var = True
+                elif st.startswith("$"):
+                    m2 = CYCLE_EXPR_RE.match(st)
+                    if m2 and m2.group(1) == var:
+                        sec_var = True
+                pos += len(line)
+            if sec_name is not None and sec_cycle and sec_var:
+                edits.extend((p, s, e, nb, old)
+                             for (s, e, old) in sec_spans
+                             for nb in [new_raw.encode("latin-1")]
+                             if old != new_raw)
+
+    if not edits:
+        return False, ("没找到「%s」绑定的 key 行 —— 这个变体可能没有绑定按键,"
+                       "或它的段不是 [Key*] + type = cycle 的写法" % var)
+
+    os.makedirs(INI_BACKUP_DIR, exist_ok=True)
+    byfile = {}
+    for p, s, e, nb, old in edits:
+        byfile.setdefault(p, []).append((s, e, nb))
+    old_disp = "、".join(_pretty_keys(edits[0][4])) or edits[0][4]
+
+    changed = 0
+    for p, items in byfile.items():
+        try:
+            data = open(p, "rb").read()
+        except Exception as ex:
+            return False, "读文件失败: %s" % ex
+        bak = os.path.join(INI_BACKUP_DIR, "%s_%s" % (
+            hashlib.sha1(os.path.abspath(p).encode("utf-8")).hexdigest()[:12],
+            os.path.basename(p)))
+        try:
+            if not os.path.isfile(bak):
+                shutil.copyfile(p, bak)
+            items.sort()
+            out = bytearray()
+            cursor = 0
+            for s, e, nb in items:   # 非重叠, 按偏移拼接
+                out += data[cursor:s]
+                out += nb
+                cursor = e
+            out += data[cursor:]
+            open(p, "wb").write(bytes(out))
+        except Exception as ex:
+            return False, "写文件失败: %s" % ex
+        journal_append({"kind": "ini_edit", "path": p, "backup": bak,
+                        "name": os.path.basename(p), "var": var,
+                        "key": new_raw})
+        changed += 1
+    if changed == 0:
+        return True, "这个变体已经是 %s 了, 没有改动" % new_disp
+    return True, "已把「%s」的按键从 %s 改为 %s (改了 %d 个文件); 进游戏按 F10 或重启生效, 顶栏「撤销」可还原" % (
+        var, old_disp, new_disp, changed)
+
+
 
 def batch_toggle(mods_dir, entries, enable):
     entries = sorted(entries, key=lambda e: e["path"].count("/"))
-    ok, fails = 0, []
+    ok, fails, renamed = 0, [], []
     for e in entries:
+        info = None
         try:
-            good, msg = do_toggle(mods_dir, e, enable)
+            res = do_toggle(mods_dir, e, enable)
+            if len(res) == 3:
+                good, msg, info = res
+            else:
+                good, msg = res
         except Exception as ex:
             good, msg = False, str(ex)
         if good:
             ok += 1
+            # v1.5.8: 因为撞名被自动加后缀的, 也算"改了名", 收进 renamed 交给前端提示
+            if info and info.get("renamed"):
+                renamed.append({"id": e["id"], "name": e["name"],
+                                "orig_name": info.get("orig_name"),
+                                "target_name": info.get("target_name"),
+                                "seq": info.get("seq"),
+                                "enable": bool(enable)})
         else:
-            fails.append({"id": e["id"], "name": e["name"], "msg": msg})
-    return {"ok": ok, "failed": len(fails), "details": fails[:20]}
+            d = {"id": e["id"], "name": e["name"], "msg": msg,
+                 # v1.5.6: 把"卡在哪一步"告诉前端, 好弹出对应的手动处理教程
+                 "enable": bool(enable), "reason": lock_reason_kind(msg)}
+            if info:
+                d.update(info)
+            fails.append(d)
+    return {"ok": ok, "failed": len(fails), "details": fails[:20],
+            "renamed": renamed[:60]}
+
+
+def lock_reason_kind(msg):
+    """把重命名失败的中文原因归成 'busy'(被占用) / 'denied'(权限) / 'other',
+    前端据此决定弹"手动加 DISABLED_"还是"手动删 DISABLED_"。
+
+    注意顺序: _rename_dir 在真的被拒时给的是 lock_reason 文案, 而权限那类措辞
+    (拒绝访问 / 只读 / 杀软) 也可能同时出现"占用"字样, 所以先判 denied。
+    """
+    m = msg or ""
+    # v1.5.8: 「因为「XXX」已被占用, 自动改名为…」是**成功**消息(v1.5.8 的重名自动加后缀),
+    # 只有失败才会走到这里判原因, 但保险起见先挡一道 —— 免得那句里的"已被占用"
+    # 被当成"文件被占用"而错弹手动改名教程。
+    if "自动改名" in m:
+        return "other"
+    if "拒绝访问" in m or "权限" in m or "只读" in m or "杀软" in m:
+        return "denied"
+    if "占用" in m or "打开" in m or "游戏" in m:
+        return "busy"
+    return "other"
 
 
 def undo_last():
@@ -1575,24 +2660,80 @@ def do_move(src_base, src_rel, dst_base, dst_rel):
         return False, "源目录不存在"
     if not dst:
         return False, "目标路径不合法"
-    sa, da = os.path.abspath(src), os.path.abspath(dst)
-    if sa == da:
+    if os.path.abspath(src) == os.path.abspath(dst):
         return False, "源和目标相同"
-    if da.startswith(sa + os.sep):
+    if os.path.abspath(dst).startswith(os.path.abspath(src) + os.sep):
         return False, "不能移动到自己的子目录里"
-    os.makedirs(os.path.dirname(dst), exist_ok=True)
-    if os.path.exists(dst):
-        return False, "目标已存在: %s" % os.path.basename(dst)
-    try:
-        shutil.move(src, dst)
-    except Exception as ex:
-        return False, "移动失败: %s" % ex
-    journal_append({"kind": "move", "src": src, "dst": dst})
-    return True, "已移动"
+    ok, msg = move_dir(src, dst, {"kind": "move", "src": src, "dst": dst})
+    return (True, "已移动") if ok else (False, msg)
+
+
+def is_abs_path(p):
+    """判断用户给的是不是一个完整路径(F:\\xxx / \\\\nas\\share / abs:前缀)。"""
+    s = (p or "").strip()
+    if s.startswith("abs:"):
+        return True
+    if re.match(r"^[A-Za-z]:[\\/]", s):
+        return True
+    if s.startswith("\\\\") or s.startswith("//"):
+        return True
+    return False
+
+
+def strip_abs_prefix(p):
+    s = (p or "").strip()
+    return s[4:].strip() if s.startswith("abs:") else s
+
+
+def list_drives():
+    """Windows 下有哪些盘符; 非 Windows 就给根目录。"""
+    if not _WIN:
+        return [os.sep]
+    import string
+    return ["%s:\\" % c for c in string.ascii_uppercase
+            if os.path.isdir("%s:\\" % c)]
+
+
+def move_mods_batch(mods_dir, entries, dst_root):
+    """把一批 mod 目录搬到 dst_root(仓库)下。同名自动加 (2), 绝不覆盖。"""
+    ok, fails, moved = 0, [], []
+    names = []
+    for e in entries:
+        # 散落在 Mods 根目录的 ini 没有"整个目录"可搬, 别把 Mods 根给搬走了
+        if not (e.get("path") or "").strip():
+            fails.append({"id": e["id"], "name": e["name"],
+                          "msg": "这是散落在 Mods 根目录的 ini, 没有独立文件夹可搬"})
+            continue
+        src = entry_root(mods_dir, e)
+        if not src or not os.path.isdir(src):
+            fails.append({"id": e["id"], "name": e["name"], "msg": "找不到目录(可能已被移动)"})
+            continue
+        name = os.path.basename(src)
+        dst = os.path.join(dst_root, name)
+        if os.path.abspath(dst) == os.path.abspath(src):
+            fails.append({"id": e["id"], "name": e["name"], "msg": "已经在目标位置了"})
+            continue
+        if os.path.exists(dst):
+            uniq = unique_path(dst)
+            if not uniq:
+                fails.append({"id": e["id"], "name": e["name"],
+                              "msg": "目标里同名太多, 请先改名"})
+                continue
+            dst = uniq
+        good, msg = move_dir(src, dst, {"kind": "move", "src": src, "dst": dst,
+                                        "id": e["id"], "name": e["name"]})
+        if good:
+            ok += 1
+            moved.append({"name": name, "as": os.path.basename(dst),
+                          "to": os.path.dirname(dst)})
+        else:
+            fails.append({"id": e["id"], "name": e["name"], "msg": msg})
+    return {"ok": ok, "failed": len(fails), "details": fails[:20],
+            "moved": moved[:60]}
 
 
 def do_rename(mods_dir, entry, new_name):
-    cur = resolve_rel_dir(mods_dir, entry["id"])
+    cur = entry_root(mods_dir, entry)
     if not cur or not os.path.isdir(cur):
         return False, "找不到目录"
     new_name = (new_name or "").strip()
@@ -1603,25 +2744,130 @@ def do_rename(mods_dir, entry, new_name):
     dst = os.path.join(os.path.dirname(cur), target)
     if os.path.abspath(dst) == os.path.abspath(cur):
         return False, "名称没有变化"
+    # v1.5.8: 撞名不再报错 —— 自动加 (2) (3)…, 把最终名字带回前端提示玩家
+    dst, seq = auto_unique_name(dst)
+    if not dst:
+        return False, "同名太多(已排到 200), 先清理一下重复的 mod 吧"
+    final = os.path.basename(dst)
     ok, msg = _rename_dir(cur, dst, {"kind": "move", "src": cur, "dst": dst})
-    return (True, "已重命名为 %s" % target) if ok else (False, msg)
+    if ok:
+        out = "已重命名为 %s" % final
+        if seq is not None:
+            out += "（「%s」已被占用, 自动加了 (%d)）" % (target, seq)
+        return True, out, {"renamed": seq is not None, "orig_name": target,
+                           "target_name": final, "seq": seq}
+    return False, msg
 
 
-def open_in_explorer(path):
-    if not path or not os.path.exists(path):
-        return False
+def _explorer_windows():
+    """列出所有资源管理器窗口: [(hwnd, 标题), ...]"""
+    if not _WIN:
+        return []
+    import ctypes
+    user32 = ctypes.windll.user32
+    out = []
+    proto = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p)
+    GetClassNameW = user32.GetClassNameW
+    GetWindowTextW = user32.GetWindowTextW
+
+    def _cb(hwnd, _l):
+        try:
+            buf = ctypes.create_unicode_buffer(64)
+            GetClassNameW(hwnd, buf, 64)
+            if buf.value in ("CabinetWClass", "ExploreWClass"):
+                t = ctypes.create_unicode_buffer(520)
+                GetWindowTextW(hwnd, t, 520)
+                out.append((hwnd, t.value))
+        except Exception:
+            pass
+        return 1
+
     try:
-        if os.path.isfile(path):
-            subprocess.Popen(["explorer", "/select,", os.path.normpath(path)])
+        user32.EnumWindows(proto(_cb), None)
+    except Exception:
+        pass
+    return out
+
+
+def force_foreground(hwnd):
+    """把某个窗口直接顶到最前(不用用户再点任务栏)。
+
+    本程序常以管理员身份运行, 这时 SetForegroundWindow 会被系统拒绝, 所以:
+    先恢复显示 → 用 topmost 闪一下顶开 Z 序 → 敲一下 ALT 解除"前台锁定" → 再 SetForeground。"""
+    if not hwnd or not _WIN:
+        return False
+    import ctypes
+    user32 = ctypes.windll.user32
+    SW_RESTORE, SW_SHOW = 9, 5
+    SWP_NOSIZE, SWP_NOMOVE, SWP_SHOWWINDOW = 0x0001, 0x0002, 0x0040
+    HWND_TOPMOST, HWND_NOTOPMOST = -1, -2
+    VK_MENU, KEYEVENTF_KEYUP = 0x12, 0x0002
+    try:
+        if user32.IsIconic(hwnd):
+            user32.ShowWindow(hwnd, SW_RESTORE)
         else:
-            os.startfile(path)  # noqa
+            user32.ShowWindow(hwnd, SW_SHOW)
+        user32.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                            SWP_NOSIZE | SWP_NOMOVE | SWP_SHOWWINDOW)
+        user32.SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0,
+                            SWP_NOSIZE | SWP_NOMOVE | SWP_SHOWWINDOW)
+        user32.keybd_event(VK_MENU, 0, 0, 0)
+        user32.keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0)
+        user32.SetForegroundWindow(hwnd)
+        user32.BringWindowToTop(hwnd)
         return True
     except Exception:
-        try:
-            subprocess.Popen(["explorer", os.path.normpath(path)])
+        return False
+
+
+def _focus_explorer_async(hint, known, tries=16):
+    """后台等资源管理器把窗口开出来, 再拉到最前。
+    hint = 目标文件夹名(窗口标题就是它); 找不到标题就用"新出现的窗口"兜底。"""
+    hint = (hint or "").lower()
+    for _ in range(max(1, tries)):
+        time.sleep(0.13)
+        wins = _explorer_windows()
+        cand = [h for h, t in wins if hint and hint in (t or "").lower()]
+        if not cand:
+            cand = [h for h, _t in wins if h not in known]
+        if cand:
+            force_foreground(cand[0])
             return True
+    return False
+
+
+def open_in_explorer(path, select=False):
+    """打开文件夹 / 定位文件, 并**直接把它顶到最前**, 不用再点任务栏。
+
+    select=True 时: 传目录也走「/select」方式 —— 打开它所在的父目录并把这一项
+    高亮选中(玩家按 F2 就能改名, 不用自己一层层翻进去找)。
+    """
+    if not path or not os.path.exists(path):
+        return False
+    p = os.path.normpath(path)
+    is_file = os.path.isfile(p)
+    # /select 需要"要被选中的那个东西", 文件就是文件本身, 目录就是目录本身
+    sel_target = p if (is_file or select) else None
+    hint = os.path.basename(os.path.dirname(p)) if is_file else os.path.basename(p)
+    try:
+        known = set(h for h, _t in _explorer_windows())
+    except Exception:
+        known = set()
+    try:
+        if sel_target:
+            # 打开父目录并选中它(等价于在资源管理器里点一下这个文件夹) —— 会复用已有窗口
+            subprocess.Popen(["explorer", "/select,", sel_target])
+        else:
+            # 等价于"双击这个文件夹": 已开着就复用那个窗口并激活它
+            os.startfile(p)  # noqa
+    except Exception:
+        try:
+            subprocess.Popen(["explorer", p])
         except Exception:
             return False
+    threading.Thread(target=_focus_explorer_async, args=(hint, known),
+                     daemon=True).start()
+    return True
 
 
 # ===========================================================================
@@ -1725,21 +2971,186 @@ def find_browser():
     return None
 
 
-def open_app_window(url, size="1320,880"):
-    """用 Edge/Chrome 的 --app 模式开独立窗口, 并强制直连绕过系统代理。"""
+def screen_size():
+    """主屏逻辑尺寸(像素)。本进程不声明 DPI 感知, 拿到的就是浏览器
+    --window-size 认的那套坐标。"""
+    if not _WIN:
+        return 0, 0
+    try:
+        import ctypes
+        u = ctypes.windll.user32
+        return int(u.GetSystemMetrics(0)), int(u.GetSystemMetrics(1))
+    except Exception:
+        return 0, 0
+
+
+def centered_position(size_str):
+    """把一个 "W,H" 换算成居中的 "X,Y"。"""
+    try:
+        w, h = [int(x) for x in str(size_str).split(",")[:2]]
+    except Exception:
+        return ""
+    sw, sh = screen_size()
+    if sw < 200 or sh < 200:
+        return ""
+    return "%d,%d" % (max(0, (sw - w) // 2), max(0, (sh - h) // 2))
+
+
+def window_geometry(size_cfg):
+    """算出窗口怎么摆。返回 (是否最大化, --window-size, --window-position)。
+
+    默认 / auto / max / fullscreen -> **打开就全屏(最大化)**;
+    用户自己写死尺寸(如 "1000,700") -> 用这个尺寸, 位置居中。"""
+    cfg = (size_cfg or "").strip()
+    low = cfg.lower()
+    if not cfg or low in ("auto", "max", "maximized", "full", "fullscreen") \
+            or cfg == "1320,880":          # 1320,880 = 老版本的默认值, 也当自适应
+        return True, "", ""
+    if "," in cfg:
+        return False, cfg, centered_position(cfg)
+    return False, cfg, ""
+
+
+def _maximize_app_window_async(tries=60):
+    """等浏览器把窗口开出来, 再用 Win32 把它最大化 —— 双保险:
+    --start-maximized 有些 Edge/Chrome 版本在 --app 模式下不认。"""
+    before = set()
+    try:
+        before = set(h for h, _t in _chrome_app_windows())
+    except Exception:
+        pass
+    for _ in range(max(1, tries)):
+        time.sleep(0.15)
+        try:
+            wins = _chrome_app_windows()
+        except Exception:
+            continue
+        cand = [h for h, t in wins if t.startswith(APP_NAME) and h not in before]
+        if not cand:
+            cand = [h for h, t in wins if t.startswith(APP_NAME)]
+        if cand:
+            hwnd = cand[0]
+            try:
+                import ctypes
+                ctypes.windll.user32.ShowWindow(hwnd, 3)   # SW_MAXIMIZE
+            except Exception:
+                pass
+            force_foreground(hwnd)
+            return True
+    return False
+
+
+def _console_hwnd():
+    """拿到本进程的控制台窗口句柄(没有控制台返回 0)。"""
+    if not _WIN:
+        return 0
+    try:
+        import ctypes
+        return ctypes.windll.kernel32.GetConsoleWindow()
+    except Exception:
+        return 0
+
+
+def hide_console(delay=1.6):
+    """把那个黑色命令窗口藏起来(不销毁, 日志照写)。
+
+    为什么要 delay: 服务刚起来时还要往控制台打印几行启动信息, 等窗口和浏览器都
+    起来之后再藏, 用户就看不到闪烁了。日志同时写进 DATA_DIR\\zzmi.log, 出问题时
+    可以手动跑 `--console` 或在界面里点「显示日志」把它调回来。
+    """
+    if not _WIN:
+        return False
+    if os.environ.get("ZZMI_KEEP_CONSOLE") == "1":
+        return False
+    time.sleep(delay)
+    hwnd = _console_hwnd()
+    if not hwnd:
+        return False
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32
+        user32.ShowWindow(hwnd, 0)          # SW_HIDE
+        return True
+    except Exception:
+        return False
+
+
+def show_console():
+    """把命令窗口重新显示出来(用于排查问题)。"""
+    hwnd = _console_hwnd()
+    if not hwnd:
+        return False
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32
+        user32.ShowWindow(hwnd, 5)          # SW_SHOW
+        user32.SetForegroundWindow(hwnd)
+        return True
+    except Exception:
+        return False
+
+
+def _chrome_app_windows():
+    """列出本程序 app 窗口 (class=Chrome_WidgetWin_1): [(hwnd, 标题), ...]"""
+    if not _WIN:
+        return []
+    import ctypes
+    user32 = ctypes.windll.user32
+    out = []
+    proto = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p)
+    GetClassNameW = user32.GetClassNameW
+    GetWindowTextW = user32.GetWindowTextW
+
+    def _cb(hwnd, _l):
+        try:
+            buf = ctypes.create_unicode_buffer(64)
+            GetClassNameW(hwnd, buf, 64)
+            if buf.value == "Chrome_WidgetWin_1":
+                t = ctypes.create_unicode_buffer(260)
+                GetWindowTextW(hwnd, t, 260)
+                out.append((hwnd, t.value))
+        except Exception:
+            pass
+        return 1
+
+    try:
+        user32.EnumWindows(proto(_cb), None)
+    except Exception:
+        pass
+    return out
+
+
+def open_app_window(url, size=None):
+    """用 Edge/Chrome 的 --app 模式开独立窗口。
+    默认**打开就全屏**(最大化); 设置里把 win_size 写成 1000,700 才用固定尺寸(居中)。"""
     b = find_browser()
+    maximize, size, pos = window_geometry(size)
     if b:
-        args = [b,
-                "--app=" + url,
-                "--window-size=" + size,
-                "--proxy-server=direct://",
-                "--proxy-bypass-list=<-loopback>",
-                "--no-first-run",
-                "--no-default-browser-check",
-                "--disable-features=Translate"]
+        args = [b, "--app=" + url]
+        if maximize:
+            args.append("--start-maximized")
+            sw, sh = screen_size()
+            if sw >= 400 and sh >= 300:
+                # 万一某些版本不认 start-maximized, 也让它铺满整块屏
+                args.append("--window-size=%d,%d" % (sw, sh))
+                args.append("--window-position=0,0")
+        else:
+            if size:
+                args.append("--window-size=" + size)
+            if pos:
+                args.append("--window-position=" + pos)
+        args += ["--proxy-server=direct://",
+                 "--proxy-bypass-list=<-loopback>",
+                 "--no-first-run",
+                 "--no-default-browser-check",
+                 "--disable-features=Translate"]
         try:
             subprocess.Popen(args, close_fds=True)
-            log("已用独立窗口打开:", os.path.basename(b))
+            log("已用独立窗口打开: %s  %s" % (os.path.basename(b),
+                                            "全屏" if maximize else ("尺寸=" + size)))
+            if maximize:
+                threading.Thread(target=_maximize_app_window_async,
+                                 daemon=True).start()
             return True
         except Exception as ex:
             log("独立窗口启动失败, 改用默认浏览器:", ex)
@@ -1755,11 +3166,15 @@ SLIM_DROP = ("sub_dirs", "hashes", "ini_roots", "char_auto")
 
 
 class App(object):
+    # v1.5.10: 界面窗口关闭后等这么多秒再退出(给 F5 刷新留时间, 刷新会先 hello)
+    AUTOQUIT_DELAY = 5.0
+
     def __init__(self):
         self.cfg = dict(DEFAULT_CONFIG)
         self.scan = ScanResult()
         self.lock = threading.RLock()
         self.token = os.urandom(9).hex()
+        self._autoquit_timer = None
         self.detect_report = {"done": True, "step": "", "found": None,
                               "candidates": [], "message": ""}
         self.last_error = ""
@@ -1792,6 +3207,33 @@ class App(object):
     def save_config(self):
         write_json(CONFIG_PATH, self.cfg)
 
+    # ---- v1.5.10: 界面关闭 -> 自动退出 ---------------------------------
+    def cancel_autoquit(self):
+        with self.lock:
+            t = self._autoquit_timer
+            if t:
+                t.cancel()
+                self._autoquit_timer = None
+
+    def schedule_autoquit(self):
+        with self.lock:
+            self.cancel_autoquit()
+            t = threading.Timer(self.AUTOQUIT_DELAY, self._autoquit_fire)
+            t.daemon = True
+            self._autoquit_timer = t
+            t.start()
+
+    def _autoquit_fire(self):
+        self._autoquit_timer = None
+        log("界面窗口已关闭, %g 秒内没有重新打开, 程序自动退出"
+            % self.AUTOQUIT_DELAY)
+        try:
+            if self.httpd:
+                self.httpd.server_close()
+        except Exception:
+            pass
+        os._exit(0)
+
     def set_root(self, zzmi_root, importer=None, mods_dir=None):
         zzmi_root = (zzmi_root or "").strip().strip('"').rstrip("\\/")
         if not os.path.isdir(zzmi_root):
@@ -1813,16 +3255,55 @@ class App(object):
         exe = game_exe_from_launcher_config(info.get("config_json"), imp)
         if exe:
             self.cfg["game_exe"] = exe
-        self.cfg["libraries"] = detect_libraries(zzmi_root, self.cfg["mods_dir"])
+        # v1.5.5: 换根目录时保留玩家自己登记的仓库 —— 只把新根下已经不存在的剪掉,
+        # 再把这次探测到的合并进去(探测只是"顺手发现", 不会顶掉玩家的列表)
+        keep = [l for l in (self.cfg.get("libraries") or [])
+                if os.path.isdir(safe_join(zzmi_root, l) or "")]
+        for d in detect_libraries(zzmi_root, self.cfg["mods_dir"]):
+            if d not in keep:
+                keep.append(d)
+        self.cfg["libraries"] = keep
+        # 锁定的绝对路径仓库(在别的盘)跟根目录无关, 原样保留
         self.save_config()
         invalidate_lib_cache()
         return True, "已保存"
 
+    def meta(self):
+        return {"pinned_mods": self.cfg.get("pinned_mods") or [],
+                "pinned_cats": self.cfg.get("pinned_cats") or [],
+                "pinned_chars": self.cfg.get("pinned_chars") or [],
+                "usage": self.cfg.get("usage") or {}}
+
+    def touch_usage(self, ids, exclude=None):
+        """启用 / 切变体时记录一次「使用时间」, 供默认排序使用。
+        exclude 里是批量操作失败的 id, 不算用过。只写配置, 不动 mod 文件。"""
+        bad = set(exclude or [])
+        now = time.time()
+        scan = getattr(self, "scan", None)
+        with self.lock:
+            u = self.cfg.setdefault("usage", {})
+            changed = False
+            for i in (ids or []):
+                if not i or i in bad:
+                    continue
+                if scan is not None and getattr(scan, "by_id", None) \
+                        and i not in scan.by_id:
+                    continue  # 不认识的历史 id 不记, 防表被垃圾撑大
+                u[i] = now
+                changed = True
+            if not changed:
+                return
+            if len(u) > 2000:  # 防膨胀: 只保留最近 2000 条
+                keep = sorted(u.items(), key=lambda kv: -kv[1])[:2000]
+                self.cfg["usage"] = dict(keep)
+            self.save_config()
+
     def rescan(self):
         with self.lock:
             md = find_mods_dir(self.cfg)
-            self.scan = scan_mods(md, self.cfg.get("char_overrides") or {}) \
-                if md else ScanResult()
+            self.scan = scan_mods(md, self.cfg.get("char_overrides") or {},
+                                  self.cfg.get("thumb_overrides") or {},
+                                  self.meta()) if md else ScanResult()
             if self.scan.thumb_srcs:
                 n = enqueue_thumbs(self.scan.thumb_srcs)
                 if n:
@@ -1850,12 +3331,18 @@ class App(object):
             "importer": self.cfg.get("importer", "ZZMI"),
             "game_exe": self.cfg.get("game_exe", ""),
             "libraries": self.cfg.get("libraries", []),
+            "libs_abs": self.cfg.get("libs_abs", []),
+            "custom_dirs": self.cfg.get("custom_dirs", []),
             "theme": self.cfg.get("theme", "dark"),
             "hide_preview": bool(self.cfg.get("hide_preview")),
             "hotkey": self.cfg.get("hotkey", "F9"),
             "hotkey_ok": self.hotkey.ok is not False,
-            "win_size": self.cfg.get("win_size", "1320,880"),
+            "update_repo": self.cfg.get("update_repo", UPDATE_REPO),
+            "win_size": self.cfg.get("win_size") or "auto",
             "stats": s.stats, "categories": s.categories, "chars": s.chars,
+            "pinned_mods": self.cfg.get("pinned_mods") or [],
+            "pinned_cats": self.cfg.get("pinned_cats") or [],
+            "pinned_chars": self.cfg.get("pinned_chars") or [],
             "conflicts": s.conflicts, "presets": presets_load(),
             "journal": [{"ts": r.get("ts"), "kind": r.get("kind"),
                          "name": r.get("name") or os.path.basename(r.get("src") or ""),
@@ -1914,6 +3401,46 @@ def run_detection(app):
         app.detect_report = {"done": True, "step": "", "found": None,
                              "candidates": [],
                              "message": "自动查找出错: %s" % ex}
+
+
+def _parse_ver(s):
+    """把 '1.4.6' / 'v1.4' / '1.4.6.2' 解析成 (主, 次, 修订) 三元组, 便于比较。"""
+    m = re.search(r"(\d+)(?:\.(\d+))?(?:\.(\d+))?", str(s or ""))
+    if not m:
+        return None
+    return (int(m.group(1)), int(m.group(2) or 0), int(m.group(3) or 0))
+
+
+def check_update(current_version, repo=None):
+    """查 GitHub 最新 release, 判断是否出新版本。
+    返回 {ok, update_available, latest, current, url, error}。"""
+    repo = (repo or "").strip() or UPDATE_REPO
+    if not repo:
+        return {"ok": False, "error": "未配置更新仓库"}
+    url = "https://api.github.com/repos/%s/releases/latest" % repo
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "ZZMI-Mod-Manager",
+                     "Accept": "application/vnd.github+json"})
+        # 绕过系统代理直连(GitHub 外部访问不需要本机那个代理, 与仓库里其他 GitHub 脚本一致)
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        with opener.open(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode("utf-8", "replace"))
+        tag = (data.get("tag_name") or "").lstrip("vV")
+        html = data.get("html_url", "")
+        if not tag:
+            return {"ok": True, "update_available": False, "latest": "",
+                    "current": current_version,
+                    "url": html or ("https://github.com/%s/releases" % repo)}
+        latest = _parse_ver(tag)
+        cur = _parse_ver(current_version)
+        avail = latest is not None and (cur is None or latest > cur)
+        return {"ok": True, "update_available": avail, "latest": tag,
+                "current": current_version,
+                "url": html or ("https://github.com/%s/releases" % repo)}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -1982,6 +3509,14 @@ class Handler(BaseHTTPRequestHandler):
                                           "image/jpeg")
                 except OSError:
                     return self._json({"error": "not found"}, 404)
+            if path == "/favicon.ico":
+                # v1.5.9: 绝区零图标。浏览器请求 favicon 不带 token,
+                # 所以放在鉴权之前, 应用窗口模式的窗口/任务栏图标也靠它
+                try:
+                    with open(ICON_PATH, "rb") as f:
+                        return self._send(200, f.read(), "image/x-icon")
+                except OSError:
+                    return self._json({"error": "not found"}, 404)
             if not self._ok(qs):
                 return self._json({"error": "unauthorized"}, 403)
             if path == "/api/state":
@@ -1990,9 +3525,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(self.detail(qs.get("id") or ""))
             if path == "/api/library":
                 return self._json(self.library_list())
+            if path == "/api/images":
+                return self._json(self.list_images(qs.get("id") or ""))
             if path == "/api/autodetect":
                 self.spawn_detect()
                 return self._json({"ok": True})
+            if path == "/api/update_check":
+                repo = self.app.cfg.get("update_repo") or UPDATE_REPO
+                return self._json(check_update(VERSION, repo))
             if path == "/thumb":
                 return self.serve_thumb(qs)
             return self._json({"error": "not found"}, 404)
@@ -2010,52 +3550,191 @@ class Handler(BaseHTTPRequestHandler):
             app = self.app
 
             if act == "toggle":
-                r = batch_toggle(app.mods_dir(), app.find_entries(body.get("ids")),
+                ids = body.get("ids")
+                r = batch_toggle(app.mods_dir(), app.find_entries(ids),
                                  bool(body.get("enabled")))
+                if body.get("enabled"):
+                    app.touch_usage(ids, exclude=[d["id"] for d in r["details"]])
                 app.rescan()
                 return self._json({"result": r, "state": app.state()})
 
             if act == "scope":
-                r = batch_toggle(app.mods_dir(), app.scope_entries(body.get("scope")),
-                                 bool(body.get("enabled")))
+                ent = app.scope_entries(body.get("scope"))
+                r = batch_toggle(app.mods_dir(), ent, bool(body.get("enabled")))
+                if body.get("enabled"):
+                    app.touch_usage([e["id"] for e in ent],
+                                    exclude=[d["id"] for d in r["details"]])
                 app.rescan()
                 return self._json({"result": r, "state": app.state()})
 
             if act == "dir_toggle":
-                ok, msg = do_toggle_dir(app.mods_dir(), body.get("rel") or "",
-                                        bool(body.get("enabled")))
+                # v1.5.8: do_toggle_dir 也可能返回 3 元组 (重名自动加序号)
+                res = do_toggle_dir(app.mods_dir(), body.get("rel") or "",
+                                    bool(body.get("enabled")))
+                ok, msg = res[0], res[1]
+                extra = res[2] if len(res) == 3 else None
+                if ok and body.get("enabled") and body.get("id"):
+                    app.touch_usage([body["id"]])
                 app.rescan()
-                return self._json({"ok": ok, "msg": msg, "state": app.state()})
+                out = {"ok": ok, "msg": msg, "state": app.state()}
+                if ok and extra and extra.get("renamed"):
+                    out["renamed"] = True
+                    out["target_name"] = extra.get("target_name")
+                    out["orig_name"] = extra.get("orig_name")
+                    out["seq"] = extra.get("seq")
+                return self._json(out)
 
             if act == "component_toggle":
                 e = app.scan.by_id.get(body.get("id") or "")
                 md = app.mods_dir()
-                root = resolve_rel_dir(md, e["id"]) if e else None
+                root = entry_root(md, e)
                 if not e or not root or not os.path.isdir(root):
                     return self._json({"ok": False, "msg": "找不到该 mod"})
                 ok, msg = do_toggle_file(root, body.get("rel") or "",
                                          bool(body.get("enabled")))
+                if ok and body.get("enabled"):
+                    app.touch_usage([e["id"]])
                 app.rescan()
                 return self._json({"ok": ok, "msg": msg, "state": app.state()})
 
             if act == "variant_select":
                 e = app.scan.by_id.get(body.get("id") or "")
                 md = app.mods_dir()
-                root = resolve_rel_dir(md, e["id"]) if e else None
+                root = entry_root(md, e)
                 if not e or not root or not os.path.isdir(root):
                     return self._json({"ok": False, "msg": "找不到该 mod"})
                 ok, msg = do_variant_select(root, body.get("rel") or "")
+                if ok:
+                    app.touch_usage([e["id"]])
                 app.rescan()
                 return self._json({"ok": ok, "msg": msg, "state": app.state()})
 
             if act == "cycle_set":
-                # v1.4.0 起移除变体写入功能: 工具绝不修改用户 ini。
-                # 变体一律在游戏内按绑定键切换, 界面只做只读提示。
+                # v1.4.0 起移除变体取值写入: 默认变体请在游戏内按绑定键切换。
                 return self._json({"ok": False,
                                    "msg": "变体写入功能已移除; 请在游戏内按绑定键切换变体"})
 
+            if act == "cycle_rekey":
+                # v1.5.4 变体一键改键: 只改 [Key*] cycle 段的 key = 行,
+                # 字节级就地替换 + 备份 + journal(玩家明确输入了新按键才动手)
+                e = app.scan.by_id.get(body.get("id") or "")
+                md = app.mods_dir()
+                root = entry_root(md, e)
+                if not e or not root or not os.path.isdir(root):
+                    return self._json({"ok": False, "msg": "找不到该 mod"})
+                if not (e.get("path") or "").strip():
+                    # 散落在 Mods 根目录的 ini: 根目录 = 整个 Mods, 不能拿去扫
+                    return self._json({"ok": False,
+                                       "msg": "散落在 Mods 根目录的 ini 暂不支持改键"})
+                ok, msg = do_cycle_rekey(root, body.get("var") or "",
+                                         body.get("key") or "")
+                return self._json({"ok": ok, "msg": msg})
+
+            if act == "add_lib":
+                """把一个文件夹加成仓库。两种:
+                · rel 形式(相对 ZZMI 根目录) -> 记进 cfg["libraries"]
+                · abs 形式(任意盘)          -> 记进 cfg["libs_abs"]
+                create=1 时目录不存在会自动创建。只写配置, 不搬任何文件。"""
+                raw = (body.get("lib") or body.get("path") or "").strip()
+                if not raw:
+                    return self._json({"ok": False, "msg": "没有指定仓库路径"})
+                root = app.cfg.get("zzmi_root") or ""
+                want_create = bool(body.get("create"))
+                if is_abs_path(raw):
+                    p = os.path.abspath(strip_abs_prefix(raw))
+                    if not p or os.path.dirname(p) == p:
+                        return self._json({"ok": False,
+                                           "msg": "路径不合法(不能直接用盘符根目录)"})
+                    if not os.path.isdir(p):
+                        if not want_create:
+                            return self._json({"ok": False,
+                                               "msg": "找不到这个文件夹: %s" % p})
+                        try:
+                            os.makedirs(p, exist_ok=True)
+                        except Exception as ex:
+                            return self._json({"ok": False,
+                                               "msg": "建不了这个文件夹: %s" % ex})
+                    cur = [d for d in (app.cfg.get("libs_abs") or [])
+                           if os.path.abspath(d) != p]
+                    cur.insert(0, p)
+                    app.cfg["libs_abs"] = cur
+                    name = os.path.basename(p.rstrip("\\/")) or p
+                    msg = "已把「%s」锁定成仓库" % name
+                else:
+                    rel = norm_rel(raw)
+                    if not rel:
+                        return self._json({"ok": False, "msg": "仓库名不合法"})
+                    p = safe_join(root, rel)
+                    if not p or not root or not os.path.isdir(root):
+                        return self._json({"ok": False,
+                                           "msg": "还没设置 ZZMI 根目录"})
+                    if not os.path.isdir(p):
+                        if not want_create:
+                            return self._json({"ok": False,
+                                               "msg": "找不到这个仓库目录: %s" % rel})
+                        try:
+                            os.makedirs(p, exist_ok=True)
+                        except Exception as ex:
+                            return self._json({"ok": False,
+                                               "msg": "建不了这个仓库: %s" % ex})
+                    libs = list(app.cfg.get("libraries") or [])
+                    if rel not in libs:
+                        libs.append(rel)
+                    app.cfg["libraries"] = libs
+                    msg = "已把「%s」加成仓库" % rel
+                app.save_config()
+                invalidate_lib_cache()
+                return self._json({"ok": True, "msg": msg, "state": app.state()})
+
+            if act == "del_lib":
+                # 从仓库/自定义文件夹下拉列表里移除一项 —— 只动配置,
+                # 磁盘上的文件夹和 mod 一个都不会删
+                lib = (body.get("lib") or "").strip()
+                if not lib:
+                    return self._json({"ok": False, "msg": "没有指定要删除的仓库"})
+                if is_abs_path(lib):
+                    p = os.path.abspath(strip_abs_prefix(lib))
+                    # 锁定的仓库(libs_abs) 和「自定义文件夹」(custom_dirs) 都可能
+                    before = list(app.cfg.get("libs_abs") or [])
+                    after = [d for d in before if os.path.abspath(d) != p]
+                    if len(after) != len(before):
+                        app.cfg["libs_abs"] = after
+                    cd_before = list(app.cfg.get("custom_dirs") or [])
+                    cd_after = [d for d in cd_before if os.path.abspath(d) != p]
+                    if len(cd_after) != len(cd_before):
+                        app.cfg["custom_dirs"] = cd_after
+                    if len(after) == len(before) and \
+                            len(cd_after) == len(cd_before):
+                        return self._json({"ok": False,
+                                           "msg": "列表里没有这个文件夹"})
+                    name = p
+                else:
+                    libn = norm_rel(lib)
+                    libs = list(app.cfg.get("libraries") or [])
+                    if libn not in libs:
+                        return self._json({"ok": False,
+                                           "msg": "列表里没有这个仓库"})
+                    libs.remove(libn)
+                    app.cfg["libraries"] = libs
+                    name = libn
+                app.save_config()
+                invalidate_lib_cache()
+                return self._json({"ok": True,
+                                   "msg": "已从列表移除「%s」(文件夹本身没有删)"
+                                          % name,
+                                   "state": app.state()})
+
             if act == "set_char":
                 return self._json(self.set_char(body))
+
+            if act == "set_preview":
+                return self._json(self.set_preview(body))
+
+            if act == "pin":
+                return self._json(self.pin_action(body))
+
+            if act == "move_batch":
+                return self._json(self.move_batch(body))
 
             if act == "preset":
                 return self._json(self.preset_action(body))
@@ -2081,29 +3760,61 @@ class Handler(BaseHTTPRequestHandler):
                 threading.Timer(0.3, lambda: os._exit(0)).start()
                 return
 
+            if act == "hello":
+                # v1.5.10: 页面加载(含 F5 刷新)先打招呼, 取消还没执行的自动退出
+                app.cancel_autoquit()
+                return self._json({"ok": True})
+
+            if act == "bye":
+                # v1.5.10: 界面窗口关了(pagehide) -> 延迟几秒自动退出,
+                # 不再留一个看不见又杀不掉的后台进程(提权进程普通方式杀不掉)
+                app.schedule_autoquit()
+                return self._json({"ok": True,
+                                   "msg": "界面已关闭, 程序即将自动退出"})
+
             if act == "reveal":
                 p = body.get("path") or ""
                 if body.get("id"):
                     e = app.scan.by_id.get(body["id"])
                     if e:
-                        p = resolve_rel_dir(app.mods_dir(), e["id"]) or ""
+                        p = entry_root(app.mods_dir(), e) or ""
                 elif p and not os.path.isabs(p):
                     p = os.path.join(app.mods_dir(), p)
                 ok = open_in_explorer(p)
                 return self._json({"ok": ok, "msg": "" if ok else "路径不存在"})
 
+            if act == "console":
+                # v1.5.7: 命令窗口默认藏起来; 需要看日志时可以调回来
+                if body.get("show"):
+                    ok = show_console()
+                    return self._json({"ok": ok,
+                                       "msg": "命令窗口已显示" if ok
+                                              else "没有找到命令窗口"})
+                ok = hide_console(0)
+                return self._json({"ok": ok,
+                                   "msg": "命令窗口已隐藏" if ok
+                                          else "没有找到命令窗口"})
+
             if act == "openroot":
-                return self._json({"ok": open_in_explorer(body.get("path")
-                                                          or app.mods_dir())})
+                return self._json({"ok": open_in_explorer(
+                    body.get("path") or app.mods_dir(),
+                    select=bool(body.get("select")))})
 
             if act == "move":
                 root = app.cfg.get("zzmi_root") or ""
                 md = app.mods_dir()
                 bases = {"mods": md, "root": root}
-                ok, msg = do_move(bases.get(body.get("src_base"), md),
-                                  body.get("src_rel") or "",
-                                  bases.get(body.get("dst_base"), root),
-                                  body.get("dst_rel") or "")
+                # 仓库可以锁在任意盘(不在 ZZMI 目录下), 这时用 *_abs 直给绝对路径
+                src_base = body.get("src_abs") or bases.get(
+                    body.get("src_base"), md)
+                dst_base = body.get("dst_abs") or bases.get(
+                    body.get("dst_base"), root)
+                if body.get("src_abs"):
+                    src_base = os.path.abspath(strip_abs_prefix(src_base))
+                if body.get("dst_abs"):
+                    dst_base = os.path.abspath(strip_abs_prefix(dst_base))
+                ok, msg = do_move(src_base, body.get("src_rel") or "",
+                                  dst_base, body.get("dst_rel") or "")
                 invalidate_lib_cache()
                 app.rescan()
                 return self._json({"ok": ok, "msg": msg, "state": app.state()})
@@ -2112,14 +3823,74 @@ class Handler(BaseHTTPRequestHandler):
                 e = app.scan.by_id.get(body.get("id") or "")
                 if not e:
                     return self._json({"ok": False, "msg": "找不到该 mod"})
-                ok, msg = do_rename(app.mods_dir(), e, body.get("name"))
+                res = do_rename(app.mods_dir(), e, body.get("name"))
+                # v1.5.8: 成功时是 3 元组 (True, msg, {renamed, target_name, seq})
+                if len(res) == 3:
+                    ok, msg, extra = res
+                else:
+                    ok, msg, extra = res[0], res[1], None
                 app.rescan()
-                return self._json({"ok": ok, "msg": msg, "state": app.state()})
+                out = {"ok": ok, "msg": msg, "state": app.state()}
+                if ok and extra and extra.get("renamed"):
+                    out["renamed"] = True
+                    out["target_name"] = extra.get("target_name")
+                    out["orig_name"] = extra.get("orig_name")
+                    out["seq"] = extra.get("seq")
+                return self._json(out)
+
+            if act == "list_dirs":
+                """浏览文件夹(给「自定义文件夹」挑选目标用)。只读。"""
+                p = (body.get("path") or "").strip()
+                drives = list_drives()
+                quick = self._quick_folders()
+                if not p:
+                    return self._json({"ok": True, "path": "", "parent": "",
+                                       "dirs": [], "drives": drives,
+                                       "quick": quick})
+                p = os.path.abspath(strip_abs_prefix(p))
+                if not os.path.isdir(p):
+                    return self._json({"ok": False, "msg": "文件夹不存在: %s" % p})
+                try:
+                    names = sorted(os.listdir(p))
+                except OSError as ex:
+                    return self._json({"ok": False, "msg": "读不了这个文件夹: %s" % ex})
+                dirs = []
+                for n in names:
+                    if n.lower() in ("desktop.ini", "$recycle.bin",
+                                     "system volume information"):
+                        continue
+                    fp = os.path.join(p, n)
+                    try:
+                        if not os.path.isdir(fp):
+                            continue
+                        cnt = len(os.listdir(fp))
+                    except OSError:
+                        continue
+                    dirs.append({"name": n, "path": fp, "count": cnt})
+                dirs.sort(key=lambda d: d["name"].lower())
+                parent = os.path.dirname(p)
+                if parent == p:
+                    parent = ""
+                return self._json({"ok": True, "path": p, "parent": parent,
+                                   "dirs": dirs[:500], "drives": drives,
+                                   "quick": quick})
 
             if act == "mkdir":
-                base = (app.mods_dir() if body.get("base") == "mods"
-                        else app.cfg.get("zzmi_root") or "")
-                p = safe_join(base, body.get("rel") or "")
+                if body.get("base") == "abs" or is_abs_path(
+                        body.get("path") or ""):
+                    # 在任意位置建新文件夹(「自定义文件夹」里点「新建」时用)
+                    p = os.path.abspath(strip_abs_prefix(
+                        (body.get("path") or "").strip()))
+                    if not p or os.path.dirname(p) == p:
+                        return self._json({"ok": False, "msg": "路径不合法"})
+                    if not os.path.isdir(os.path.dirname(p)):
+                        return self._json({"ok": False,
+                                           "msg": "上级文件夹不存在: %s"
+                                                  % os.path.dirname(p)})
+                else:
+                    base = (app.mods_dir() if body.get("base") == "mods"
+                            else app.cfg.get("zzmi_root") or "")
+                    p = safe_join(base, body.get("rel") or "")
                 if not p:
                     return self._json({"ok": False, "msg": "路径不合法"})
                 try:
@@ -2132,6 +3903,28 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             log("POST error:\n" + traceback.format_exc())
             return self._json({"error": "internal"}, 500)
+
+    def _quick_folders(self):
+        """「自定义文件夹」里的快捷入口: ZZMI 根目录 / Mods / 桌面 / 文档 / 下载。"""
+        out = []
+        try:
+            root = self.app.cfg.get("zzmi_root") or ""
+            if root and os.path.isdir(root):
+                out.append({"label": "ZZMI 根目录", "path": root})
+            md = self.app.mods_dir()
+            if md and os.path.isdir(md) and os.path.abspath(md) != \
+                    os.path.abspath(root or " "):
+                out.append({"label": "Mods", "path": md})
+        except Exception:
+            pass
+        home = os.path.expanduser("~")
+        for label, sub in (("桌面", "Desktop"), ("文档", "Documents"),
+                           ("下载", "Downloads")):
+            for cand in (os.path.join(home, sub), os.path.join(home, label)):
+                if os.path.isdir(cand):
+                    out.append({"label": label, "path": cand})
+                    break
+        return out
 
     def serve_ui(self):
         try:
@@ -2146,25 +3939,34 @@ class Handler(BaseHTTPRequestHandler):
 
     def serve_thumb(self, qs):
         rel = qs.get("p") or ""
+        full = (qs.get("full") or "") in ("1", "true", "yes")   # 「放大看大图」送原图
         root = self.app.scan.root or self.app.mods_dir()
         if not rel or not root:
             return self._send(404, b"", "text/plain")
         p = safe_join(root, rel)
         if not p or not os.path.isfile(p):
             return self._send(404, b"", "text/plain")
-        tp = cached_thumb(p)
-        if not tp:
-            _thumb_q.put(p)
-            tp = p
+        # 只送真正的图片: .dds / .ib 这类游戏贴图/模型资源一律拒绝
+        low = p.lower()
+        if low.endswith(NEVER_IMAGE_EXTS) or not low.endswith(IMAGE_EXTS):
+            return self._send(415, b"", "text/plain")
+        if full:
+            tp, cache, cap = p, "max-age=300", 30 * 1024 * 1024
+        else:
+            tp = cached_thumb(p) or p
+            if tp == p:
+                _thumb_q.put(p)
+            cache, cap = "max-age=86400", 14 * 1024 * 1024
         try:
-            if os.path.getsize(tp) > 14 * 1024 * 1024:
+            if os.path.getsize(tp) > cap:
                 return self._send(413, b"", "text/plain")
-            with open(tp, "rb") as f:
-                data = f.read()
+            data = read_bytes_shared(tp, cap=cap + 1)   # 不阻塞用户改名/搬运
+            if len(data) > cap:
+                return self._send(413, b"", "text/plain")
         except Exception:
             return self._send(500, b"", "text/plain")
         ctype = mimetypes.guess_type(tp)[0] or "application/octet-stream"
-        return self._send(200, data, ctype, extra={"Cache-Control": "max-age=86400"})
+        return self._send(200, data, ctype, extra={"Cache-Control": cache})
 
     def detail(self, mid):
         app = self.app
@@ -2172,7 +3974,7 @@ class Handler(BaseHTTPRequestHandler):
         if not e:
             return {"error": "not found"}
         md = app.mods_dir()
-        abs_root = resolve_rel_dir(md, e["id"]) or os.path.join(md, e["path"])
+        abs_root = entry_root(md, e) or os.path.join(md, e["path"])
         comp = analyze_components(abs_root) if os.path.isdir(abs_root) \
             else {"components": [], "groups": []}
         inis = []
@@ -2201,8 +4003,12 @@ class Handler(BaseHTTPRequestHandler):
             return _lib_cache["data"]
         root = app.cfg.get("zzmi_root") or ""
         out = []
-        for lib in app.cfg.get("libraries") or []:
-            p = safe_join(root, lib)
+        # 仓库 = ZZMI 目录下的相对仓库 + 玩家锁定的任意绝对路径仓库
+        targets = [(lib, safe_join(root, lib), False)
+                   for lib in (app.cfg.get("libraries") or [])]
+        targets += [(d, os.path.abspath(d), True)
+                    for d in (app.cfg.get("libs_abs") or []) if d]
+        for lib, p, is_abs in targets:
             items = []
             if p and os.path.isdir(p):
                 for name in sorted(os.listdir(p), key=lambda s: s.lower()):
@@ -2219,8 +4025,11 @@ class Handler(BaseHTTPRequestHandler):
                                 pass
                     items.append({"name": name, "size": sz, "size_h": human_size(sz),
                                   "files": n, "disabled": is_disabled_name(name)})
-            out.append({"name": lib, "path": p or "", "items": items,
-                        "count": len(items)})
+            name = lib if not is_abs else (os.path.basename(p.rstrip("\\/")) or p)
+            out.append({"name": name, "path": p or "", "items": items,
+                        "count": len(items), "abs": is_abs,
+                        "ref": ("abs:" + p) if is_abs else lib,
+                        "exists": bool(p and os.path.isdir(p))})
         md = app.mods_dir()
         tops = []
         if md and os.path.isdir(md):
@@ -2250,6 +4059,90 @@ class Handler(BaseHTTPRequestHandler):
         app.rescan()
         return {"ok": True, "msg": msg, "state": app.state()}
 
+    def _mod_root(self, mid):
+        """按 mod id 找到磁盘上的 mod 文件夹绝对路径。"""
+        app = self.app
+        e = app.scan.by_id.get(mid or "")
+        if not e:
+            return None, None
+        md = app.mods_dir()
+        abs_root = entry_root(md, e) or os.path.join(md, e["path"])
+        return e, abs_root
+
+    def list_images(self, mid):
+        """列出该 mod 文件夹里所有能当封面的图片(递归, 明确不含 .dds),
+        供「切换预览图」让用户自己挑。"""
+        e, abs_root = self._mod_root(mid)
+        if not e:
+            return {"ok": False, "msg": "找不到该 mod"}
+        md = self.app.mods_dir()
+        cur_rel = ""
+        if e.get("thumb"):
+            cur_abs = os.path.join(md, e["thumb"].replace("/", os.sep))
+            try:
+                cur_rel = norm_rel(os.path.relpath(cur_abs, abs_root))
+            except ValueError:
+                cur_rel = ""
+        ov = self.app.cfg.get("thumb_overrides") or {}
+        imgs = iter_mod_images(abs_root)
+        for im in imgs:
+            # 另外给一份「相对 Mods 根」的路径, 界面直接拿去喂 /thumb
+            im["thumb"] = norm_rel(os.path.join(e["path"], im["rel"]))
+        return {"ok": True, "abs_path": abs_root,
+                "images": imgs,
+                "current": cur_rel,
+                "manual": bool(ov.get(e["id"]) or ov.get(e["path"]))}
+
+    def set_preview(self, body):
+        """切换预览图 / 一键添加预览图 / 恢复自动。
+
+        {id, rel}             -> 用 mod 文件夹里已有的某张图当封面
+        {id, data, filename}  -> 把用户选的照片写进 mod 文件夹再当封面
+        {id, reset: True}     -> 清掉手动指定, 恢复自动挑选
+        """
+        app = self.app
+        e, abs_root = self._mod_root(body.get("id"))
+        if not e:
+            return {"ok": False, "msg": "找不到该 mod"}
+        if not os.path.isdir(abs_root):
+            return {"ok": False, "msg": "mod 文件夹不存在"}
+        ov = app.cfg.setdefault("thumb_overrides", {})
+        if body.get("reset"):
+            ov.pop(e["id"], None)
+            ov.pop(e["path"], None)
+            app.save_config()
+            app.rescan()
+            return {"ok": True, "msg": "已恢复自动挑选封面", "state": app.state()}
+
+        rel = ""
+        if body.get("data"):
+            try:
+                blob = base64.b64decode((body["data"] or "").split(",")[-1])
+            except Exception:
+                return {"ok": False, "msg": "图片数据解析失败"}
+            rel, err = write_mod_cover(abs_root, body.get("filename") or "", blob)
+            if not rel:
+                return {"ok": False, "msg": err}
+            msg = "已把这张图存进 mod 文件夹并设为封面"
+        else:
+            want = norm_rel(body.get("rel") or "")
+            p = safe_join(abs_root, want)
+            if not p or not os.path.isfile(p):
+                return {"ok": False, "msg": "找不到这张图片"}
+            low = p.lower()
+            if low.endswith(NEVER_IMAGE_EXTS) or not low.endswith(IMAGE_EXTS):
+                return {"ok": False, "msg": "这种格式不能当预览图"}
+            rel = want
+            msg = "封面已切换"
+
+        # 同时按 id 和 path 记一份: 重名 mod 的 id 会被加上 #N, 只有 path 一定唯一
+        full = norm_rel(os.path.join(e["path"], rel))
+        ov[e["id"]] = full
+        ov[e["path"]] = full
+        app.save_config()
+        app.rescan()
+        return {"ok": True, "msg": msg, "state": app.state()}
+
     def config_action(self, body):
         app = self.app
         if body.get("zzmi_root"):
@@ -2269,6 +4162,11 @@ class Handler(BaseHTTPRequestHandler):
         if "hide_preview" in body:
             app.cfg["hide_preview"] = bool(body["hide_preview"])
             changed = True
+        if "update_repo" in body:
+            repo = (body["update_repo"] or "").strip()
+            if repo:
+                app.cfg["update_repo"] = repo
+                changed = True
         if body.get("importer"):
             app.cfg["importer"] = body["importer"]
             changed = True
@@ -2288,6 +4186,97 @@ class Handler(BaseHTTPRequestHandler):
             app.rescan()
             invalidate_lib_cache()
         return {"ok": True, "msg": "已保存", "state": app.state()}
+
+    def move_batch(self, body):
+        """多选一键搬运到仓库: {ids:[...], lib:"仓库名"(空=ZZMI 根目录), sub:"子目录"}。
+        只搬目录本身, 不删文件; 同名自动加 (2); 每次搬运都写 journal 可撤销。"""
+        app = self.app
+        root = app.cfg.get("zzmi_root") or ""
+        if not root or not os.path.isdir(root):
+            return {"ok": False, "msg": "还没设置 ZZMI 根目录"}
+        lib = (body.get("lib") or "").strip()
+        sub = norm_rel(body.get("sub") or "")
+        if is_abs_path(lib):
+            # 用户自己挑的任意文件夹(可以不在 ZZMI 目录下)
+            base = os.path.abspath(strip_abs_prefix(lib))
+            if not os.path.isdir(base):
+                return {"ok": False, "msg": "找不到这个文件夹: %s" % base}
+            recent = [d for d in (app.cfg.get("custom_dirs") or [])
+                      if os.path.abspath(d) != base]
+            recent.insert(0, base)              # 记住, 下次下拉里直接能选
+            app.cfg["custom_dirs"] = recent[:8]
+            app.save_config()
+        elif lib:
+            lib = norm_rel(lib)
+            base = safe_join(root, lib)
+            if not base or not os.path.isdir(base):
+                return {"ok": False, "msg": "找不到仓库目录: %s" % lib}
+            libs = list(app.cfg.get("libraries") or [])
+            if lib not in libs:                 # 用户自己新建的仓库也认下来
+                libs.append(lib)
+                app.cfg["libraries"] = libs
+                app.save_config()
+        else:
+            base = root
+        dst_root = safe_join(base, sub) if sub else base
+        if not dst_root:
+            return {"ok": False, "msg": "目标路径不合法"}
+        ids = [i for i in (body.get("ids") or []) if i]
+        if not ids:
+            return {"ok": False, "msg": "没有选中任何 mod"}
+        ents = app.find_entries(ids)
+        if len(ents) < len(ids):
+            # 可能刚把新 mod 丢进 Mods 还没重扫, 补扫一次再试
+            app.rescan()
+            ents = app.find_entries(ids)
+        if not ents:
+            return {"ok": False, "msg": "没有选中任何 mod"}
+        try:
+            os.makedirs(dst_root, exist_ok=True)
+        except OSError as ex:
+            return {"ok": False, "msg": "建不了目标目录: %s" % ex}
+        res = move_mods_batch(app.mods_dir(), ents, dst_root)
+        invalidate_lib_cache()
+        app.rescan()
+        where = ((os.path.basename(base) or base) if is_abs_path(lib)
+                 else (lib or "ZZMI 根目录"))
+        msg = ("已把 %d 个 mod 搬进「%s」" % (res["ok"], where)) if res["ok"] \
+            else "搬运失败"
+        if res["failed"]:
+            msg += " · %d 个没搬成" % res["failed"]
+        return {"ok": res["ok"] > 0, "msg": msg, "result": res,
+                "state": app.state()}
+
+    def pin_action(self, body):
+        """收藏/置顶: {kind: mod|cat|char, key: id或名字, on: true/false}
+        on 缺省时为切换。只写配置文件, 不动 mod 文件。"""
+        app = self.app
+        kind = body.get("kind") or "mod"
+        key = (body.get("key") or "").strip()
+        if not key:
+            return {"ok": False, "msg": "缺少收藏对象"}
+        field = {"mod": "pinned_mods", "cat": "pinned_cats",
+                 "char": "pinned_chars"}.get(kind)
+        if not field:
+            return {"ok": False, "msg": "未知收藏类型"}
+        lst = list(app.cfg.get(field) or [])
+        if body.get("on") is None:
+            on = key not in lst
+        else:
+            on = bool(body.get("on"))
+        if on:
+            if key not in lst:
+                lst.append(key)
+            msg = "已收藏 ⭐ %s" % (app.scan.by_id[key]["name"]
+                                  if kind == "mod" and key in app.scan.by_id else key)
+        else:
+            lst = [x for x in lst if x != key]
+            msg = "已取消收藏 %s" % key
+        with app.lock:
+            app.cfg[field] = lst
+            app.save_config()
+        app.rescan()
+        return {"ok": True, "msg": msg, "pinned": on, "state": app.state()}
 
     def preset_action(self, body):
         app = self.app
@@ -2312,9 +4301,16 @@ class Handler(BaseHTTPRequestHandler):
             on = [e for e in app.scan.entries if not e["enabled"] and e["id"] in want]
             r1 = batch_toggle(app.mods_dir(), off, False)
             r2 = batch_toggle(app.mods_dir(), on, True)
+            app.touch_usage([e["id"] for e in on],
+                            exclude=[d["id"] for d in r2["details"]])
             app.rescan()
+            # v1.5.6: 把没改成功的项也带回去, 前端好弹"手动加/删 DISABLED_"教程
+            failed = list(r1["details"]) + list(r2["details"])
+            # v1.5.8: 因重名被自动加后缀的也带回去, 前端提示"已自动改名"
+            renamed = list(r1.get("renamed") or []) + list(r2.get("renamed") or [])
             return {"ok": True, "msg": "已套用「%s」: 启用 %d / 禁用 %d"
                                        % (name, r2["ok"], r1["ok"]),
+                    "failed": failed[:20], "renamed": renamed[:20],
                     "state": app.state()}
         if act == "delete":
             if name not in presets:
@@ -2431,15 +4427,7 @@ def find_manager_window():
 
 
 def _bring_to_front(hwnd):
-    import ctypes
-    user32 = ctypes.windll.user32
-    SWP_NOSIZE, SWP_NOMOVE, SWP_SHOWWINDOW = 0x0001, 0x0002, 0x0040
-    HWND_TOPMOST, HWND_NOTOPMOST = -1, -2
-    user32.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
-                        SWP_NOSIZE | SWP_NOMOVE | SWP_SHOWWINDOW)
-    user32.SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0,
-                        SWP_NOSIZE | SWP_NOMOVE | SWP_SHOWWINDOW)
-    user32.SetForegroundWindow(hwnd)
+    return force_foreground(hwnd)
 
 
 def toggle_manager_window(app):
@@ -2455,7 +4443,7 @@ def toggle_manager_window(app):
         except OSError:
             pass
         if url:
-            open_app_window(url, app.cfg.get("win_size") or "1320,880")
+            open_app_window(url, app.cfg.get("win_size") or "auto")
         return
     if user32.IsWindowVisible(hwnd):
         user32.ShowWindow(hwnd, 0)              # SW_HIDE (游戏内也能直接藏)
@@ -2535,6 +4523,9 @@ def pick_port():
 
 
 def main():
+    # --console / -c: 保留命令窗口(排查问题时用), 等价于 ZZMI_KEEP_CONSOLE=1
+    if any(a in ("--console", "-c") for a in sys.argv[1:]):
+        os.environ["ZZMI_KEEP_CONSOLE"] = "1"
     try:
         sys.stdout.reconfigure(encoding="utf-8")
     except Exception:
@@ -2579,11 +4570,15 @@ def main():
     log("  %s v%s" % (APP_NAME, VERSION))
     log("  界面: %s" % url)
     log("  数据: %s" % DATA_DIR)
-    log("  关掉这个窗口(或界面「设置」里的退出)即可结束程序")
+    log("  日志: %s" % os.path.join(DATA_DIR, "zzmi.log"))
+    log("  关掉界面窗口(或界面「设置」里的退出)即可结束程序")
     log("")
     if not os.environ.get("ZZMI_NO_BROWSER"):
         threading.Timer(0.6, lambda: open_app_window(
-            url, app.cfg.get("win_size") or "1320,880")).start()
+            url, app.cfg.get("win_size") or "auto")).start()
+    # v1.5.7: 界面起来之后就把命令窗口藏掉, 不再挡在桌面上
+    if os.environ.get("ZZMI_KEEP_CONSOLE") != "1":
+        threading.Thread(target=hide_console, args=(1.8,), daemon=True).start()
     if pending_detect:
         threading.Thread(target=run_detection, args=(app,), daemon=True).start()
     try:

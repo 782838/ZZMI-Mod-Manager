@@ -11,15 +11,37 @@ L = []
 def w(s=""):
     L.append(str(s)); print(s)
 
+# 逐文件删除: 一次性 shutil.rmtree 会撞上沙箱的"批量删除"保护(上一轮会留下 50+ 个文件),
+# 导致整个测试脚本在准备阶段就挂掉。单个 os.remove 不算批量。
+def _clean(p):
+    if not os.path.isdir(p):
+        return
+    for root, dirs, files in os.walk(p, topdown=False):
+        for f in files:
+            try:
+                os.remove(os.path.join(root, f))
+            except OSError:
+                pass
+        for d in dirs:
+            try:
+                os.rmdir(os.path.join(root, d))
+            except OSError:
+                pass
+    try:
+        os.rmdir(p)
+    except OSError:
+        pass
+
 # ---------- 1. 探测(沙箱) ----------
 w("=== 1. score_xxmi_root(沙箱) ===")
 SB = os.path.join(HERE, "_sandbox")
-if os.path.isdir(SB):
-    shutil.rmtree(SB)
+_clean(SB)
 fake_root = os.path.join(SB, "FakeXXMI")
 os.makedirs(os.path.join(fake_root, "Resources", "Bin"), exist_ok=True)
 os.makedirs(os.path.join(fake_root, "ZZMI", "Mods"), exist_ok=True)
 open(os.path.join(fake_root, "Resources", "Bin", "XXMI Launcher.exe"), "wb").close()
+# 真实的 XXMI 根目录里每个注入器子目录都带 d3dx.ini; 补上才是完整的最小样例
+open(os.path.join(fake_root, "ZZMI", "d3dx.ini"), "wb").close()
 s, info = Z.score_xxmi_root(fake_root)
 w("score=%s importers=%s" % (s, info.get('importers')))
 assert s >= 8, "探测打分失败"
@@ -51,8 +73,7 @@ assert len(res.entries) >= 5, "条目太少, 粒度推断可能有问题"
 w()
 w("=== 4. 启停 / 撤销 (临时沙箱) ===")
 SB = os.path.join(HERE, "_sandbox")
-if os.path.isdir(SB):
-    shutil.rmtree(SB)
+_clean(SB)
 mods = os.path.join(SB, "Mods")
 os.makedirs(os.path.join(mods, "分类A", "安比", "AnbyMod", "resources"))
 os.makedirs(os.path.join(mods, "分类A", "丽娜", "RinaMod"))
@@ -86,8 +107,10 @@ w("沙箱冲突: " + json.dumps(conf, ensure_ascii=False))
 assert any(c["a_name"] == "安比" or c["b_name"] == "安比" for c in conf), "应检出安比/丽娜 hash 冲突"
 
 # 禁用
-ok, msg = Z.do_toggle(mods, anby, False)
-w(f"禁用 安比 -> ok={ok} msg={msg}")
+# v1.5.8: do_toggle 现在可能返回 3 元组 (ok, msg, extra), 老断言要兼容
+_res = Z.do_toggle(mods, anby, False)
+ok, msg = _res[0], _res[1]
+w(f"禁用 安比 -> ok={ok} msg={msg} extra={_res[2] if len(_res) == 3 else None}")
 assert ok and os.path.isdir(os.path.join(mods, "分类A", "DISABLED_安比")), "禁用失败"
 s3 = Z.scan_mods(mods)
 e3 = {e["id"]: e for e in s3.entries}["分类A/安比"]
@@ -116,8 +139,9 @@ assert all(e["enabled"] for e in s6.entries), "批量启用不干净"
 w("批量禁用→启用往返 OK, 条目数=%d" % len(s6.entries))
 
 # 重命名
-ok, msg = Z.do_rename(mods, s6.entries[0], "改过名的mod")
-w(f"重命名 -> ok={ok} msg={msg}")
+_res = Z.do_rename(mods, s6.entries[0], "改过名的mod")
+ok, msg = _res[0], _res[1]
+w(f"重命名 -> ok={ok} msg={msg} extra={_res[2] if len(_res) == 3 else None}")
 assert ok
 s7 = Z.scan_mods(mods)
 w("重命名后条目: " + ", ".join(e["name"] for e in s7.entries))
@@ -279,6 +303,31 @@ os.rename(os.path.join(mods, "分类A"), os.path.join(mods, "DISABLED_分类A"))
 assert Z.resolve_rel_dir(mods, "分类A/安比") is not None, "带禁用前缀时解析失败"
 os.rename(os.path.join(mods, "DISABLED_分类A"), os.path.join(mods, "分类A"))
 w("带 DISABLED 前缀的路径解析 OK")
+
+# v1.5.9 同名两套: id 带 #N 后缀要能解析, 且 prefer 精确选中对应那套
+_dup = os.path.join(mods, "同名回归")
+os.makedirs(_dup, exist_ok=True)
+open(os.path.join(_dup, "r.ini"), "w", encoding="utf-8").write(
+    "[TextureOverrideR]\nhash = r1r1r1r1\nvb0 = RR\n")
+os.makedirs(os.path.join(mods, "DISABLED_同名回归"), exist_ok=True)
+open(os.path.join(mods, "DISABLED_同名回归", "r2.ini"), "w", encoding="utf-8").write(
+    "[TextureOverrideR2]\nhash = r2r2r2r2\nvb0 = RR2\n")
+_sc = Z.scan_mods(mods)
+_ids = sorted(e["id"] for e in _sc.entries if e["id"].startswith("同名回归"))
+assert _ids == ["同名回归", "同名回归#1"], _ids
+_en = {e["path"]: e for e in _sc.entries if e["id"].startswith("同名回归")}
+# 禁用套(#1)必须解析到 DISABLED_ 目录 —— v1.5.8 在这里报「找不到目录」
+p1 = Z.entry_root(mods, _en["DISABLED_同名回归"])
+assert p1 and os.path.basename(p1) == "DISABLED_同名回归", p1
+# 启用套(无后缀)必须解析到启用目录, 不能认错套
+p0 = Z.entry_root(mods, _en["同名回归"])
+assert p0 and os.path.basename(p0) == "同名回归", p0
+# 启用禁用套 -> 撞名自动排成 (2)
+r = Z.do_toggle(mods, _en["DISABLED_同名回归"], True)
+assert r[0] and len(r) == 3 and r[2]["target_name"] == "同名回归 (2)", r
+assert os.path.isdir(os.path.join(mods, "同名回归 (2)"))
+assert os.path.isdir(os.path.join(mods, "同名回归")), "启用套不能被动"
+w("v1.5.9 同名两套解析/启用回归 OK")
 
 w()
 w("ALL TESTS PASSED")

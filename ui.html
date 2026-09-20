@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ZZMI Mod 管家</title>
+<!-- v1.5.9: 绝区零官方图标做 favicon, 应用窗口模式的窗口/任务栏图标就是它 -->
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
 <style>
 :root{
   --bg:#0b0d10; --bg2:#101318; --panel:#161a20; --panel2:#1d222a; --panel3:#242b34;
@@ -80,6 +82,7 @@ html[data-theme="light"] .logo{box-shadow:0 0 0 3px rgba(140,175,0,.16)}
 .btn.danger{color:var(--off);border-color:rgba(255,93,115,.35)}
 .btn.danger:hover{background:rgba(255,93,115,.12)}
 .btn[disabled]{opacity:.45;pointer-events:none}
+.btn.on{background:var(--accent);color:var(--ink);border-color:transparent;font-weight:700}
 
 main{flex:1 1 auto;display:flex;min-height:0}
 aside{
@@ -99,10 +102,25 @@ aside{
 html[data-theme="light"] .navi.on .cnt{color:#6b8000}
 .navi.multi .cnt{color:var(--warn)}
 .navi.sub{padding-left:24px;font-size:12.5px}
+/* 侧栏行 / 卡片上的收藏星标: 平时淡淡, 悬停或已收藏才显眼 */
+.pinbtn{background:none;border:0;cursor:pointer;color:var(--dim);font-size:13px;
+  line-height:1;padding:2px 3px;border-radius:6px;flex:0 0 auto;opacity:.55;transition:.12s}
+.navi:hover .pinbtn,.pinbtn.on{opacity:1}
+.pinbtn.on{color:var(--warn);text-shadow:0 0 8px rgba(255,176,46,.55)}
+.pinbtn:hover{background:var(--panel3);color:var(--warn)}
+.pinned-row .nm::before{content:"⭐ ";font-size:11px}
 .subwrap{display:none}
 .subwrap.open{display:block}
 .tri{width:12px;font-size:9px;color:var(--dim);transition:.15s;flex:0 0 auto}
 .tri.open{transform:rotate(90deg)}
+/* 侧栏分组: 点标题即可整组收起 / 展开 */
+.side-tools{display:flex;justify-content:flex-end;padding:0 4px 2px}
+.side-h.fold{cursor:pointer;display:flex;align-items:center;gap:5px;user-select:none;transition:.12s;border-radius:7px}
+.side-h.fold:hover{color:var(--txt);background:var(--panel)}
+.side-h.fold .ftri{flex:0 0 auto;width:10px;font-size:9px;display:inline-block;transition:.15s;color:var(--dim)}
+.side-sec.collapsed .ftri{transform:rotate(-90deg)}
+.side-sec.collapsed .foldbody{display:none}
+.sidecnt{margin-left:auto;font-size:11px;font-weight:400;color:var(--dim);font-variant-numeric:tabular-nums}
 
 section.content{flex:1 1 auto;display:flex;flex-direction:column;min-width:0;min-height:0}
 .toolbar{
@@ -189,6 +207,42 @@ html[data-theme="light"] .tag.char{color:#6b8000}
 .iconbtn:hover{background:var(--accent);color:var(--ink)}
 html[data-theme="light"] .iconbtn{background:rgba(255,255,255,.85);color:#333}
 html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink)}
+/* 多选搬运 */
+.card.sel{outline:2px solid var(--accent);outline-offset:-2px}
+.selbox{position:absolute;top:8px;left:8px;width:19px;height:19px;cursor:pointer;z-index:3;
+  accent-color:var(--accent);filter:drop-shadow(0 1px 3px rgba(0,0,0,.6))}
+.selbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 14px;
+  background:var(--panel);border-bottom:1px solid var(--line);flex:0 0 auto;font-size:12.5px}
+.selbar .sp{margin-left:auto}
+.btn.selbtn{background:var(--accent);color:var(--ink);border-color:transparent;font-weight:700}
+
+/* 自定义文件夹选择器 */
+.dp{position:fixed;left:50%;top:50%;transform:translate(-50%,-48%) scale(.98);z-index:70;
+  width:min(680px,95vw);max-height:84vh;background:var(--bg2);border:1px solid var(--line);
+  border-radius:14px;box-shadow:var(--shadow);display:none;flex-direction:column}
+.dp.on{display:flex;transform:translate(-50%,-50%) scale(1)}
+.dphd{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line);flex:0 0 auto}
+.dphd b{font-size:14.5px}
+.dppath{flex:1;min-width:0;font-size:11.5px;color:var(--txt2);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;direction:rtl;text-align:left}
+.dpquick{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 14px;
+  border-bottom:1px solid var(--line);flex:0 0 auto;font-size:12px}
+.dpquick .hint{margin-right:2px}
+.dplist{flex:1 1 auto;overflow:auto;padding:6px 8px;min-height:160px}
+.dpitem{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;
+  cursor:pointer;font-size:13px}
+.dpitem:hover{background:var(--panel)}
+.dpitem .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dpitem .ct{color:var(--txt2);font-size:11.5px}
+.dpft{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--line);flex:0 0 auto}
+.dpft .sp{margin-left:auto}
+.dpempty{padding:26px 14px;text-align:center;color:var(--txt2);font-size:13px}
+.lmadd{padding:10px 14px;border-bottom:1px solid var(--line);flex:0 0 auto}
+.lmrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
+.lmrow .inp{flex:1 1 200px;min-width:150px;padding:6px 9px;font-size:12.5px}
+.lmsec{padding:8px 10px 2px;color:var(--txt2);font-size:11.5px}
+.lmsec.abs{margin-top:4px}
+.lmlib{font-size:11.5px;color:var(--txt2);margin-left:6px}
 
 .mask{position:fixed;inset:0;background:rgba(4,6,9,.55);backdrop-filter:blur(3px);
   opacity:0;pointer-events:none;transition:.2s;z-index:40}
@@ -204,9 +258,36 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
 .modal.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
 .dh{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);flex:0 0 auto}
 .dh h3{margin:0;font-size:15px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 预览图放大: 点封面弹大图 */
+.thumbwrap[data-act="zoom"]{cursor:zoom-in}
+.lightbox{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;padding:34px 24px;background:rgba(6,8,11,.9);
+  opacity:0;pointer-events:none;transition:.16s}
+.lightbox.on{opacity:1;pointer-events:auto}
+.lightbox img{max-width:96%;max-height:84%;object-fit:contain;border-radius:12px;
+  box-shadow:0 10px 44px rgba(0,0,0,.55);background:var(--panel)}
+.lbcap{color:#e9e9ec;font-size:13px;text-align:center;max-width:90%}
+.lbx{position:fixed;top:16px;right:22px;font-size:19px;color:#fff;background:rgba(0,0,0,.35);
+  border:0;border-radius:50%;width:34px;height:34px;cursor:pointer}
+.lbx:hover{background:rgba(0,0,0,.6)}
+/* 详情里的预览图选择 */
+.pv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin-top:8px}
+.pv-item{position:relative;border:2px solid transparent;border-radius:9px;overflow:hidden;
+  cursor:pointer;background:var(--panel);aspect-ratio:1/1}
+.pv-item img{width:100%;height:100%;object-fit:cover;display:block}
+.pv-item.on{border-color:var(--accent)}
+.pv-item .pvn{position:absolute;left:0;right:0;bottom:0;font-size:10.5px;padding:2px 4px;
+  background:rgba(0,0,0,.62);color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pv-item .pvm{position:absolute;top:3px;right:3px;background:var(--accent);color:#fff;
+  font-size:10px;border-radius:6px;padding:1px 5px}
 .dbody{padding:16px;overflow-y:auto;flex:1 1 auto}
 .dfoot{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;flex:0 0 auto}
 .xbtn{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--dim);font-size:17px}
+.xbtn:hover{background:var(--bg);color:var(--ink)}
+.ask-msg{white-space:pre-wrap;line-height:1.6;margin-bottom:12px;color:var(--txt);font-size:14px}
+.ask-input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);
+  background:var(--bg);color:var(--txt);font-size:14px;outline:none}
+.ask-input:focus{border-color:var(--accent)}
 .xbtn:hover{background:var(--panel2);color:var(--txt)}
 .field{display:flex;flex-direction:column;gap:6px;margin-bottom:13px}
 .field label{font-size:12px;color:var(--dim);font-weight:600}
@@ -265,20 +346,43 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
     <button class="btn" id="btnUndo" title="撤销上一步操作">↶ 撤销</button>
     <button class="btn" id="btnRescan" title="重新扫描 Mods 目录">⟳ 重新扫描</button>
     <button class="btn ghost" id="btnLib" title="管理 Mods 外面的仓库目录">🗄 仓库</button>
+    <button class="btn ghost" id="btnUpd" title="检查有没有新版本">⬆ 检查更新</button>
     <button class="btn ghost" id="btnSet" title="设置">⚙</button>
   </header>
 
   <main>
     <aside>
-      <div class="side-h">总览</div>
-      <button class="navi on" data-scope="all"><span class="nm">全部 Mod</span><span class="cnt" id="cAll">0</span></button>
-      <button class="navi" data-scope="enabled"><span class="nm">✅ 已启用</span><span class="cnt" id="cOn">0</span></button>
-      <button class="navi" data-scope="disabled"><span class="nm">⛔ 已禁用</span><span class="cnt" id="cOff">0</span></button>
-      <div class="side-h">角色 <span id="multiHint" style="font-weight:400"></span></div>
-      <input class="inp" id="charFilter" placeholder="🔍 过滤角色…" style="margin:0 4px 6px;padding:6px 9px;font-size:12px">
-      <div id="chars"></div>
-      <div class="side-h">分类</div>
-      <div id="cats"></div>
+      <div class="side-tools">
+        <button class="mini" id="btnFoldAll" title="把所有分组收起 / 展开">⇕ 收起全部</button>
+      </div>
+
+      <div class="side-sec" data-sec="overview">
+        <div class="side-h fold" data-fold="overview"><span class="ftri">▾</span>总览</div>
+        <div class="foldbody">
+          <button class="navi on" data-scope="all"><span class="nm">全部 Mod</span><span class="cnt" id="cAll">0</span></button>
+          <button class="navi" data-scope="enabled"><span class="nm">✅ 已启用</span><span class="cnt" id="cOn">0</span></button>
+          <button class="navi" data-scope="disabled"><span class="nm">⛔ 已禁用</span><span class="cnt" id="cOff">0</span></button>
+          <button class="navi" data-scope="pinned"><span class="nm">⭐ 收藏</span><span class="cnt" id="cPinned">0</span></button>
+        </div>
+      </div>
+
+      <div class="side-sec" data-sec="chars">
+        <div class="side-h fold" data-fold="chars"><span class="ftri">▾</span>角色
+          <span class="sidecnt" id="cChars"></span>
+          <span id="multiHint" style="font-weight:400"></span></div>
+        <div class="foldbody">
+          <input class="inp" id="charFilter" placeholder="🔍 过滤角色…" style="margin:0 4px 6px;padding:6px 9px;font-size:12px">
+          <div id="chars"></div>
+        </div>
+      </div>
+
+      <div class="side-sec" data-sec="cats">
+        <div class="side-h fold" data-fold="cats"><span class="ftri">▾</span>分类
+          <span class="sidecnt" id="cCats"></span></div>
+        <div class="foldbody">
+          <div id="cats"></div>
+        </div>
+      </div>
     </aside>
 
     <section class="content">
@@ -292,12 +396,15 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
           <button class="chip on" data-f="all">全部</button>
           <button class="chip" data-f="enabled">已启用</button>
           <button class="chip" data-f="disabled">已禁用</button>
+          <button class="chip" data-f="pinned">⭐ 收藏</button>
           <button class="chip" data-f="conflict">冲突</button>
         </div>
         <select class="sel" id="sort">
-          <option value="def">默认排序</option>
+          <option value="def">收藏优先 · 启用优先 · 最近使用</option>
+          <option value="pin">按收藏</option>
           <option value="size">按体积</option>
-          <option value="time">按修改时间</option>
+          <option value="time">按使用时间</option>
+          <option value="mtime">按修改时间</option>
           <option value="name">按名称</option>
         </select>
         <select class="sel" id="view">
@@ -305,6 +412,7 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
           <option value="list">列表</option>
         </select>
         <div class="spacer"></div>
+        <button class="btn" id="btnSel" title="勾选多个 mod, 一键搬到仓库(不再被游戏加载)">☑ 多选搬运</button>
         <button class="btn" id="btnOnAll" title="把当前筛选结果全部启用">全部启用</button>
         <button class="btn" id="btnOffAll" title="把当前筛选结果全部禁用">全部禁用</button>
         <select class="sel" id="presetSel"><option value="">— 方案 —</option></select>
@@ -313,10 +421,58 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
         <button class="btn danger" id="btnPresetDel">删</button>
       </div>
       <div id="scopebar" class="scopebar" style="display:none"></div>
+      <div id="selbar" class="selbar" style="display:none"></div>
       <div id="banners" style="padding-top:10px"></div>
       <div class="scroll"><div id="cards" class="grid"></div></div>
     </section>
   </main>
+</div>
+
+<!-- 自定义文件夹: 选任意目录当搬运目标 -->
+<div id="dirpick" class="dp">
+  <div class="dphd">
+    <b>📁 选择文件夹</b>
+    <span id="dpPath" class="dppath"></span>
+    <button class="mini" id="dpClose" title="关闭">✕</button>
+  </div>
+  <div class="dpquick">
+    <span class="hint">快速:</span>
+    <span id="dpQuick"></span>
+  </div>
+  <div id="dpList" class="dplist"></div>
+  <div class="dpft">
+    <button class="mini" id="dpUp">↑ 上级</button>
+    <button class="mini" id="dpNew">＋ 在此新建文件夹</button>
+    <span class="sp"></span>
+    <button class="mini" id="dpCancel">取消</button>
+    <button class="btn selbtn" id="dpOk">✔ 就搬到这里</button>
+  </div>
+</div>
+
+<!-- 仓库管理: 添加/移除仓库(只动列表, 不删磁盘文件) -->
+<div id="libmgr" class="dp">
+  <div class="dphd">
+    <b>🗄 仓库管理</b>
+    <span class="hint">这里只是"登记表", 移除一项不会删磁盘上的任何东西</span>
+    <button class="mini" id="lmClose" title="关闭">✕</button>
+  </div>
+  <div class="lmadd">
+    <div class="hint" style="margin-bottom:6px">＋ 添加仓库</div>
+    <div class="lmrow">
+      <input class="inp" id="lmName" placeholder="仓库名, 例如 未使用" spellcheck="false">
+      <button class="mini" id="lmNewRoot">＋ 在 ZZMI 下新建</button>
+    </div>
+    <div class="lmrow">
+      <button class="mini" id="lmFind">📁 手动寻找仓库路径…</button>
+      <span class="hint">（锁定一个磁盘上已存在的文件夹, 任意盘都行）</span>
+    </div>
+  </div>
+  <div id="lmList" class="dplist"></div>
+  <div class="dpft">
+    <span class="hint">想搬 mod 时: 回主界面点顶栏「☑ 多选搬运」</span>
+    <span class="sp"></span>
+    <button class="btn selbtn" id="lmDone">完成</button>
+  </div>
 </div>
 
 <div id="dead">
@@ -337,6 +493,12 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
 </div>
 
 <div class="mask" id="mask"></div>
+
+<div class="lightbox" id="lightbox">
+  <img id="lbImg" alt="">
+  <div class="lbcap" id="lbCap"></div>
+  <button class="lbx" onclick="closeZoom()" title="关闭 (Esc)">✕</button>
+</div>
 
 <div class="drawer" id="drawer">
   <div class="dh"><h3 id="dtTitle">Mod 详情</h3><button class="xbtn" id="dtClose">✕</button></div>
@@ -360,6 +522,44 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
   <div class="dfoot"><button class="btn primary" data-close="mLib">完成</button></div>
 </div>
 
+<!-- v1.5.8: 重名被自动加 (2) (3)… 时的提示 -->
+<div class="modal" id="mDup">
+  <div class="dh"><h3 id="mdTitle">✎ 名字已被占用, 帮你自动加了个序号</h3>
+    <button class="xbtn" data-close="mDup">✕</button></div>
+  <div class="dbody" id="mdBody"></div>
+  <div class="dfoot">
+    <button class="btn primary" data-close="mDup">知道了</button>
+  </div>
+</div>
+
+<!-- v1.5.10: 自制输入弹窗, 替换浏览器原生 prompt(原生弹窗标题是网址、无法自定义) -->
+<div class="mask" id="mAskMask"></div>
+<div class="modal" id="mAsk">
+  <div class="dh"><h3 id="mAskTitle">ZZMI MOD 管家</h3>
+    <button class="xbtn" id="mAskX">✕</button></div>
+  <div class="dbody">
+    <div class="ask-msg" id="mAskMsg"></div>
+    <input class="ask-input" id="mAskInput" type="text" autocomplete="off" spellcheck="false" />
+  </div>
+  <div class="dfoot">
+    <button class="btn" id="mAskCancel">取消</button>
+    <button class="btn primary" id="mAskOk">确定</button>
+  </div>
+</div>
+
+<!-- 启停被占用/拒绝访问 -> 弹教程让玩家手动改名 -->
+<div class="modal" id="mManual">
+  <div class="dh"><h3 id="mmTitle">⚠ 改不了名, 得手动来一下</h3>
+    <button class="xbtn" data-close="mManual">✕</button></div>
+  <div class="dbody" id="mmBody"></div>
+  <div class="dfoot">
+    <button class="mini" id="mmCopy">📋 复制 DISABLED_</button>
+    <span class="sp"></span>
+    <button class="btn" id="mmOpen">📂 去改名</button>
+    <button class="btn primary" data-close="mManual">知道了</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -372,9 +572,14 @@ let filter = "all";
 let scope = {type:"all", value:"", label:""};
 let qtext = "", charQ = "";
 let viewMode = "grid";
+// 多选搬运: selMode 打开后点卡片即勾选; sel = 已勾选的 mod id 集合
+let selMode = false, selLib = "";
+const sel = new Set();
 let curDetail = null;
+let dtCycles = [];          // 当前详情里的循环变体(供改键按钮取数)
 let busy = false;
 let io = null;
+let updateInfo = null;   // 最近一次检查更新的结果
 
 async function api(path, body){
   const url = path + (path.includes("?") ? "&" : "?") + "t=" + encodeURIComponent(T);
@@ -388,8 +593,29 @@ function toast(msg, kind){
   const el = $("#toast");
   el.textContent = msg;
   el.className = "toast on" + (kind ? " " + kind : "");
+  el.innerHTML = esc(msg).replace(/\n/g, "<br>");   // 保留换行, 但不吃 HTML
   clearTimeout(el._t);
   el._t = setTimeout(()=>{ el.className = "toast"; }, 3400);
+}
+// 复制文本到剪贴板(带降级: http:// 下 navigator.clipboard 不可用)
+async function copyText(t){
+  try{
+    if (navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(t);
+      return true;
+    }
+  }catch(e){}
+  try{
+    const ta = document.createElement("textarea");
+    ta.value = t;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    const good = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return good;
+  }catch(e){ return false; }
 }
 const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
@@ -402,6 +628,8 @@ async function load(){
     document.documentElement.setAttribute("data-theme", st.theme || "dark");
     renderAll();
     if (!st.configured) openSetup();   // 首次启动: 自动弹出设置页并显示检测进度
+    checkUpdate();                     // 启动时后台查一次 GitHub 有没有新版本
+    api("/api/hello").catch(()=>{});   // v1.5.10: 界面已打开 -> 取消还没执行的自动退出
   }catch(e){
     $("#app").style.display = "none";
     $("#deadMsg").textContent = e.message;
@@ -413,6 +641,9 @@ function renderAll(){
   $("#cAll").textContent = S.stats.total || 0;
   $("#cOn").textContent = S.stats.enabled || 0;
   $("#cOff").textContent = S.stats.disabled || 0;
+  $("#cPinned").textContent = S.stats.pinned || 0;
+  $("#cChars").textContent = (S.stats.chars || 0) + " 角色";
+  $("#cCats").textContent = (S.categories || []).length + " 个";
   $("#verline").textContent = "v" + S.version + " · " + S.stats.total + " 个 mod · "
     + S.stats.chars + " 个角色 · 扫描 " + S.scan_seconds + "s"
     + (S.thumb_pending ? " · 缩略图 " + S.thumb_pending : "")
@@ -439,14 +670,20 @@ function renderChars(){
   $("#multiHint").textContent = S.stats.multi_chars ? (S.stats.multi_chars + " 个角色有多套") : "";
   if (!list.length){ box.innerHTML = '<div class="hint" style="padding:8px 10px">没有匹配的角色</div>'; return; }
   box.innerHTML = list.map(c => `
-    <button class="navi sub ${c.multi?"multi":""} ${scope.type==="char"&&scope.value===c.name?"on":""}"
+    <button class="navi sub ${c.multi?"multi":""} ${c.pinned?"pinned-row":""} ${scope.type==="char"&&scope.value===c.name?"on":""}"
         data-char="${esc(c.name)}" title="${c.multi?"这个角色有 "+c.count+" 套 mod":""}">
       <span class="nm">${esc(c.name)}</span>
       <span class="cnt">${c.multi ? "×"+c.count+" " : ""}${c.enabled}/${c.count}</span>
+      <span class="pinbtn ${c.pinned?"on":""}" data-pin-char="${esc(c.name)}"
+        title="${c.pinned?"取消收藏":"收藏角色: 置顶到列表最前, 该角色下的 mod 也全部置顶"}">${c.pinned?"★":"☆"}</span>
     </button>`).join("");
-  box.querySelectorAll("[data-char]").forEach(b => b.onclick = () => {
+  box.querySelectorAll("[data-char]").forEach(b => b.onclick = (ev) => {
+    if (ev.target.closest(".pinbtn")) return;
     scope = {type:"char", value:b.dataset.char, label:"角色: " + b.dataset.char};
     setActive(b); renderScopebar(); renderCards();
+  });
+  box.querySelectorAll("[data-pin-char]").forEach(s => s.onclick = ev => {
+    ev.stopPropagation(); togglePin("char", s.dataset.pinChar);
   });
 }
 function renderCats(){
@@ -455,15 +692,19 @@ function renderCats(){
   if (!cats.length){ box.innerHTML = '<div class="hint" style="padding:8px 10px">还没有扫描到 mod</div>'; return; }
   box.innerHTML = cats.map((c,i) => `
     <div>
-      <div class="navi ${scope.type==="category"&&scope.value===c.name?"on":""}" data-cat="${esc(c.name)}" data-i="${i}">
+      <div class="navi ${c.pinned?"pinned-row":""} ${scope.type==="category"&&scope.value===c.name?"on":""}" data-cat="${esc(c.name)}" data-i="${i}">
         <span class="tri" data-tri="${i}">▶</span>
         <span class="nm">${esc(c.name)}</span>
         <span class="cnt">${c.enabled}/${c.count}</span>
+        <span class="pinbtn ${c.pinned?"on":""}" data-pin-cat="${esc(c.name)}"
+          title="${c.pinned?"取消收藏":"收藏分类: 置顶到列表最前, 该分类下的 mod 也全部置顶"}">${c.pinned?"★":"☆"}</span>
       </div>
       <div class="subwrap" data-sub="${i}">
         ${(c.groups||[]).map(g => `
-          <button class="navi sub" data-cat-char="${esc(c.name)}|::|${esc(g.name)}">
+          <button class="navi sub ${g.pinned?"pinned-row":""}" data-cat-char="${esc(c.name)}|::|${esc(g.name)}">
             <span class="nm">${esc(g.name)}</span><span class="cnt">${g.enabled}/${g.count}</span>
+            <span class="pinbtn ${g.pinned?"on":""}" data-pin-char="${esc(g.name)}"
+              title="${g.pinned?"取消收藏":"收藏角色: 该角色下的 mod 全部置顶"}">${g.pinned?"★":"☆"}</span>
           </button>`).join("")}
       </div>
     </div>`).join("");
@@ -472,7 +713,14 @@ function renderCats(){
     t.classList.toggle("open");
     box.querySelector('[data-sub="'+t.dataset.tri+'"]').classList.toggle("open");
   });
-  box.querySelectorAll("[data-cat]").forEach(b => b.onclick = () => {
+  box.querySelectorAll("[data-pin-cat]").forEach(s => s.onclick = e => {
+    e.stopPropagation(); togglePin("cat", s.dataset.pinCat);
+  });
+  box.querySelectorAll("[data-pin-char]").forEach(s => s.onclick = e => {
+    e.stopPropagation(); togglePin("char", s.dataset.pinChar);
+  });
+  box.querySelectorAll("[data-cat]").forEach(b => b.onclick = e => {
+    if (e.target.closest(".pinbtn")) return;
     scope = {type:"category", value:b.dataset.cat, label:"分类: " + b.dataset.cat};
     b.querySelector(".tri").classList.add("open");
     box.querySelector('[data-sub="'+b.dataset.i+'"]').classList.add("open");
@@ -492,8 +740,9 @@ function renderScopebar(){
   const bar = $("#scopebar");
   if (scope.type === "all" && filter === "all" && !qtext){ bar.style.display = "none"; return; }
   bar.style.display = "";
+  const FNAME = {enabled:"已启用", disabled:"已禁用", pinned:"收藏", conflict:"冲突"};
   bar.innerHTML = `<span>当前: <b>${esc(scope.label || "全部")}</b>
-    ${filter!=="all" ? " · 「"+(filter==="enabled"?"已启用":filter==="disabled"?"已禁用":"冲突")+"」" : ""}
+    ${filter!=="all" ? " · 「"+(FNAME[filter]||filter)+"」" : ""}
     ${qtext ? " · 搜索「"+esc(qtext)+"」" : ""}</span>
     <button class="mini x" onclick="clearScope()">✕ 清除</button>`;
 }
@@ -506,6 +755,15 @@ function clearScope(){
 
 function renderBanners(){
   const out = [];
+  // 有新版本时置顶提醒(可忽略); 检查失败(没网/代理拦截)不打扰用户
+  if (updateInfo && updateInfo.ok && updateInfo.update_available){
+    out.push(`<div class="banner ok"><span>🆕</span><div><b>发现新版本 v${esc(updateInfo.latest)}</b>
+      (当前 v${esc(updateInfo.current)})。
+      <a class="mini" href="${esc(updateInfo.url)}" target="_blank" rel="noopener">前往下载</a>
+      <button class="mini" onclick="updateInfo=null;renderBanners()">忽略</button>
+      <div class="hint" style="margin-top:6px">⚠ 更新时请先关闭本程序(关掉界面窗口即可, 程序会自动退出),
+      否则安装包无法覆盖正在运行的文件。</div></div></div>`);
+  }
   if (!S.configured){
     const det = S.detect || {};
     const prog = det.done === false ? `<div class="hint">🔍 正在后台自动查找 ZZMI… ${esc(det.step||"")}</div>` : "";
@@ -532,12 +790,24 @@ function renderBanners(){
   $("#banners").innerHTML = out.join("");
 }
 
+// 查 GitHub Releases 有没有新版本; 有就弹顶部提醒条
+async function checkUpdate(){
+  try{
+    updateInfo = await api("/api/update_check");
+  }catch(e){
+    updateInfo = {ok:false, error:String(e && e.message || e)};
+  }
+  renderBanners();
+  return updateInfo;
+}
+
 function visible(){
   let list = (S.entries||[]).slice();
   if (scope.type === "char") list = list.filter(e => e.char === scope.value);
   else if (scope.type === "category") list = list.filter(e => e.category === scope.value);
   if (filter === "enabled") list = list.filter(e => e.enabled);
   else if (filter === "disabled") list = list.filter(e => !e.enabled);
+  else if (filter === "pinned") list = list.filter(e => e.pinned);
   else if (filter === "conflict"){
     const ids = new Set();
     (S.conflicts||[]).forEach(c => { ids.add(c.a); ids.add(c.b); });
@@ -549,8 +819,15 @@ function visible(){
   }
   const s = $("#sort").value;
   if (s === "size") list.sort((a,b) => b.size - a.size);
-  else if (s === "time") list.sort((a,b) => b.mtime - a.mtime);
+  else if (s === "time") list.sort((a,b) => (b.usage||b.mtime) - (a.usage||a.mtime));
+  else if (s === "mtime") list.sort((a,b) => b.mtime - a.mtime);
   else if (s === "name") list.sort((a,b) => a.name.localeCompare(b.name,"zh"));
+  else if (s === "pin") list.sort((a,b) => (b.pinned - a.pinned)
+                          || ((b.usage||b.mtime) - (a.usage||a.mtime)));
+  // 默认: 收藏最前 → 已启用在前、未启用在后 → 同组内按使用时间从新到旧
+  else list.sort((a,b) => (b.pinned - a.pinned) || (b.enabled - a.enabled)
+                          || ((b.usage||b.mtime) - (a.usage||a.mtime))
+                          || a.char.localeCompare(b.char,"zh"));
   return list;
 }
 function renderCards(){
@@ -559,9 +836,9 @@ function renderCards(){
   box.className = "grid" + (viewMode === "list" ? " list" : "");
   if (!S.entries || !S.entries.length){
     box.innerHTML = `<div class="empty">这个 Mods 目录里还没有 mod。<br>把下载好的 mod 文件夹丢进 Mods 就行。</div>`;
-    return;
+    renderSelBar(); return;
   }
-  if (!list.length){ box.innerHTML = '<div class="empty">没有符合条件的 mod</div>'; return; }
+  if (!list.length){ box.innerHTML = '<div class="empty">没有符合条件的 mod</div>'; renderSelBar(); return; }
   const conflictIds = new Set();
   (S.conflicts||[]).forEach(c => { conflictIds.add(c.a); conflictIds.add(c.b); });
 
@@ -571,6 +848,7 @@ function renderCards(){
       ? `<img data-src="/thumb?t=${encodeURIComponent(T)}&p=${encodeURIComponent(e.thumb)}" alt="">`
       : `<div class="ph">${e.enabled ? "◈" : "◇"}</div>`;
     const tags = [];
+    if (e.pinned) tags.push(`<span class="tag" style="background:rgba(255,176,46,.18);color:var(--warn)">📌 已置顶</span>`);
     if (e.char && e.char !== e.name) tags.push(`<span class="tag char">👤 ${esc(e.char)}</span>`);
     if (e.category && e.category !== "(根目录)") tags.push(`<span class="tag cat">${esc(e.category)}</span>`);
     tags.push(`<span class="tag">${e.ini_count} ini</span>`);
@@ -579,11 +857,16 @@ function renderCards(){
     if (e.partial) tags.push(`<span class="tag warn">◑ 部分禁用</span>`);
     if ((e.backup_inis||[]).length) tags.push(`<span class="tag">含备份</span>`);
     const inner = `
-      <div class="thumbwrap">${tbl}
+      <div class="thumbwrap" ${showImg && !selMode ? `data-act="zoom" data-id="${esc(e.id)}" title="点击放大预览图"` : ""}>${tbl}
+        ${selMode ? `<input type="checkbox" class="selbox" data-act="sel" data-id="${esc(e.id)}"
+           ${sel.has(e.id)?"checked":""} title="选中这个 mod">` : ""}
         <span class="state ${e.enabled?"on":"no"}">${e.enabled?"已启用":"已禁用"}</span>
         <div class="overflow">
           <button class="iconbtn" title="详情" data-act="detail" data-id="${esc(e.id)}">ⓘ</button>
           <button class="iconbtn" title="打开文件夹" data-act="reveal" data-id="${esc(e.id)}">📂</button>
+          <button class="iconbtn" data-act="pin" data-id="${esc(e.id)}"
+            title="${e.pinned?"取消收藏":"收藏置顶: 这个 mod 永远排在列表最前"}"
+            style="${e.pinned?"color:var(--warn);text-shadow:0 0 8px rgba(255,176,46,.6)":""}">${e.pinned?"★":"☆"}</button>
         </div>
       </div>`;
     const body = `
@@ -592,17 +875,20 @@ function renderCards(){
         <div class="meta">${tags.join("")}</div>
         <div class="cardfoot">
           <button class="mini" data-act="detail" data-id="${esc(e.id)}">详情</button>
+          <button class="mini" data-act="rename" data-id="${esc(e.id)}"
+            title="重命名这个 mod 文件夹(名字被占用会自动加序号)">✎ 重命名</button>
           <button class="mini" data-act="solo" data-id="${esc(e.id)}"
             title="同一角色只保留这一套, 其它自动禁用">只留这套</button>
           <button class="sw ${e.enabled?"on":""}" data-act="toggle" data-id="${esc(e.id)}"
             data-on="${e.enabled?1:0}" title="点击切换"></button>
         </div>
       </div>`;
-    return `<div class="card ${e.enabled?"":"off"}" data-card="${esc(e.id)}">
+    return `<div class="card ${e.enabled?"":"off"} ${sel.has(e.id)?"sel":""}" data-card="${esc(e.id)}">
       ${viewMode==="list" ? `<div class="cardinner">${inner}${body}</div>` : inner + body}
     </div>`;
   }).join("");
   observeThumbs();
+  renderSelBar();
 }
 function observeThumbs(){
   if (io) io.disconnect();
@@ -620,16 +906,38 @@ function observeThumbs(){
       obs.unobserve(img);
     });
   }, {root: $(".scroll"), rootMargin: "280px"});
-  $$("#cards img[data-src]").forEach(i => io.observe(i));
+  $$("#cards img[data-src]").forEach(i => i && io.observe(i));
 }
+
+// ---------- 预览图放大 ----------
+function zoomImage(rel, caption){
+  if (!rel) return;
+  $("#lbImg").src = "/thumb?t=" + encodeURIComponent(T) + "&full=1&p=" + encodeURIComponent(rel);
+  $("#lbCap").textContent = caption || "";
+  $("#lightbox").classList.add("on");
+}
+function closeZoom(){ $("#lightbox").classList.remove("on"); }
+$("#lightbox").onclick = e => { if (e.target === e.currentTarget) closeZoom(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeZoom(); });
 
 $("#cards").addEventListener("click", async ev => {
   const el = ev.target.closest("[data-act]");
-  if (!el) return;
-  const id = el.dataset.id, act = el.dataset.act;
+  const card = ev.target.closest("[data-card]");
+  const act = el ? el.dataset.act : "";
+  const id = el ? el.dataset.id : (card ? card.dataset.card : null);
+  if (!id) return;
+  // 多选模式下: 点卡片任意空白/封面 = 勾选; 小按钮(详情/打开/收藏/开关)照常工作
+  if (act === "sel" || (selMode && (!act || act === "zoom"))) return toggleSel(id);
+  if (!act) return;
   if (act === "detail") return openDetail(id);
+  if (act === "rename"){ const e = S.entries.find(x => x.id === id); if (e) renameMod(e); return; }
+  if (act === "zoom"){
+    const e = S.entries.find(x => x.id === id);
+    return e && e.thumb ? zoomImage(e.thumb, e.name + "  ·  " + e.char) : openDetail(id);
+  }
   if (act === "reveal") return api("/api/reveal",{id}).then(r => { if(!r.ok) toast(r.msg||"打不开","err"); });
   if (act === "toggle") return doToggle([id], el.dataset.on !== "1");
+  if (act === "pin") return togglePin("mod", id);
   if (act === "solo"){
     const e = S.entries.find(x => x.id === id);
     if (!e) return;
@@ -640,6 +948,393 @@ $("#cards").addEventListener("click", async ev => {
   }
 });
 
+// ---------------- 多选搬运 ----------------
+function toggleSel(id){
+  if (sel.has(id)) sel.delete(id); else sel.add(id);
+  renderCards();
+}
+function renderSelBar(){
+  const bar = $("#selbar");
+  if (!bar) return;
+  if (!selMode){ bar.style.display = "none"; return; }
+  bar.style.display = "";
+  const libs = (S && S.libraries) || [];
+  const absLibs = (S && S.libs_abs) || [];
+  const customs = (S && S.custom_dirs) || [];
+  const opts = libs.map(n => `<option value="${esc(n)}"${selLib===n?" selected":""}>${esc(n)}</option>`).join("");
+  const aopts = absLibs.map(d => {
+      const v = "abs:" + d;
+      return `<option value="${esc(v)}"${selLib===v?" selected":""}>🔒 ${esc(d)}</option>`;
+    }).join("");
+  const copts = customs.map(d => {
+      const v = "abs:" + d;
+      return `<option value="${esc(v)}"${selLib===v?" selected":""}>📁 ${esc(d)}</option>`;
+    }).join("");
+  bar.innerHTML = `
+    <span>已勾选 <b>${sel.size}</b> 个</span>
+    <button class="mini" id="selAll">全选当前 ${visible().length} 个</button>
+    <button class="mini" id="selInv">反选</button>
+    <button class="mini" id="selNone">清空勾选</button>
+    <span class="sp"></span>
+    <span class="hint">搬到:</span>
+    <select class="sel" id="selLib">
+      <option value="">— 选择仓库 —</option>
+      ${opts}
+      ${aopts}
+      ${copts}
+      <option value="__root__"${selLib==="__root__"?" selected":""}>ZZMI 根目录</option>
+      <option value="__new__">＋ 新建仓库目录…</option>
+      <option value="__custom__">📁 自定义文件夹…(任意位置)</option>
+      <option value="__libmgr__">🗄 仓库管理 / 添加仓库…</option>
+    </select>
+    <button class="btn selbtn" id="selMove">📦 一键搬运</button>
+    <button class="mini" id="selExit">退出多选</button>`;
+  $("#selAll").onclick = () => { visible().forEach(e => sel.add(e.id)); renderCards(); };
+  $("#selInv").onclick = () => {
+    const vis = visible();
+    vis.forEach(e => { if (sel.has(e.id)) sel.delete(e.id); else sel.add(e.id); });
+    renderCards();
+  };
+  $("#selNone").onclick = () => { sel.clear(); renderCards(); };
+  $("#selExit").onclick = exitSel;
+  $("#selLib").onchange = e => {
+    const v = e.target.value;
+    if (v === "__custom__"){ openDirPick(); return; }   // 弹选择器, 选完再回填
+    if (v === "__libmgr__"){ renderSelBar(); openLibMgr(); return; }
+    selLib = v;
+  };
+  $("#selMove").onclick = doMoveBatch;
+}
+
+// ---------------- 自定义文件夹选择器 ----------------
+let dpCur = "", dpParent = "", dpDrives = [], dpQuick = [];
+let dpOpt = null;                 // 本次打开选择器的用途(锁定成仓库 / 选搬运目标)
+function isAbsPath(p){
+  return /^abs:/i.test(p) || /^[A-Za-z]:[\\/]/.test(p) ||
+         /^\\\\/.test(p) || /^\/\//.test(p);
+}
+function stripAbs(p){
+  return String(p || "").replace(/^abs:/i, "");
+}
+// openDirPick()                     -> 选「搬运目标」(默认行为)
+// openDirPick({title, ok, onPick})  -> 自定义用途, 例如「锁定成仓库」
+function openDirPick(opt){
+  const box = $("#dirpick");
+  if (!box) return;
+  dpOpt = opt || null;
+  box.querySelector(".dphd b").textContent = (dpOpt && dpOpt.title) || "📁 选择文件夹";
+  $("#dpOk").textContent = (dpOpt && dpOpt.ok) || "✔ 就搬到这里";
+  box.classList.add("on");
+  $("#dpClose").onclick = closeDirPick;
+  $("#dpCancel").onclick = closeDirPick;
+  $("#dpUp").onclick = () => { if (dpParent) dpLoad(dpParent); };
+  $("#dpOk").onclick = () => {
+    if (!dpCur) return toast("先选一个文件夹", "err");
+    if (dpOpt && dpOpt.onPick){
+      const cb = dpOpt.onPick, p = dpCur;
+      closeDirPick();
+      cb(p);
+      return;
+    }
+    selLib = "abs:" + dpCur;
+    // 立刻出现在下拉里, 不用等搬完服务器回传
+    if (S && Array.isArray(S.custom_dirs)){
+      S.custom_dirs = [dpCur].concat(
+        S.custom_dirs.filter(x => x !== dpCur)).slice(0, 8);
+    }
+    closeDirPick();          // 里面会重画下拉并带上刚选的
+    toast("目标已设为 " + dpCur, "ok");
+  };
+  $("#dpNew").onclick = async () => {
+    if (!dpCur) return toast("先选一个位置", "err");
+    const n = await ask("在下面新建文件夹:\n" + dpCur, "未使用");
+    if (!n) return;
+    const sep = /[\\/]$/.test(dpCur) ? "" : "\\";
+    const p = dpCur + sep + n;
+    const r = await api("/api/mkdir", {base: "abs", path: p});
+    if (!r.ok) return toast(r.msg || "建不了这个文件夹", "err");
+    dpLoad(r.path || p);
+  };
+  dpLoad(dpCur || "");
+}
+function closeDirPick(){
+  const box = $("#dirpick");
+  if (box) box.classList.remove("on");
+  dpOpt = null;
+  renderSelBar();          // 取消的话把下拉框显示回真正选中的值
+}
+async function dpLoad(path){
+  const r = await api("/api/list_dirs", {path: path || ""});
+  if (!r.ok){ toast(r.msg || "读不了这个文件夹", "err"); return; }
+  dpCur = r.path || "";
+  dpParent = r.parent || "";
+  if (r.drives) dpDrives = r.drives;
+  if (r.quick) dpQuick = r.quick;
+  const pathEl = $("#dpPath");
+  if (pathEl) pathEl.textContent = dpCur || "(选一个位置)";
+  const upBtn = $("#dpUp");
+  if (upBtn) upBtn.style.display = dpParent ? "" : "none";
+  const q = $("#dpQuick");
+  if (q){
+    q.innerHTML =
+      (dpQuick || []).map(x => `<button class="mini" data-p="${esc(x.path)}">${esc(x.label)}</button>`).join("") +
+      " " +
+      (dpDrives || []).map(d => `<button class="mini" data-p="${esc(d)}">${esc(d)}</button>`).join("");
+    q.querySelectorAll("[data-p]").forEach(b => {
+      b.onclick = () => dpLoad(b.getAttribute("data-p"));
+    });
+  }
+  const list = $("#dpList");
+  if (!list) return;
+  const dirs = r.dirs || [];
+  if (!dirs.length){
+    list.innerHTML = `<div class="dpempty">${
+      r.path ? "这个文件夹里没有子文件夹" : "点上面的快捷位置或盘符开始"}</div>`;
+    return;
+  }
+  list.innerHTML = dirs.map(d =>
+    `<div class="dpitem" data-p="${esc(d.path)}"><span>📁</span>` +
+    `<span class="nm">${esc(d.name)}</span>` +
+    `<span class="ct">${d.count >= 0 ? d.count + " 项" : ""}</span></div>`).join("");
+  list.querySelectorAll(".dpitem").forEach(it => {
+    it.onclick = () => dpLoad(it.getAttribute("data-p"));
+  });
+}
+function exitSel(){
+  selMode = false; sel.clear();
+  $("#btnSel").classList.remove("on");
+  $("#btnSel").textContent = "☑ 多选搬运";
+  renderCards();
+}
+
+// ---------------- 仓库管理: 添加/移除(只动列表, 不删磁盘文件) ----------------
+function openLibMgr(force){
+  const box = $("#libmgr");
+  if (!box) return;
+  $("#lmClose").onclick = closeLibMgr;
+  $("#lmDone").onclick = closeLibMgr;
+  $("#lmNewRoot").onclick = addLibRoot;
+  $("#lmFind").onclick = () => openDirPick({
+    title: "🔒 选一个文件夹锁定成仓库", ok: "✔ 锁定为仓库",
+    onPick: (p) => addLibAbs(p)
+  });
+  const nameEl = $("#lmName");
+  if (nameEl){
+    if (force) nameEl.focus();
+    nameEl.onkeydown = (e) => { if (e.key === "Enter") addLibRoot(); };
+  }
+  box.classList.add("on");
+  renderLibMgrList();
+}
+function closeLibMgr(){
+  const box = $("#libmgr");
+  if (box) box.classList.remove("on");
+}
+// 在 ZZMI 根目录下新建一个仓库目录并登记
+async function addLibRoot(){
+  const el = $("#lmName");
+  const n = (el && el.value || "").trim();
+  if (!n) return toast("先写一个仓库名", "err");
+  const r = await api("/api/add_lib", {lib: n, create: true});
+  if (r.state) S = r.state;
+  if (!r.ok) return toast(r.msg || "建不了这个仓库", "err");
+  if (el) el.value = "";
+  toast(r.msg || "已添加", "ok");
+  renderSelBar(); renderLibMgrList();
+}
+// 锁定一个磁盘上已有的文件夹当成仓库(任意盘)
+async function addLibAbs(p){
+  if (!p) return {ok: false};
+  const r = await api("/api/add_lib", {lib: "abs:" + p});
+  if (r.state) S = r.state;
+  if (!r.ok){ toast(r.msg || "加不了这个仓库", "err"); return {ok: false}; }
+  toast(r.msg || "已锁定为仓库", "ok");
+  renderSelBar();
+  if ($("#libmgr") && $("#libmgr").classList.contains("on")) renderLibMgrList();
+  return {ok: true};
+}
+function renderLibMgrList(){
+  const libs = (S && S.libraries) || [];
+  const absLibs = (S && S.libs_abs) || [];
+  const customs = (S && S.custom_dirs) || [];
+  const list = $("#lmList");
+  if (!list) return;
+  if (!libs.length && !absLibs.length && !customs.length){
+    list.innerHTML = `<div class="dpempty">还没有登记任何仓库。<br><br>` +
+      `用上面的「＋ 在 ZZMI 下新建」建一个,<br>` +
+      `或者「📁 手动寻找仓库路径…」锁定磁盘上已有的文件夹。</div>`;
+    return;
+  }
+  const row = (icon, name, sub, val) =>
+    `<div class="dpitem"><span>${icon}</span>` +
+    `<span class="nm">${esc(name)}${sub ? `<span class="lmlib">${esc(sub)}</span>` : ""}</span>` +
+    `<button class="mini" data-lmdel="${esc(val)}">🗑 移除</button></div>`;
+  list.innerHTML =
+    (libs.length ? `<div class="lmsec">ZZMI 目录下的仓库</div>` : "") +
+    libs.map(n => row("📦", n, "", n)).join("") +
+    (absLibs.length ? `<div class="lmsec abs">锁定的其它位置</div>` : "") +
+    absLibs.map(d => row("🔒", d, "", "abs:" + d)).join("") +
+    (customs.length ? `<div class="lmsec abs">自定义文件夹（搬运目标）</div>` : "") +
+    customs.map(d => row("📁", d, "", "abs:" + d)).join("");
+  list.querySelectorAll("[data-lmdel]").forEach(b => {
+    b.onclick = async () => {
+      const v = b.getAttribute("data-lmdel");
+      const name = v.replace(/^abs:/i, "");
+      if (!confirm(`从列表移除「${name}」?\n\n只从下拉里去掉这一项, 磁盘上的文件夹和 mod 一个都不会删。`)) return;
+      const r = await api("/api/del_lib", {lib: v});
+      if (r.state) S = r.state;
+      if (!r.ok) return toast(r.msg || "移除失败", "err");
+      if (selLib === v || selLib === name){ selLib = ""; }
+      renderSelBar();
+      toast(r.msg || "已移除", "ok");
+      renderLibMgrList();
+    };
+  });
+}
+async function doMoveBatch(){
+  if (!sel.size) return toast("先勾选要搬的 mod（点卡片即可勾选）","err");
+  let lib = selLib;
+  if (lib === "__new__"){
+    const n = await ask("新仓库目录名(会在 ZZMI 根目录下创建):", "未使用");
+    if (!n) return;
+    const mk = await api("/api/add_lib", {lib: n, create: true});
+    if (mk.state) S = mk.state;
+    if (!mk.ok) return toast(mk.msg || "建目录失败", "err");
+    lib = n; selLib = n;
+  }
+  if (lib === "__custom__"){ openDirPick(); return; }
+  if (!lib) return toast("先选一个仓库 / 自定义文件夹（或选「ZZMI 根目录」）","err");
+  const where = (lib === "__root__") ? "ZZMI 根目录"
+              : (isAbsPath(lib) ? "文件夹「" + lib.replace(/^abs:/i,"") + "」"
+                                : "仓库「" + lib + "」");
+  if (!confirm(`把勾选的 ${sel.size} 个 mod 搬到 ${where}?\n\n` +
+      `· 搬走后它们不在 Mods 里, 游戏不再加载\n· 文件一个都不会删, 随时能搬回来\n· 同名会自动加 (2), 不会覆盖`)) return;
+  const btn = $("#selMove");
+  if (btn){ btn.disabled = true; btn.textContent = "搬运中…"; }
+  try{
+    const r = await api("/api/move_batch", {ids:[...sel], lib: (lib==="__root__" ? "" : lib)});
+    if (r.state) S = r.state;
+    if (r.result && r.result.failed){
+      toast(`${r.msg}\n` + r.result.details.slice(0,3)
+        .map(d => "· " + d.name + ": " + d.msg).join("\n"), "err");
+    } else toast(r.msg || "已搬完", "ok");
+    sel.clear();
+    renderAll();
+  }catch(e){ toast("搬运失败: " + e.message, "err"); }
+  finally{ if (btn){ btn.disabled = false; btn.textContent = "📦 一键搬运"; } }
+}
+$("#btnSel").onclick = () => {
+  selMode = !selMode;
+  if (!selMode) return exitSel();
+  $("#btnSel").classList.add("on");
+  $("#btnSel").textContent = "✕ 退出多选";
+  toast("多选模式：点卡片勾选，再在下面选仓库点「一键搬运」", "ok");
+  renderCards();
+};
+
+async function togglePin(kind, key){
+  try{
+    const r = await api("/api/pin", {kind, key});
+    if (r.state) S = r.state;
+    toast(r.msg || (r.ok ? "已更新收藏" : "失败"), r.ok?"ok":"err");
+    renderAll();
+    if (curDetail) openDetail(curDetail, true);
+  }catch(e){ toast("操作失败: "+e.message, "err"); }
+}
+
+// ---------------- 改名被占用/拒绝访问 -> 手动处理教程 ----------------
+// enable=false(想禁用): 让玩家自己在文件夹名前面加 DISABLED_
+// enable=true (想启用): 让玩家自己把名字前面的 DISABLED_ 删掉
+let mmDir = "";
+let mmPath = "";
+function showManualHelp(f, enable){
+  const box = $("#mManual");
+  if (!box) return;
+  mmDir = f.dir || "";
+  mmPath = f.cur || "";
+  const name = f.name || "";
+  const want = f.target_name || (enable ? name.replace(/^DISABLED_/i, "")
+                                       : "DISABLED_" + name);
+  $("#mmTitle").textContent = enable ? "⚠ 启用失败, 得手动来一下"
+                                     : "⚠ 禁用失败, 得手动来一下";
+  // reason 由后端 lock_reason_kind() 给出: denied=没权限 / busy=被占用 / other
+  const whyMap = {
+    denied: "这个 mod 当前<b>没有权限改名</b>(可能被设成只读, 或被杀毒软件锁着)。",
+    busy: "这个 mod 当前<b>正被占用</b> —— 通常是游戏还开着、3DMigoto 正在读它, 或者资源管理器开着那个文件夹。",
+    other: "这个 mod 的文件夹被系统挡着没让改名(占用或权限问题)。"
+  };
+  const why = whyMap[f.reason] || whyMap.busy;
+  const step = enable
+    ? `<b>把文件夹名前面的 <code>DISABLED_</code> 删掉</b>`
+    : `<b>在文件夹名前加上 <code>DISABLED_</code></b>`;
+  const goText = enable ? "📂 去删除(删掉 DISABLED_)" : "📂 去改名(加上 DISABLED_)";
+  const openTip = enable
+    ? "点下面的「📂 去删除」—— 会打开它所在的文件夹并<b>自动选中这个 mod</b>(窗口顶到屏幕最前面), 直接按 F2 就能改名"
+    : "点下面的「📂 去改名」—— 会打开它所在的文件夹并<b>自动选中这个 mod</b>(窗口顶到屏幕最前面), 直接按 F2 就能改名";
+  $("#mmBody").innerHTML = `
+    <p style="margin:0 0 10px">${why}</p>
+    <p style="margin:0 0 10px">工具帮你改了但没改成功, 这一步你可以自己做 —— 效果和工具做的一模一样:</p>
+    <div class="kv"><span class="k">文件夹</span><span class="v"><code>${esc(name)}</code></span></div>
+    <div class="kv"><span class="k">改成</span><span class="v"><code>${esc(want)}</code></span></div>
+    <p style="margin:12px 0 8px"><b>怎么做:</b></p>
+    <ol style="margin:0;padding-left:20px;line-height:1.85">
+      <li>${openTip}</li>
+      <li>对着那个文件夹按 <b>F2</b>(或右键 → 重命名)</li>
+      <li>${step}</li>
+      <li>回到这里按 <b>F9</b> 或点「🔄 重扫」, 状态就更新了</li>
+    </ol>
+    <p class="hint" style="margin-top:12px">💡 想彻底避免这一步: 先把游戏关掉再操作, 就能一键完成了。</p>`;
+  $("#mmCopy").textContent = "📋 复制 DISABLED_";
+  $("#mmCopy").onclick = async () => {
+    const good = await copyText("DISABLED_");
+    toast(good ? "已复制 DISABLED_ —— 粘贴到文件夹名最前面即可"
+               : "复制失败, 手动敲这几个字母吧: D I S A B L E D _", good ? "ok" : "err");
+  };
+  $("#mmOpen").textContent = goText;
+  $("#mmOpen").onclick = async () => {
+    if (!mmPath && !mmDir) return toast("找不到这个文件夹", "err");
+    // 传文件夹本身 + select: 资源管理器会打开父目录并把这一项选中, 直接按 F2 就能改
+    const r = await api("/api/openroot",
+                        mmPath ? {path: mmPath, select: true} : {path: mmDir});
+    if (!r.ok) toast("打不开这个文件夹, 可能已经被移走了", "err");
+  };
+  box.classList.add("on");
+  $("#mask").classList.add("on");
+}
+function hasRenameFail(details){
+  return (details || []).some(d => /拒绝访问|占用|权限|WinError|只读|重命名失败/i.test(d.msg || ""));
+}
+
+// ---------------- 重名 -> 已自动加 (2) (3)… 的提示 ----------------
+// 后端遇到目标名已被占用时不会报错, 而是自动往后加序号。
+// 这里把"原来想叫啥 / 最后叫了啥"讲清楚, 免得玩家以为是 bug。
+function showDupNotice(items, title){
+  const box = $("#mDup");
+  if (!box || !items || !items.length) return;
+  const one = items.length === 1 ? items[0] : null;
+  $("#mdTitle").textContent = title || "✎ 名字已被占用, 帮你自动加了个序号";
+  const rows = items.slice(0, 12).map(it => {
+    const orig = it.orig_name || "", got = it.target_name || "";
+    return `<div class="trow">
+      <span class="nm"><code>${esc(orig)}</code> → <b><code>${esc(got)}</code></b></span>
+      <span class="n">${it.seq ? "加了 (" + it.seq + ")" : ""}</span>
+    </div>`;
+  }).join("");
+  const more = items.length > 12
+    ? `<p class="hint" style="margin:8px 0 0">…还有 ${items.length - 12} 个也是同样处理的</p>` : "";
+  $("#mdBody").innerHTML = `
+    <p style="margin:0 0 10px">目标名字<b>已经被别的文件夹占用了</b>, 直接改过去会把它顶掉, 所以工具帮你
+    <b>在后面加了个序号</b> —— 就和 Windows 复制文件时一样, 依次类推。</p>
+    ${one ? `<div class="kv"><span class="k">你想叫</span><span class="v"><code>${esc(one.orig_name||"")}</code></span></div>
+    <div class="kv"><span class="k">实际叫</span><span class="v"><b><code>${esc(one.target_name||"")}</code></b></span></div>` : ""}
+    ${items.length > 1 ? `<h4 style="margin:14px 0 6px;font-size:13px">这批一共 ${items.length} 个被自动改名</h4>
+      <div class="tree">${rows}</div>${more}` : ""}
+    <p class="hint" style="margin-top:12px">💡 不满意这个名字: 在卡片上点「✎ 重命名」改成你想要的就行,
+    改的时候如果又撞名, 同样会自动加序号。原来的那个文件夹<b>一个都没动过</b>。</p>`;
+  box.classList.add("on");
+  $("#mask").classList.add("on");
+}
+
 async function doToggle(ids, enabled){
   if (busy) return;
   busy = true;
@@ -647,11 +1342,19 @@ async function doToggle(ids, enabled){
     const r = await api("/api/toggle", {ids, enabled});
     S = r.state;
     const f = r.result;
+    const dups = f.renamed || [];
     if (f.failed) toast(`完成 ${f.ok} 项, ${f.failed} 项失败:\n` +
       f.details.slice(0,3).map(d => "· " + d.name + ": " + d.msg).join("\n"), "err");
+    else if (dups.length) toast(`已${enabled?"启用":"禁用"} ${f.ok} 个 mod\n` +
+      `其中 ${dups.length} 个因重名自动加了序号`, "ok");
     else toast((enabled?"已启用 ":"已禁用 ") + f.ok + " 个 mod\n(游戏里按 F10 立即生效)", "ok");
     renderAll();
     if (curDetail && ids.includes(curDetail)) openDetail(curDetail, true);
+    // 重名 -> 自动加 (2) (3)…: 弹提示说明改成了什么
+    if (dups.length) showDupNotice(dups);
+    // 改名被占用/权限拒绝 -> 弹教程教玩家自己动手(带复制 DISABLED_ + 去改名)
+    const stuck = (f.details || []).filter(d => hasRenameFail([d]));
+    if (stuck.length) showManualHelp(stuck[0], enabled);
   }catch(e){ toast("操作失败: "+e.message+"\n多半是后台服务被关了, 或被系统代理拦截", "err"); }
   finally{ busy = false; }
 }
@@ -698,7 +1401,7 @@ function renderPresets(){
   if (cur && ps[cur]) sel.value = cur;
 }
 $("#btnPresetSave").onclick = async () => {
-  const name = prompt("给当前这套 mod 组合起个名字:", "方案 " + new Date().toLocaleDateString());
+  const name = await ask("给当前这套 mod 组合起个名字:", "方案 " + new Date().toLocaleDateString());
   if (!name) return;
   const r = await api("/api/preset", {action:"save", name});
   if (r.state) S = r.state;
@@ -711,6 +1414,12 @@ $("#btnPresetApply").onclick = async () => {
   const r = await api("/api/preset", {action:"apply", name});
   if (r.state) S = r.state;
   toast(r.msg, r.ok?"ok":"err"); renderAll();
+  // 套用时因重名被自动加后缀 -> 提示改了哪些
+  const dups = r.renamed || [];
+  if (dups.length) showDupNotice(dups, "✎ 套用方案时有重名, 已自动加序号");
+  // 套用时某个 mod 改名被占用/拒绝访问 -> 同样弹手动教程
+  const stuck = (r.failed || []).filter(d => hasRenameFail([d]));
+  if (stuck.length) showManualHelp(stuck[0], !!stuck[0].enable);
 };
 $("#btnPresetDel").onclick = async () => {
   const name = $("#presetSel").value;
@@ -742,8 +1451,57 @@ $("#btnLaunch").onclick = async () => {
     setTimeout(() => { b.disabled = false; }, 6000);
   }
 };
+// ---------- 侧栏分组: 点标题收起 / 展开整组 (状态记在 localStorage) ----------
+const FOLD_KEY = "zzmi.folds";
+function foldState(){
+  try{ return JSON.parse(localStorage.getItem(FOLD_KEY)) || {}; }catch(e){ return {}; }
+}
+function saveFolds(st){
+  try{ localStorage.setItem(FOLD_KEY, JSON.stringify(st)); }catch(e){}
+}
+function updateFoldAllBtn(){
+  const b = $("#btnFoldAll"); if (!b) return;
+  const anyOpen = $$("aside .side-sec").some(s => !s.classList.contains("collapsed"));
+  b.textContent = anyOpen ? "⇕ 收起全部" : "⇕ 展开全部";
+}
+function applyFolds(){
+  const st = foldState();
+  $$("aside .side-sec").forEach(sec => {
+    sec.classList.toggle("collapsed", !!st[sec.dataset.sec]);
+  });
+  updateFoldAllBtn();
+}
+$$("aside .side-h.fold").forEach(h => h.onclick = () => {
+  const sec = h.closest(".side-sec");
+  sec.classList.toggle("collapsed");
+  const st = foldState();
+  st[sec.dataset.sec] = sec.classList.contains("collapsed");
+  saveFolds(st);
+  updateFoldAllBtn();
+});
+$("#btnFoldAll").onclick = () => {
+  const secs = $$("aside .side-sec");
+  const anyOpen = secs.some(s => !s.classList.contains("collapsed"));
+  const st = {};
+  secs.forEach(s => {
+    s.classList.toggle("collapsed", anyOpen);
+    st[s.dataset.sec] = anyOpen;
+  });
+  saveFolds(st);
+  updateFoldAllBtn();
+};
+applyFolds();
+
 $("#btnSet").onclick = () => openSetup();
 $("#btnLib").onclick = openLib;
+$("#btnUpd").onclick = async () => {
+  const b = $("#btnUpd"); b.disabled = true; b.innerHTML = '<span class="spin"></span> 检查中';
+  const r = await checkUpdate();
+  b.disabled = false; b.innerHTML = '⬆ 检查更新';
+  if (r.ok && r.update_available) toast("发现新版本 v" + r.latest + ", 点顶部提示条下载", "ok");
+  else if (r.ok) toast("已经是最新版 (v" + (S.version || "") + ")", "ok");
+  else toast("检查失败: " + (r.error || "未知错误"), "err");
+};
 $("#pathchip").onclick = () => openSetup();
 
 async function openDetail(id, silent){
@@ -794,9 +1552,10 @@ async function openDetail(id, silent){
       <button class="mini" data-cf="${esc(c.rel)}" data-cfe="${c.enabled?1:0}">${c.enabled?"禁用":"启用"}</button>
     </div>`;
   });
-  // ---- 变体提示 (只读: $var = 0,1,2 + type = cycle) ----
-  // 不提供任何按钮, 不修改文件; 变体一律在游戏内按绑定键循环切换。
+  // ---- 变体提示 ($var = 0,1,2 + type = cycle) ----
+  // 游戏内按绑定键循环切换; v1.5.4 起可以在这里一键改绑定键(改前确认+可撤销)。
   const cycles = d.cycles || [];
+  dtCycles = cycles;
   let cycleRows = "";
   cycles.forEach(c => {
     const keys = (c.keys||[]).slice(0,3).join(" / ");
@@ -805,7 +1564,7 @@ async function openDetail(id, silent){
     cycleRows += `<div class="trow" style="background:var(--panel3)">
       <span>🎮</span><span class="nm"><b>${esc(c.label_cn || c.label)}</b><span class="hint"> ${esc(c.label_cn ? c.label : "")}</span>${n ? " · 共 " + n + " 个变体" : ""}
       <br><span class="hint">${keys ? "进游戏按 <b>"+esc(keys)+"</b> 键循环切换变体" : "进游戏后按该 mod 绑定的按键循环切换"}${cur}${c.switchable ? "" : " · 此变体含表达式, 只能在游戏里按键切"}</span></span>
-      <span class="n">游戏内切换</span></div>`;
+      <span class="n"><button class="mini" data-rekey="${esc(c.var)}" title="修改这个变体的循环切换按键">⌨ 改键</button></span></div>`;
   });
   if (!compRows) compRows = '<div class="trow"><span class="nm">（这个 mod 没有 ini）</span></div>';
   const nBackupComp = comps.filter(c => c.backup).length;
@@ -814,6 +1573,9 @@ async function openDetail(id, silent){
     <span class="v">${e.backup_inis.map(esc).join(", ")}<br>
     <span class="hint">以 disabled/DISABLED 开头的副本会被 3DMigoto 忽略, 留着不影响使用。</span></span></div>` : "";
   $("#dtBody").innerHTML = `
+    <div class="kv"><span class="k">收藏置顶</span><span class="v">
+      <button class="mini" id="dtPin" style="${e.pinned?"border-color:var(--warn);color:var(--warn)":""}">${e.pinned?"★ 已置顶 · 点击取消":"☆ 收藏置顶"}</button>
+      <span class="hint">收藏后这个 mod 永远排在列表最前面${e.char!==e.name?"；也可以在左侧把角色「"+esc(e.char)+"」或分类「"+esc(e.category)+"」整体收藏":""}。</span></span></div>
     <div class="kv"><span class="k">状态</span><span class="v">
       ${e.enabled?'<b style="color:var(--ok)">已启用</b>':'<b style="color:var(--off)">已禁用</b>'}
       ${e.dir_disabled?" (目录带 DISABLED 前缀)":""}${e.partial?' <span class="tag warn">部分子目录被禁用</span>':""}</span></div>
@@ -824,8 +1586,19 @@ async function openDetail(id, silent){
     <div class="kv"><span class="k">分类</span><span class="v">${esc(e.category)}</span></div>
     <div class="kv"><span class="k">磁盘路径</span><span class="v">${esc(d.abs_path)}</span></div>
     <div class="kv"><span class="k">体积</span><span class="v">${e.size_h} · ${e.files} 个文件 · ${e.ini_count} 个 ini</span></div>
+    <div class="kv"><span class="k">上次使用</span><span class="v">${e.usage ? new Date(e.usage*1000).toLocaleString() : "—"}<span class="hint"> · 每次启用/切变体都会更新</span></span></div>
     <div class="kv"><span class="k">修改时间</span><span class="v">${new Date(e.mtime*1000).toLocaleString()}</span></div>
     ${bk}
+    <h4 style="margin:16px 0 6px;font-size:13px">预览图
+      <span class="hint">点缩略图可放大看; 不满意可以自己换一张</span></h4>
+    <div class="pv-grid" id="pvBox"><div class="hint" style="padding:6px 2px">读取中…</div></div>
+    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="mini" id="pvAdd">＋ 选择照片作为预览图</button>
+      <button class="mini" id="pvReset" style="display:none">↺ 恢复自动挑选</button>
+      <input type="file" id="pvFile" accept="image/*" style="display:none">
+      <span class="hint">选中的照片会复制进这个 mod 文件夹(命名为 <code>zzmi_cover.*</code>),
+      只新增/覆盖这个文件名, 不动你原来的图片和 ini。</span>
+    </div>
     <h4 style="margin:16px 0 6px;font-size:13px">会覆盖的 hash (${(e.hashes||[]).length})</h4>
     <div class="hs">${hs}</div>
     <h4 style="margin:16px 0 6px;font-size:13px">目录结构 —— 可以单独开关某个部件</h4>
@@ -834,7 +1607,7 @@ async function openDetail(id, silent){
       ${groups.length ? `<span class="hint">(发现 ${groups.length} 个变体组)</span>` : ""}</h4>
     <div class="tree">${compRows}</div>
     ${cycles.length ? `<h4 style="margin:16px 0 6px;font-size:13px">变体提示 (${cycles.length})
-      <span class="hint">(只读信息; 工具不会改你的文件)</span></h4>
+      <span class="hint">(游戏内按绑定键循环切换; 点「⌨ 改键」可修改绑定键)</span></h4>
     <div class="tree">${cycleRows}</div>` : ""}
     ${nBackupComp ? `<p class="hint" style="margin:6px 2px">📦 另有 ${nBackupComp} 个备份副本(其他工具留下的 DISABLED/beifen 文件), 不参与变体判断, 留着不影响使用。</p>` : ""}
     <p class="hint" style="margin-top:14px">变体 = 同一个 mod 里互相覆盖的几套文件(如 长剑/短剑、贴图 A/B), 同组只能开一个。
@@ -843,7 +1616,8 @@ async function openDetail(id, silent){
     改完在游戏里按 <b>F10</b> 立即生效。</p>`;
   $("#dtBody").querySelectorAll("[data-dt]").forEach(b => b.onclick = async () => {
     b.disabled = true;
-    const r = await api("/api/dir_toggle", {rel: b.dataset.dt, enabled: b.dataset.dton !== "1"});
+    const r = await api("/api/dir_toggle", {rel: b.dataset.dt, id: curDetail,
+                                            enabled: b.dataset.dton !== "1"});
     if (r.state) S = r.state;
     toast(r.msg || "完成", r.ok?"ok":"err"); renderAll(); openDetail(curDetail, true);
   });
@@ -860,11 +1634,100 @@ async function openDetail(id, silent){
     if (r.state) S = r.state;
     toast(r.msg || "完成", r.ok?"ok":"err"); renderAll(); openDetail(curDetail, true);
   });
+  // 变体改键: 输入「键位 空格 键位」(如 ctrl a), 后端就地改 ini 里的 key = 行
+  $("#dtBody").querySelectorAll("[data-rekey]").forEach(b => b.onclick = async () => {
+    const c = (dtCycles || []).find(x => x.var === b.dataset.rekey);
+    if (!c) return;
+    const curRaw = (c.keys_raw && c.keys_raw.length) ? c.keys_raw.join(" / ") : "";
+    const name = c.label_cn || c.label || c.var;
+    const inp = await ask(
+      `修改「${name}」变体的循环切换按键。\n` +
+      `格式: 键位 空格 键位, 例如 ctrl a / shift f1 / numpad0 / up / 鼠标侧键1\n` +
+      (curRaw ? `当前绑定: ${curRaw}\n` : "") +
+      `\n改完会就地更新 ini 里的 key = 行(原文件自动备份, 可撤销), 进游戏按 F10 生效。`,
+      curRaw || "ctrl a");
+    if (inp === null) return;                 // 取消
+    if (!inp.trim()) return toast("按键不能为空", "err");
+    b.disabled = true;
+    const r = await api("/api/cycle_rekey", {id: curDetail, var: c.var, key: inp.trim()});
+    b.disabled = false;
+    if (r.state) S = r.state;
+    toast(r.msg || (r.ok ? "改好了" : "改键失败"), r.ok?"ok":"err");
+    if (r.ok) openDetail(curDetail, true);    // 重新读, 让界面上显示新按键
+  });
+  const dp = $("#dtPin");
+  if (dp) dp.onclick = () => togglePin("mod", e.id);
   const cs = $("#dtCharSave");
   if (cs) cs.onclick = async () => {
     const r = await api("/api/set_char", {id: e.id, char: $("#dtChar").value.trim()});
     if (r.state) S = r.state;
     toast(r.msg, r.ok?"ok":"err"); renderAll(); openDetail(e.id, true);
+  };
+  initPreviewPanel(e.id);
+}
+
+// ---------- 详情里的预览图: 切换 / 一键添加 / 恢复自动 ----------
+async function initPreviewPanel(id){
+  const box = $("#pvBox");
+  if (!box) return;
+  let info;
+  try{ info = await api("/api/images?id=" + encodeURIComponent(id)); }
+  catch(e){ box.innerHTML = '<div class="hint" style="padding:6px 2px">读不到图片列表</div>'; return; }
+  if (!info.ok){ box.innerHTML = '<div class="hint" style="padding:6px 2px">'+esc(info.msg||"读不到图片")+'</div>'; return; }
+  const imgs = info.images || [], cur = info.current || "";
+  const rb = $("#pvReset");
+  if (rb) rb.style.display = info.manual ? "" : "none";
+  if (!imgs.length){
+    box.innerHTML = '<div class="hint" style="padding:6px 2px">这个 mod 文件夹里没有图片, 可以用下面的按钮加一张。</div>';
+  }else{
+    box.innerHTML = imgs.map(im => `
+      <div class="pv-item ${im.rel===cur?"on":""}" data-pv="${esc(im.rel)}"
+           title="${esc(im.name)} · ${esc(im.size_h)}">
+        <img src="/thumb?t=${encodeURIComponent(T)}&p=${encodeURIComponent(im.thumb)}" alt="">
+        ${im.manual ? '<span class="pvm">我加的</span>' : ""}
+        <span class="pvn">${esc(im.name)}</span>
+      </div>`).join("");
+  }
+  box.querySelectorAll("[data-pv]").forEach(el => el.onclick = async () => {
+    const r = await api("/api/set_preview", {id, rel: el.dataset.pv});
+    if (r.state) S = r.state;
+    toast(r.msg || "封面已切换", r.ok?"ok":"err");
+    renderAll();
+    if (r.ok) openDetail(id, true);
+  });
+  const addBtn = $("#pvAdd"), file = $("#pvFile");
+  if (addBtn && file){
+    addBtn.onclick = () => file.click();
+    file.onchange = async () => {
+      const f = file.files && file.files[0];
+      file.value = "";
+      if (!f) return;
+      if (f.size > 25 * 1024 * 1024) return toast("图片太大(超过 25MB), 请先压缩", "err");
+      const old = addBtn.textContent;
+      addBtn.disabled = true; addBtn.textContent = "读取中…";
+      try{
+        const data = await new Promise((res, rej) => {
+          const fr = new FileReader();
+          fr.onload = () => res(fr.result);
+          fr.onerror = () => rej(new Error("读取失败"));
+          fr.readAsDataURL(f);
+        });
+        const r = await api("/api/set_preview", {id, filename: f.name, data});
+        if (r.state) S = r.state;
+        toast(r.msg || "已设为封面", r.ok?"ok":"err");
+        renderAll();
+        if (r.ok) openDetail(id, true);
+      }catch(e){ toast("添加失败: " + (e && e.message || e), "err"); }
+      finally{ addBtn.disabled = false; addBtn.textContent = old; }
+    };
+  }
+  const resetBtn = $("#pvReset");
+  if (resetBtn) resetBtn.onclick = async () => {
+    const r = await api("/api/set_preview", {id, reset: true});
+    if (r.state) S = r.state;
+    toast(r.msg || "已恢复自动挑选", r.ok?"ok":"err");
+    renderAll();
+    if (r.ok) openDetail(id, true);
   };
 }
 $("#dtClose").onclick = closeAll;
@@ -873,16 +1736,25 @@ $("#dtToggle").onclick = () => {
   const e = S.entries.find(x => x.id === curDetail);
   if (e) doToggle([e.id], !e.enabled);
 };
-$("#dtRename").onclick = async () => {
-  const e = S.entries.find(x => x.id === curDetail);
-  if (!e) return;
-  const n = prompt("新的文件夹名:", e.name);
-  if (!n || n === e.name) return;
+// v1.5.11: 重命名共用入口(卡片按钮 / 详情弹窗都走这里)
+async function renameMod(e){
+  if (!e) return false;
+  const n = await ask("新的文件夹名:", e.name);
+  if (!n || n === e.name) return false;
   const r = await api("/api/rename", {id:e.id, name:n});
   if (r.state) S = r.state;
   toast(r.msg || "完成", r.ok?"ok":"err");
-  if (r.ok){ curDetail = null; closeAll(); }
+  // v1.5.8: 名字被占用 -> 后端已自动加 (2), 弹窗说清楚
+  if (r.ok && r.renamed) showDupNotice([{
+    orig_name: r.orig_name, target_name: r.target_name, seq: r.seq
+  }], "✎ 「" + (r.orig_name || n) + "」已被占用");
   renderAll();
+  return true;
+}
+$("#dtRename").onclick = async () => {
+  const e = S.entries.find(x => x.id === curDetail);
+  if (!e) return;
+  if (await renameMod(e)){ curDetail = null; closeAll(); }
 };
 
 function openSetup(){ $("#mask").classList.add("on"); $("#mSet").classList.add("on"); renderSetup(); }
@@ -922,6 +1794,15 @@ function renderSetup(){
       <button class="mini" onclick="setHide(false)">显示</button>
       <span class="hint">(当前: ${S.hide_preview?"隐藏":"显示"})</span></span></div>
     <div class="kv"><span class="k">数据目录</span><span class="v">~/.zzmi-manager</span></div>
+    <h4 style="margin:18px 0 6px;font-size:13px">自动更新</h4>
+    <div class="kv"><span class="k">更新仓库</span><span class="v">
+      <input class="inp" id="inRepo" value="${esc(S.update_repo||"")}"
+        style="max-width:300px;padding:6px 9px;display:inline-block"
+        placeholder="owner/repo  例如 782838/ZZMI-Mod-Manager">
+      <button class="mini" id="btnSaveRepo">保存</button>
+      <button class="mini" id="btnCheckUpd">检查更新</button>
+      <br><span class="hint" id="updHint">填 GitHub 上的 owner/repo, 程序启动后会自动去 Releases 看有没有新版本。
+      ${S.version ? "当前 v"+esc(S.version) : ""}</span></span></div>
     <h4 style="margin:18px 0 6px;font-size:13px">全局快捷键</h4>
     <div class="kv"><span class="k">呼出 / 隐藏</span><span class="v">
       <input class="inp" id="inHotkey" value="${esc(S.hotkey||"F9")}"
@@ -930,10 +1811,16 @@ function renderSetup(){
       <br><span class="hint">绝区零运行时按下即可呼出/隐藏管理器窗口。
       字母/数字必须带修饰键(如 <b>F9</b>、Alt+Z), 单独按 F1~F12 也可以。
       ${S.hotkey_ok === false ? '<b style="color:var(--warn,#e8b339)">⚠ 当前快捷键注册失败(可能被其他程序占用), 请换一个组合。</b>' : ""}</span></span></div>
+    <h4 style="margin:18px 0 6px;font-size:13px">日志 / 排错</h4>
+    <div class="kv"><span class="k">命令窗口</span><span class="v">
+      <button class="mini" id="btnConsole">▣ 显示命令窗口(看日志)</button>
+      <br><span class="hint">程序启动后命令窗口会自动隐藏, 省得挡在桌面上。
+      想看运行日志就点这里把它调回来; 日志同时存在
+      <code>数据目录\zzmi.log</code> 里, 随时能翻。</span></span></div>
     <h4 style="margin:18px 0 6px;font-size:13px">退出</h4>
     <div class="kv"><span class="k">退出程序</span><span class="v">
       <button class="btn danger" id="btnQuit">⏻ 退出 ZZMI 管家</button>
-      <span class="hint">等价于关掉那个黑色控制台窗口。</span></span></div>`;
+      <span class="hint">关掉界面窗口即可结束程序(命令窗口已隐藏, 程序会在几秒后自动退出, 不用管它)。</span></span></div>`;
   $("#btnAuto").onclick = () => autoDetect();
   $("#btnSaveRoot").onclick = async () => {
     const v = $("#inRoot").value.trim();
@@ -949,10 +1836,31 @@ function renderSetup(){
     if (r.state) S = r.state;
     toast(r.msg || "完成", r.ok?"ok":"err");
   };
+  const bcon = $("#btnConsole");
+  if (bcon) bcon.onclick = async () => {
+    const r = await api("/api/console", {show: true});
+    toast(r.msg || (r.ok ? "命令窗口已显示" : "没找到命令窗口"), r.ok?"ok":"err");
+  };
   $("#btnQuit").onclick = async () => {
     if (!confirm("确定退出 ZZMI 管家?")) return;
     try{ await api("/api/quit", {}); }catch(e){}
     document.body.innerHTML = '<div style="display:grid;place-items:center;height:100vh;color:#808b99;font:15px sans-serif">已退出, 可以关掉这个窗口了</div>';
+  };
+  const bsr = $("#btnSaveRepo");
+  if (bsr) bsr.onclick = async () => {
+    const r = await api("/api/config", {update_repo: $("#inRepo").value.trim()});
+    if (r.ok){ S = r.state; toast("已保存更新仓库", "ok"); }
+    else toast(r.msg || "保存失败", "err");
+  };
+  const bcu = $("#btnCheckUpd");
+  if (bcu) bcu.onclick = async () => {
+    const h = $("#updHint"); if (h) h.textContent = "正在检查…";
+    const r = await checkUpdate();
+    if (r.ok && r.update_available) toast("发现新版本 v" + r.latest, "ok");
+    else if (r.ok){
+      if (h) h.textContent = "已经是最新版 (v" + (S.version || "") + ")";
+      toast("已经是最新版", "ok");
+    }else if (h) h.textContent = "检查失败: " + (r.error || "未知错误");
   };
   $("#setBody").querySelectorAll("[data-use]").forEach(b => b.onclick = async () => {
     const r = await api("/api/config", {zzmi_root: b.dataset.use});
@@ -1017,10 +1925,12 @@ async function openLib(){
   let r;
   try{ r = await api("/api/library"); }
   catch(e){ $("#libBody").innerHTML = '<div class="empty">读取失败</div>'; return; }
-  const libs = r.libraries||[], tops = r.mods_top||[], libNames = libs.map(L => L.name);
+  const libs = r.libraries||[], tops = r.mods_top||[],
+        libNames = libs.filter(L => L.exists !== false).map(L => L.ref || L.name);
   $("#libBody").innerHTML = `
     <div class="hint" style="margin-bottom:12px">这些目录都在 <code>Mods</code> <b>外面</b>,
-    游戏不会加载 —— 相当于"未启用仓库"。想用哪套就搬进 Mods, 用不上了再搬回去。搬动可撤销。</div>
+    游戏不会加载 —— 相当于"未启用仓库"。想用哪套就搬进 Mods, 用不上了再搬回去。搬动可撤销。<br>
+    💡 想一次搬多个: 回主界面点顶栏 <b>☑ 多选搬运</b>, 勾选卡片后选仓库即可(支持全选/反选)。</div>
     <div class="kv"><span class="k">Mods 目录</span><span class="v">${esc(r.mods_dir||"—")}</span></div>
     <h4 style="margin:16px 0 6px;font-size:13px">Mods 里的顶层分类 → 移出到仓库</h4>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
@@ -1028,6 +1938,7 @@ async function openLib(){
       <select class="sel" id="libTarget">
         ${libNames.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("")}
         <option value="__new__">＋ 新建一个仓库目录…</option>
+        <option value="__find__">📁 手动寻找仓库路径…</option>
       </select>
     </div>
     <div class="tree">${tops.map(t=>`<div class="trow">
@@ -1036,21 +1947,33 @@ async function openLib(){
       || '<div class="trow"><span class="nm">（空）</span></div>'}</div>
     ${libs.map(L => `
       <h4 style="margin:18px 0 6px;font-size:13px">🗄 ${esc(L.name)}
-        <span class="hint">(${L.count} 项)</span>
+        <span class="hint">(${L.count} 项)${L.exists === false ? " · 目录不存在" : ""}</span>
         <button class="mini" data-openlib="${esc(L.path||"")}" style="margin-left:6px">打开</button></h4>
       <div class="tree">${(L.items||[]).slice(0,80).map(it=>`
         <div class="trow"><span class="nm">${esc(it.name)}</span>
         <span class="n">${it.size_h} · ${it.files} 文件</span>
-        <button class="mini" data-in="${esc(L.name)}|::|${esc(it.name)}">启用 → 移入 Mods</button></div>`).join("")
+        <button class="mini" data-in="${esc(L.ref||L.name)}|::|${esc(it.name)}">启用 → 移入 Mods</button></div>`).join("")
         || '<div class="trow"><span class="nm">（空）</span></div>'}</div>`).join("")
-      || '<div class="banner" style="margin-top:16px">还没发现仓库目录</div>'}`;
+      || `<div class="banner" style="margin-top:16px">还没发现仓库目录</div>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="mini" id="libAdd">＋ 添加仓库…</button>
+            <button class="mini" id="libFind">📁 手动寻找仓库路径…</button>
+          </div>`}`;
+  const bAdd = $("#libAdd"), bFind = $("#libFind");
+  if (bAdd) bAdd.onclick = () => { closeAll(); openLibMgr(true); };
+  if (bFind) bFind.onclick = () => {
+    closeAll();
+    openDirPick({title: "🔒 选一个文件夹锁定成仓库", ok: "✔ 锁定为仓库",
+                 onPick: (p) => addLibAbs(p)});
+  };
   $("#libBody").querySelectorAll("[data-openlib]").forEach(b => b.onclick = () =>
     api("/api/openroot", {path: b.dataset.openlib}));
   $("#libBody").querySelectorAll("[data-in]").forEach(b => b.onclick = async () => {
     const [lib, name] = b.dataset.in.split("|::|");
-    if (!confirm(`把「${name}」从仓库「${lib}」搬进 Mods 并启用?`)) return;
-    const rr = await api("/api/move", {src_base:"root", src_rel: lib + "/" + name,
-                                       dst_base:"mods", dst_rel: name});
+    if (!confirm(`把「${name}」从仓库「${lib.replace(/^abs:/i,"")}」搬进 Mods 并启用?`)) return;
+    const src = isAbsPath(lib) ? {src_abs: stripAbs(lib), src_rel: name}
+                               : {src_base:"root", src_rel: lib + "/" + name};
+    const rr = await api("/api/move", Object.assign(src, {dst_base:"mods", dst_rel: name}));
     if (rr.state) S = rr.state;
     toast(rr.msg || "已移入", rr.ok?"ok":"err"); renderAll(); openLib();
   });
@@ -1058,22 +1981,74 @@ async function openLib(){
     const name = b.dataset.out;
     let target = $("#libTarget").value;
     if (target === "__new__"){
-      target = prompt("新仓库目录名(会在 ZZMI 根目录下创建):", "未使用");
+      target = await ask("新仓库目录名(会在 ZZMI 根目录下创建):", "未使用");
       if (!target) return;
     }
-    if (!confirm(`把「${name}」从 Mods 移出到仓库「${target}」?\n(游戏将不再加载它)`)) return;
-    const rr = await api("/api/move", {src_base:"mods", src_rel: name,
-                                       dst_base:"root", dst_rel: target + "/" + name});
+    if (target === "__find__"){
+      // 手动找一个已存在的文件夹当仓库, 选完再加进来(不直接搬, 让用户确认)
+      openDirPick({title: "🔒 选一个文件夹锁定成仓库", ok: "✔ 锁定为仓库",
+                   onPick: async (p) => {
+                     const a = await addLibAbs(p);
+                     if (a.ok) openLib();
+                   }});
+      return;
+    }
+    const abs = isAbsPath(target);
+    const where = abs ? "文件夹「" + stripAbs(target) + "」" : "仓库「" + target + "」";
+    if (!confirm(`把「${name}」从 Mods 移出到 ${where}?\n(游戏将不再加载它)`)) return;
+    const dst = abs ? {dst_abs: stripAbs(target), dst_rel: name}
+                    : {dst_base:"root", dst_rel: target + "/" + name};
+    const rr = await api("/api/move", Object.assign({src_base:"mods", src_rel: name}, dst));
     if (rr.state) S = rr.state;
     toast(rr.msg || "已移出", rr.ok?"ok":"err"); renderAll(); openLib();
   });
 }
 
 function closeAll(){
+  if (_askResolve) closeAsk(null);   // v1.5.10: 关闭任意弹窗时也关掉输入弹窗
   $("#mask").classList.remove("on");
   $("#drawer").classList.remove("on");
   $$(".modal").forEach(m => m.classList.remove("on"));
 }
+
+// v1.5.10: 自制输入弹窗, 替换浏览器原生 prompt()。原生 prompt 标题是网址且无法自定义,
+// 这里统一显示「ZZMI MOD 管家」。返回 Promise<string|null>, 取消/ESC 返回 null。
+let _askResolve = null;
+function openAsk(msg, defval){
+  return new Promise(resolve => {
+    _askResolve = resolve;
+    $("#mAskMsg").textContent = msg || "";
+    const inp = $("#mAskInput");
+    inp.value = (defval != null) ? String(defval) : "";
+    $("#mAskMask").classList.add("on");
+    $("#mAsk").classList.add("on");
+    setTimeout(() => { inp.focus(); inp.select(); }, 30);
+  });
+}
+function closeAsk(val){
+  const r = _askResolve; _askResolve = null;
+  $("#mAskMask").classList.remove("on");
+  $("#mAsk").classList.remove("on");
+  if (r) r(val);
+}
+$("#mAskOk").onclick = () => closeAsk($("#mAskInput").value);
+$("#mAskCancel").onclick = () => closeAsk(null);
+$("#mAskX").onclick = () => closeAsk(null);
+$("#mAskMask").onclick = () => closeAsk(null);
+$("#mAskInput").addEventListener("keydown", e => {
+  if (e.key === "Enter"){ e.preventDefault(); closeAsk(e.target.value); }
+  else if (e.key === "Escape"){ e.preventDefault(); closeAsk(null); }
+});
+function ask(text, defval){ return openAsk(text, defval); }
+
+// v1.5.10: 界面窗口关了(pagehide) -> 通知后端延迟几秒自动退出,
+// 不再留一个看不见又杀不掉的后台进程(提权进程普通方式杀不掉)
+window.addEventListener("pagehide", () => {
+  try { navigator.sendBeacon("/api/bye?t=" + encodeURIComponent(T)); } catch(e){}
+});
+window.addEventListener("beforeunload", () => {
+  try { navigator.sendBeacon("/api/bye?t=" + encodeURIComponent(T)); } catch(e){}
+});
 $("#mask").onclick = closeAll;
 $$("[data-close]").forEach(b => b.onclick = closeAll);
 document.addEventListener("keydown", e => {
