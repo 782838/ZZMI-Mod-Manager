@@ -307,7 +307,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.25"
+VERSION = "1.5.26"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -3643,7 +3643,26 @@ def open_app_window(url, size=None, browser=None):
                  "--proxy-bypass-list=<-loopback>",
                  "--no-first-run",
                  "--no-default-browser-check",
-                 "--disable-features=Translate"]
+                 "--disable-features=Translate",
+                 # 隐藏浏览器特征, 让它看起来像原生应用
+                 "--disable-web-security",           # 去掉同源策略提示
+                 "--disable-infobars",                # 去掉"Chrome 正受到自动测试软件控制"
+                 "--disable-save-password-bubble",    # 阻止保存密码弹窗
+                 "--password-store=basic",            # 用基础密码存储, 不弹 CredentialHelperSelector
+                 "--disable-extensions",              # 禁用扩展(避免扩展图标)
+                 "--disable-background-networking",   # 减少后台网络请求
+                 "--disable-sync",                    # 禁用同步(避免登录提示)
+                 "--disable-translate",               # 禁用翻译提示
+                 "--disable-domain-reliability",      # 减少遥测
+                 "--disable-component-update",        # 禁用组件更新
+                 "--disable-breakpad",                # 禁用崩溃报告
+                 "--disable-crash-reporter",          # 禁用崩溃上报
+                 "--disable-hang-monitor",            # 禁用挂起监控
+                 "--disable-prompt-on-repost",        # 禁用重发提示
+                 "--disable-client-side-phishing-detection",  # 禁用钓鱼检测
+                 "--safebrowsing-disable-auto-update",        # 禁用安全浏览更新
+                 "--no-service-autorun",              # 禁用服务自启
+                 "--disable-gpu-compositing"]         # 减少 GPU 相关提示
     try:
         subprocess.Popen(args, close_fds=True)
         log("已用独立窗口打开: %s  %s" % (os.path.basename(b),
@@ -6123,8 +6142,8 @@ def _bring_to_front(hwnd):
 
 
 def toggle_manager_window(app):
-    """快捷键动作: 纯显隐切换 —— 没窗口就开; 可见(无论是否前台, 游戏内也
-    能藏)就隐藏; 隐藏就显示并置前。Edge 进程不退出, 下次还能呼出。"""
+    """快捷键动作: 最小化/恢复循环 —— 没窗口就开; 可见就最小化到任务栏;
+    最小化就恢复并置前。Edge 进程不退出, 下次还能呼出。"""
     import ctypes
     user32 = ctypes.windll.user32
     hwnd = find_manager_window()
@@ -6137,11 +6156,14 @@ def toggle_manager_window(app):
         if url:
             open_app_window(url, app.cfg.get("win_size") or "auto")
         return
-    if user32.IsWindowVisible(hwnd):
-        user32.ShowWindow(hwnd, 0)              # SW_HIDE (游戏内也能直接藏)
-    else:
-        user32.ShowWindow(hwnd, 8)              # SW_SHOWNA
+    # SW_SHOWMINIMIZED(2) = 最小化; SW_RESTORE(9) = 从最小化恢复
+    if user32.IsIconic(hwnd):
+        # 当前是最小化状态 → 恢复并置前
+        user32.ShowWindow(hwnd, 9)              # SW_RESTORE
         _bring_to_front(hwnd)
+    else:
+        # 当前是可见状态 → 最小化到任务栏
+        user32.ShowWindow(hwnd, 2)              # SW_SHOWMINIMIZED
 
 
 class HotkeyManager(object):
