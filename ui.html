@@ -463,7 +463,7 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
           <span class="sidecnt" id="cChars"></span>
           <span id="multiHint" style="font-weight:400"></span></div>
         <div class="foldbody">
-          <input class="inp" id="charFilter" placeholder="🔍 过滤角色…" style="margin:0 4px 6px;padding:6px 9px;font-size:12px">
+          <input class="inp" id="charFilter" placeholder="🔍 过滤角色…" autocomplete="off" spellcheck="false" style="margin:0 4px 6px;padding:6px 9px;font-size:12px">
           <div id="chars"></div>
         </div>
       </div>
@@ -481,7 +481,7 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
       <div class="toolbar">
         <div class="search">
           <span class="k">🔍</span>
-          <input id="q" placeholder="搜索 mod / 角色 / 路径  (按 / 聚焦)">
+          <input id="q" placeholder="搜索 mod / 角色 / 路径  (按 / 聚焦)" autocomplete="off" spellcheck="false">
           <span class="k" id="qclear" style="cursor:pointer;display:none">✕</span>
         </div>
         <div class="chips">
@@ -2052,11 +2052,11 @@ function renderSetup(){
       <br><span class="hint" id="updHint">填 GitHub 上的 owner/repo, 程序启动后会自动去 Releases 看有没有新版本。
       ${S.version ? "当前 v"+esc(S.version) : ""}</span></span></div>
     <h4 style="margin:18px 0 6px;font-size:13px">全局快捷键</h4>
-    <div class="kv"><span class="k">呼出 / 隐藏</span><span class="v">
+    <div class="kv"><span class="k">呼出 / 最小化</span><span class="v">
       <input class="inp" id="inHotkey" value="${esc(S.hotkey||"F9")}"
         style="max-width:160px;padding:6px 9px;display:inline-block">
       <button class="mini" id="btnHotkey">保存</button>
-      <br><span class="hint">绝区零运行时按下即可呼出/隐藏管理器窗口。
+      <br><span class="hint">绝区零运行时按下即可呼出/最小化管理器窗口(最小化后点任务栏图标也能唤回)。
       字母/数字必须带修饰键(如 <b>F9</b>、Alt+Z), 单独按 F1~F12 也可以。
       ${S.hotkey_ok === false ? '<b style="color:var(--warn,#e8b339)">⚠ 当前快捷键注册失败(可能被其他程序占用), 请换一个组合。</b>' : ""}</span></span></div>
     <h4 style="margin:18px 0 6px;font-size:13px">日志 / 排错</h4>

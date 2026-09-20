@@ -5,6 +5,20 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.28 更新
+-----------
+* **修: 变体识别不全的根因** —— 很多 mod 的段头写成 `[KeySwap0]后裙摆` 这种「] 后面带中文
+  备注」的形式, 以前的解析只认整行就是 `[...]` 的段头, 这些段整个被跳过。现在按 3DMigoto
+  真实规则取第一个 `]` 之前的部分当段名, 后面的备注(如「后裙摆」「丝袜」)还会直接当变体中文名,
+  比内置翻译表更准
+* **修: 变体按键信息不完整** —— `key = ctrl shift no_alt VK_UP` 里的 `no_alt` 是「不能按 Alt」
+  的排除条件, 以前被整个吞掉不显示; 现在显示成 `Ctrl+Shift+↑(无Alt)`, 一眼看清真实绑定。
+  落单的 `'`(撇号键)也不再被当成未闭合引号
+* **修: 搜索框不再弹 Edge 的「保存的信息」自动填充** —— 主搜索框和「过滤角色」框都加了
+  autocomplete=off, 浏览器不会再往这两个框里塞你的历史输入
+* **F9 改成最小化/恢复**: 以前 F9 是把窗口直接藏掉(任务栏都没了, 点不回来); 现在 F9 = 最小化
+  到任务栏, 点任务栏图标或再按 F9 都能恢复并置顶
+
 v1.5.24 更新
 -----------
 * **重命名被系统挡下时, 也给「手动来一下」弹窗**: 以前禁用/启用失败会弹教程(打开资源管理器、
@@ -307,7 +321,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.27"
+VERSION = "1.5.28"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -2128,6 +2142,18 @@ CYCLE_EXPR_RE = re.compile(r"^\$(\w+)\s*=\s*([^=\r\n]+)$")
 KEYSEC_RE = re.compile(r"^key", re.I)
 INI_BACKUP_DIR = os.path.join(DATA_DIR, "ini_backups")
 
+
+def _ini_section(st):
+    """ini 段头行 -> 段名; 不是段头返回 None。
+    3DMigoto 允许 ] 后面跟备注(如 [KeySwap0]后裙摆), 所以只要求
+    以 [ 开头且行内含 ], 段名取到第一个 ] 为止。"""
+    if not st.startswith("["):
+        return None
+    close = st.find("]")
+    if close < 0:
+        return None
+    return st[1:close].strip()
+
 # 变体变量名 -> 中文提示 (小写匹配; 匹配不到就显示原名)
 CYCLE_LABEL_CN = {
     "upper": "上装", "lower": "下装", "top": "上衣", "bottom": "下装",
@@ -2281,16 +2307,19 @@ def _pretty_keys(keyval):
             j = i + 1
             while j < len(raw) and raw[j] != quote:
                 j += 1
-            tokens.append(raw[i+1:j])  # 去掉引号
-            i = j + 1
-        elif raw[i].isspace():
+            if j < len(raw):
+                tokens.append(raw[i+1:j])  # 成对引号: 去掉引号取内容
+                i = j + 1
+                continue
+            # 落单引号 = 撇号键本身(Key = '), 当普通字符处理
+        if raw[i].isspace():
             i += 1
-        else:
-            j = i
-            while j < len(raw) and not raw[j].isspace() and raw[j] not in ('"', "'"):
-                j += 1
-            tokens.append(raw[i:j])
-            i = j
+            continue
+        j = i
+        while j < len(raw) and not raw[j].isspace():
+            j += 1
+        tokens.append(raw[i:j])
+        i = j
     for t in tokens:
         # 引号包裹的空格 -> 空格键
         if t == ' ':
@@ -2346,6 +2375,7 @@ def parse_cycle_vars(abs_root):
                 continue
             rel = norm_rel(os.path.join(rel_dir, f))
             sec_name, sec_cycle, sec_key, sec_decls = None, False, "", []
+            sec_note = ""
 
             def _flush():
                 if not sec_cycle or not sec_decls:
@@ -2353,15 +2383,17 @@ def parse_cycle_vars(abs_root):
                 for ln, var, raw in sec_decls:
                     base_label = re.sub(r"(?i)^(swap_?var_?|swap_?|var_?)",
                                         "", var) or var
-                    # 只做「上装/下装」这类具体部位翻译; 翻译不到就显示原名,
-                    # 不再用「部位 N」这种笼统叫法
-                    label_cn = CYCLE_LABEL_CN.get(base_label.lower())
+                    # 段头 ] 后面的作者备注(如 [KeySwap2]丝袜)就是最准确的中文名,
+                    # 优先于内置翻译表
+                    label_cn = sec_note or CYCLE_LABEL_CN.get(base_label.lower())
                     rec = found.setdefault(var, {
                         "var": var,
                         "label": base_label,
                         "label_cn": label_cn,
                         "values": [], "keys": [], "keys_raw": [], "files": [],
                         "switchable": True})
+                    if sec_note and not rec.get("label_cn"):
+                        rec["label_cn"] = sec_note
                     for k in _pretty_keys(sec_key):
                         if k not in rec["keys"]:
                             rec["keys"].append(k)
@@ -2385,9 +2417,11 @@ def parse_cycle_vars(abs_root):
 
             for ln, line in enumerate(txt.splitlines(), 1):
                 st = line.strip()
-                if st.startswith("[") and st.endswith("]"):
+                sec = _ini_section(st)
+                if sec is not None:
                     _flush()
-                    sec_name = st[1:-1].strip()
+                    sec_name = sec
+                    sec_note = st[st.find("]") + 1:].strip()
                     sec_cycle, sec_key, sec_decls = False, "", []
                     continue
                 if sec_name is None or not KEYSEC_RE.match(sec_name):
@@ -2442,8 +2476,9 @@ def do_cycle_set(abs_root, var, value):
             pos = 0
             for line in text.splitlines(True):
                 st = line.strip()
-                if st.startswith("[") and st.endswith("]"):
-                    sec_name = st[1:-1].strip()
+                sec = _ini_section(st)
+                if sec is not None:
+                    sec_name = sec
                     sec_cycle = False
                     pos += len(line)
                     continue
@@ -2631,13 +2666,14 @@ def do_cycle_rekey(abs_root, var, key_input):
             pos = 0
             for line in text.splitlines(True):
                 st = line.strip()
-                if st.startswith("[") and st.endswith("]"):
+                sec = _ini_section(st)
+                if sec is not None:
                     if sec_name is not None and sec_cycle and sec_var:
                         edits.extend((p, s, e, nb, old)
                                      for (s, e, old) in sec_spans
                                      for nb in [new_raw.encode("latin-1")]
                                      if old != new_raw)
-                    sec_name = st[1:-1].strip()
+                    sec_name = sec
                     sec_cycle, sec_var, sec_spans = False, False, []
                     pos += len(line)
                     continue

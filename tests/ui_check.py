@@ -391,6 +391,25 @@ for name, ok in static_checks15:
         sbad15.append(name)
 assert not sbad15, "v1.5.24 静态检查失败: %s" % sbad15
 
+# ---------- 2.16 v1.5.28 静态检查(段头备注变体 + 搜索框禁自动填充) ----------
+static_checks16 = [
+    ("后端有 _ini_section 段头解析(容忍 ]后面跟备注)", "def _ini_section(" in zsrc),
+    ("parse_cycle_vars 用 _ini_section", "sec = _ini_section(st)" in zsrc),
+    ("段头备注当变体中文名(sec_note)", 'sec_note = st[st.find("]") + 1:].strip()' in zsrc),
+    ("备注优先于内置翻译表", "label_cn = sec_note or CYCLE_LABEL_CN" in zsrc),
+    ("no_* 排除修饰符映射为 !X 显示", '("no_alt", "!Alt")' in zsrc),
+    ("过滤角色框禁掉 Edge 自动填充", 'id="charFilter"' in html and 'id="charFilter" placeholder="🔍 过滤角色…" autocomplete="off"' in html),
+    ("主搜索框禁掉 Edge 自动填充", '<input id="q" placeholder="搜索 mod / 角色 / 路径  (按 / 聚焦)" autocomplete="off"' in html),
+]
+w()
+w("=== v1.5.28 静态检查 ===")
+sbad16 = []
+for name, ok in static_checks16:
+    w(("  [OK]   " if ok else "  [FAIL] ") + name)
+    if not ok:
+        sbad16.append(name)
+assert not sbad16, "v1.5.28 静态检查失败: %s" % sbad16
+
 
 # 先确认服务真的还活着 —— last_url.txt 记的是"上一次启动"的端口, 进程一关就是死链,
 # 浏览器会安静地渲染出 Edge 的"拒绝连接"错误页, 让渲染校验全部假 FAIL(踩过)。

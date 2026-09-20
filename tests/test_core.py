@@ -246,16 +246,23 @@ _ini(os.path.join(cm, "outfit.ini"),
      "[KeySwap1]\ncondition = ($active == 1)\nkey = no_alt h\ntype = cycle\n"
      "$swapvarHair = 0,1,2\n\n"
      "[KeySwap2]\nkey = /\ntype = cycle\n$menu = 0,1\n\n"
+     "[KeySwapBody]体型\nkey = ctrl shift no_alt VK_UP\ntype = cycle\n"
+     "$bod = 0,1\n\n"
      "[KeyExpr]\nkey = j\ntype = cycle\n$fancy = 0,1 - $bodyPaint\n")
 cycles = Z.parse_cycle_vars(cm)
 w("cycles: " + json.dumps(cycles, ensure_ascii=False, indent=1))
 byv = {c["var"]: c for c in cycles}
-assert set(byv) == {"swapvarHair", "menu", "fancy"}, list(byv)
+assert set(byv) == {"swapvarHair", "menu", "bod", "fancy"}, list(byv)
 hair = byv["swapvarHair"]
 assert hair["values"] == [0, 1, 2] and hair["current"] == 0, hair
-assert hair["keys"] == ["H"], hair["keys"]        # no_alt 是排除修饰符
+# v1.5.28: no_* 排除修饰符不再被吞, 显示为「无Alt」后缀
+assert hair["keys"] == ["H(无Alt)"], hair["keys"]
 assert hair["switchable"] is True
 assert byv["menu"]["keys"] == ["/"], byv["menu"]["keys"]
+# v1.5.28: 段头 ] 后面的备注([KeySwapBody]体型)当变体中文名; VK_* 翻译成方向键
+bod = byv["bod"]
+assert bod["label_cn"] == "体型", bod
+assert bod["keys"] == ["Ctrl+Shift+↑(无Alt)"], bod["keys"]
 assert byv["fancy"]["switchable"] is False, "表达式取值应标记为不可外部切换"
 
 # 切到变体 2: 循环列表应旋转为 2,0,1

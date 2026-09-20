@@ -263,7 +263,7 @@ try:
     assert "swapvarHair" in cyc, list(cyc)
     assert cyc["swapvarHair"]["values"] == [0, 1, 2]
     assert cyc["swapvarHair"]["current"] == 0
-    assert cyc["swapvarHair"]["keys"] == ["H"], cyc["swapvarHair"]["keys"]
+    assert cyc["swapvarHair"]["keys"] == ["H(无Alt)"], cyc["swapvarHair"]["keys"]
     st, r, _ = req("/api/cycle_set", {"id": "变体测试", "var": "swapvarHair",
                                       "value": 2})
     w(f"POST /api/cycle_set -> ok={r['ok']} msg={r['msg']}")
