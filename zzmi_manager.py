@@ -307,7 +307,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.26"
+VERSION = "1.5.27"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -3643,26 +3643,7 @@ def open_app_window(url, size=None, browser=None):
                  "--proxy-bypass-list=<-loopback>",
                  "--no-first-run",
                  "--no-default-browser-check",
-                 "--disable-features=Translate",
-                 # 隐藏浏览器特征, 让它看起来像原生应用
-                 "--disable-web-security",           # 去掉同源策略提示
-                 "--disable-infobars",                # 去掉"Chrome 正受到自动测试软件控制"
-                 "--disable-save-password-bubble",    # 阻止保存密码弹窗
-                 "--password-store=basic",            # 用基础密码存储, 不弹 CredentialHelperSelector
-                 "--disable-extensions",              # 禁用扩展(避免扩展图标)
-                 "--disable-background-networking",   # 减少后台网络请求
-                 "--disable-sync",                    # 禁用同步(避免登录提示)
-                 "--disable-translate",               # 禁用翻译提示
-                 "--disable-domain-reliability",      # 减少遥测
-                 "--disable-component-update",        # 禁用组件更新
-                 "--disable-breakpad",                # 禁用崩溃报告
-                 "--disable-crash-reporter",          # 禁用崩溃上报
-                 "--disable-hang-monitor",            # 禁用挂起监控
-                 "--disable-prompt-on-repost",        # 禁用重发提示
-                 "--disable-client-side-phishing-detection",  # 禁用钓鱼检测
-                 "--safebrowsing-disable-auto-update",        # 禁用安全浏览更新
-                 "--no-service-autorun",              # 禁用服务自启
-                 "--disable-gpu-compositing"]         # 减少 GPU 相关提示
+                 "--disable-features=Translate"]
     try:
         subprocess.Popen(args, close_fds=True)
         log("已用独立窗口打开: %s  %s" % (os.path.basename(b),
