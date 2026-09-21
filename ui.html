@@ -78,6 +78,8 @@ html[data-theme="light"] .logo{box-shadow:0 0 0 3px rgba(140,175,0,.16)}
 .btn:active{transform:translateY(1px)}
 .btn.primary{background:var(--accent);color:var(--ink);border-color:transparent;font-weight:700}
 .btn.primary:hover{filter:brightness(1.08);color:var(--ink)}
+.btn.danger{background:#e5484d;color:#fff;border-color:transparent;font-weight:700}
+.btn.danger:hover{filter:brightness(1.08);color:#fff}
 .btn.ghost{background:transparent}
 .btn.danger{color:var(--off);border-color:rgba(255,93,115,.35)}
 .btn.danger:hover{background:rgba(255,93,115,.12)}
@@ -194,6 +196,8 @@ html[data-theme="light"] .tag.char{color:#6b8000}
 .mini{padding:5px 9px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);
   font-size:12px;color:var(--txt2);transition:.13s;flex:1 1 auto;white-space:nowrap;text-align:center}
 .mini:hover{background:var(--panel3);color:var(--txt);border-color:var(--line2)}
+.mini.del{flex:0 0 auto;color:#ff6b6b;border-color:rgba(255,107,107,.35)}
+.mini.del:hover{background:rgba(229,72,77,.16);color:#ff8a8a;border-color:#e5484d}
 .sw{margin-left:auto;width:44px;height:24px;border-radius:999px;background:var(--line2);
   position:relative;transition:.18s;flex:0 0 auto}
 .sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
@@ -1112,6 +1116,8 @@ function renderCards(){
             title="重命名这个 mod 文件夹(名字被占用会自动加序号)">✎ 重命名</button>
           <button class="mini" data-act="solo" data-id="${esc(e.id)}"
             title="同一角色只保留这一套, 其它自动禁用">只留这套</button>
+          <button class="mini del" data-act="del" data-id="${esc(e.id)}"
+            title="删除这个 mod(移到回收站, 可从回收站还原)">🗑 删除</button>
           <button class="sw ${e.enabled?"on":""}" data-act="toggle" data-id="${esc(e.id)}"
             data-on="${e.enabled?1:0}" title="点击切换"></button>
         </div>
@@ -1164,6 +1170,7 @@ $("#cards").addEventListener("click", async ev => {
   if (!act) return;
   if (act === "detail") return openDetail(id);
   if (act === "rename"){ const e = S.entries.find(x => x.id === id); if (e) renameMod(e); return; }
+  if (act === "del"){ const e = S.entries.find(x => x.id === id); if (e) deleteMod(e); return; }
   if (act === "zoom"){
     const e = S.entries.find(x => x.id === id);
     return e && e.thumb ? zoomImage(e.thumb, e.name + "  ·  " + e.char) : openDetail(id);
@@ -1999,6 +2006,22 @@ async function renameMod(e){
   renderAll();
   return true;
 }
+
+// v1.5.30: 卡片「🗑 删除」= 二次确认后把 mod 文件夹移到回收站(可从回收站还原)。
+// 第一次: 确认要删; 第二次: 明确告知是进回收站不是抹掉, 两问都点确认才真动手。
+async function deleteMod(e){
+  if (!e) return;
+  const c1 = await openAsk(`真的要删除「${e.name}」吗？\n删掉后这个 mod 会从列表里消失。`,
+                           null, {confirm:true, okText:"下一步", danger:true});
+  if (!c1) return;
+  const c2 = await openAsk(`再确认一次 —— 删除方式是「移到回收站」：\n不是彻底抹掉, 后悔了随时打开 Windows 回收站,\n对着它右键 → 还原, 就完整回来了。\n\n点下面按钮即刻执行。`,
+                           null, {confirm:true, okText:"🗑 移入回收站", danger:true});
+  if (!c2) return;
+  const r = await api("/api/mod_delete", {id:e.id});
+  if (r.state) S = r.state;
+  toast(r.msg || (r.ok ? "已移到回收站" : "删除失败"), r.ok ? "ok" : "err");
+  renderAll();
+}
 $("#dtRename").onclick = async () => {
   const e = S.entries.find(x => x.id === curDetail);
   if (!e) return;
@@ -2262,16 +2285,25 @@ function closeAll(){
 
 // v1.5.10: 自制输入弹窗, 替换浏览器原生 prompt()。原生 prompt 标题是网址且无法自定义,
 // 这里统一显示「ZZMI MOD 管家」。返回 Promise<string|null>, 取消/ESC 返回 null。
-let _askResolve = null;
-function openAsk(msg, defval){
+// v1.5.30: opts.confirm = 只要「取消/确定」两个按钮的确认框(隐藏输入框, 可自定义按钮文字/标红),
+// 确认时 resolve(true), 取消 resolve(false)。
+let _askResolve = null, _askConfirm = false;
+function openAsk(msg, defval, opts){
+  opts = opts || {};
+  _askConfirm = !!opts.confirm;
   return new Promise(resolve => {
-    _askResolve = resolve;
+    _askResolve = _askConfirm ? (v => resolve(v !== null && v !== false)) : resolve;
     $("#mAskMsg").textContent = msg || "";
     const inp = $("#mAskInput");
+    inp.style.display = _askConfirm ? "none" : "";
     inp.value = (defval != null) ? String(defval) : "";
+    const ok = $("#mAskOk");
+    ok.textContent = opts.okText || "确定";
+    ok.classList.toggle("primary", !_askConfirm || !opts.danger);
+    ok.classList.toggle("danger", _askConfirm && !!opts.danger);
     $("#mAskMask").classList.add("on");
     $("#mAsk").classList.add("on");
-    setTimeout(() => { inp.focus(); inp.select(); }, 30);
+    setTimeout(() => { if (_askConfirm) ok.focus(); else { inp.focus(); inp.select(); } }, 30);
   });
 }
 function closeAsk(val){

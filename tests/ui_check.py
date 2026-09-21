@@ -426,6 +426,26 @@ for name, ok in static_checks17:
         sbad17.append(name)
 assert not sbad17, "v1.5.29 静态检查失败: %s" % sbad17
 
+# ---------- 2.18 v1.5.30 静态检查(卡片删除按钮 = 二次确认移入回收站) ----------
+static_checks18 = [
+    ("卡片有红色删除按钮(data-act=del)", 'data-act="del"' in html and "🗑 删除" in html),
+    ("删除按钮排在开关左边", html.find('data-act="del"') < html.find('data-act="toggle"')),
+    ("第一道确认: 真的要删除吗", "真的要删除" in html),
+    ("第二道确认: 提醒移入回收站可还原", "移入回收站" in html and "还原" in html),
+    ("确认框支持标红按钮(danger)", 'ok.classList.toggle("danger"' in html),
+    ("后端只走回收站(FOF_ALLOWUNDO)", "0x0040" in zsrc and "SHFileOperationW" in zsrc),
+    ("后端有越界安全闸", "不在 Mods 目录里" in zsrc),
+    ("API 有 mod_delete 路由", 'act == "mod_delete"' in zsrc),
+]
+w()
+w("=== v1.5.30 静态检查 ===")
+sbad18 = []
+for name, ok in static_checks18:
+    w(("  [OK]   " if ok else "  [FAIL] ") + name)
+    if not ok:
+        sbad18.append(name)
+assert not sbad18, "v1.5.30 静态检查失败: %s" % sbad18
+
 
 # 先确认服务真的还活着 —— last_url.txt 记的是"上一次启动"的端口, 进程一关就是死链,
 # 浏览器会安静地渲染出 Edge 的"拒绝连接"错误页, 让渲染校验全部假 FAIL(踩过)。

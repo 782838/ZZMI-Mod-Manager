@@ -349,6 +349,38 @@ assert os.path.isdir(os.path.join(mods, "同名回归 (2)"))
 assert os.path.isdir(os.path.join(mods, "同名回归")), "启用套不能被动"
 w("v1.5.9 同名两套解析/启用回归 OK")
 
+# ---------- v1.5.30 删除 mod = 移到回收站 ----------
+w()
+w("=== 4.7 删除 mod(回收站, v1.5.30) ===")
+# 安全闸 1: 越界路径(id 指向 Mods 外)必须拒绝, 且目录原封不动
+_out = os.path.join(HERE, "_outside_mod")
+_clean(_out)
+os.makedirs(_out, exist_ok=True)
+open(os.path.join(_out, "keep.ini"), "w").close()
+ok, msg = Z.do_mod_delete(mods, {"id": "../_outside_mod", "path": "x"})
+assert not ok, (ok, msg)          # 两道闸: 解析不出去 / 越界拒绝
+assert os.path.isdir(_out), "越界删除竟然把 Mods 外的目录动了!"
+w("越界路径被拒, 外部目录完好 OK (%s)" % msg)
+# 安全闸 2: 不许删 Mods 根
+ok, msg = Z.do_mod_delete(mods, {"id": "", "path": ""})
+assert not ok, (ok, msg)
+w("删 Mods 根被拒 OK (%s)" % msg)
+# 真删: 沙箱 mod -> 回收站(Windows 原生接口, 可还原)
+_d = os.path.join(mods, "删除测试")
+os.makedirs(_d, exist_ok=True)
+open(os.path.join(_d, "d.ini"), "w", encoding="utf-8").write(
+    "[TextureOverrideDel]\nhash = dedededede\nvb0 = R\n")
+ok, msg = Z.do_mod_delete(mods, {"id": "删除测试", "path": "删除测试"})
+w("do_mod_delete -> ok=%s msg=%s" % (ok, msg))
+if Z._WIN:
+    assert ok and not os.path.isdir(_d), (ok, msg)
+    w("沙箱 mod 已进回收站, 目录消失 OK")
+else:
+    assert not ok, "非 Windows 应拒绝而不是物理删除"
+    assert os.path.isdir(_d)
+_clean(_out)
+_clean(_d)
+
 w()
 w("ALL TESTS PASSED")
 open(OUT, "w", encoding="utf-8").write("\n".join(L))

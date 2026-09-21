@@ -5,6 +5,15 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.30 更新
+-----------
+* **卡片上新增「🗑 删除」按钮(开关左边, 标红)**: 点删除要走**两道确认弹窗** ——
+  第一道问「真的要删吗」, 第二道明确提醒「删除方式=移到回收站, 不是彻底抹掉,
+  后悔了去回收站右键→还原就能回来」, 两道都点确认才动手。
+  后端走 Windows 原生回收站接口(SHFileOperation + ALLOWUNDO), **物理删除这条路根本不存在**;
+  另有安全闸: 只认 Mods 目录里面的真实 mod 文件夹, 越界路径一律拒绝。
+  删除成功后自动清掉收藏/使用时间/自选封面这些指向它的死记录
+
 v1.5.29 更新
 -----------
 * **彻底屏蔽 Edge「超级拖放」搜索条**: 在界面里拖选文字松手, 浏览器会弹出
@@ -330,7 +339,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.29"
+VERSION = "1.5.30"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -3014,6 +3023,69 @@ def do_rename(mods_dir, entry, new_name):
                         "reason": lock_reason_kind(msg), "rename": True}
 
 
+def recycle_path(abs_path):
+    """把一个文件/文件夹**移到回收站**(不是物理删除, 可从回收站还原)。
+    返回 (ok, msg)。非 Windows 直接拒绝 —— 宁可不动, 也不 os.remove。"""
+    if not _WIN:
+        return False, "只有 Windows 支持移到回收站"
+    import ctypes
+    from ctypes import wintypes
+    FO_DELETE = 3
+    # FOF_ALLOWUNDO=进回收站; 静默、不弹系统确认/错误框(确认由界面做二次弹窗)
+    FLAGS = 0x0004 | 0x0010 | 0x0040 | 0x0400   # SILENT|NOCONFIRMATION|ALLOWUNDO|NOERRORUI
+
+    class SHFILEOPSTRUCTW(ctypes.Structure):
+        _fields_ = [("hwnd", wintypes.HWND),
+                    ("wFunc", ctypes.c_uint),
+                    ("pFrom", wintypes.LPCWSTR),
+                    ("pTo", wintypes.LPCWSTR),
+                    ("fFlags", ctypes.c_ushort),
+                    ("fAnyOperationsAborted", wintypes.BOOL),
+                    ("hNameMappings", ctypes.c_void_p),
+                    ("lpszProgressTitle", wintypes.LPCWSTR)]
+    # pFrom 要求「双 null 结尾」
+    op = SHFILEOPSTRUCTW()
+    op.hwnd = None
+    op.wFunc = FO_DELETE
+    op.pFrom = abs_path + "\0\0"
+    op.pTo = None
+    op.fFlags = FLAGS
+    try:
+        rc = ctypes.windll.shell32.SHFileOperationW(ctypes.byref(op))
+    except Exception as ex:
+        return False, "移到回收站失败: %s" % ex
+    if rc == 0 and not op.fAnyOperationsAborted:
+        return True, "已移到回收站"
+    if op.fAnyOperationsAborted:
+        return False, "已取消"
+    return False, {
+        0x7C: "没找到这个文件夹(可能已被移走)",
+        0x74: "这个文件夹正被占用 —— 先关掉游戏再试",
+        0x57: "参数不对(路径异常)",
+        0x3A: "路径太长, 先把 mod 挪到浅一点的目录",
+    }.get(rc, "移到回收站失败(code=%d)%s" % (rc, ""))
+
+
+def do_mod_delete(mods_dir, entry):
+    """删除整个 mod 文件夹 —— 只走回收站, 永不物理删除。
+    安全闸: 目标必须真实存在、且就在 Mods 目录里面(防越界删到盘符/系统目录)。"""
+    cur = entry_root(mods_dir, entry)
+    if not cur or not os.path.isdir(cur):
+        return False, "找不到这个 mod 的文件夹(可能已被移走)"
+    md = os.path.abspath(mods_dir)
+    target = os.path.abspath(cur)
+    if os.path.normcase(target) == os.path.normcase(md):
+        return False, "不能删除 Mods 总目录本身"
+    if os.path.normcase(target).startswith(os.path.normcase(md) + os.sep):
+        pass                                   # 正常: 在 Mods 里面
+    else:
+        return False, "这个 mod 不在 Mods 目录里, 为安全起见不删"
+    ok, msg = recycle_path(target)
+    if ok:
+        msg = "已把「%s」移到回收站" % os.path.basename(target)
+    return ok, msg
+
+
 def _explorer_windows():
     """列出所有资源管理器窗口: [(hwnd, 标题), ...]"""
     if not _WIN:
@@ -5506,6 +5578,29 @@ class Handler(BaseHTTPRequestHandler):
                 if not ok and extra:
                     out["manual"] = extra   # v1.5.24: 前端弹「手动改名」教程
                 return self._json(out)
+
+            if act == "mod_delete":
+                # v1.5.30: 删除 mod = 移到回收站(可还原), 前端已做二次确认
+                e = app.scan.by_id.get(body.get("id") or "")
+                if not e:
+                    return self._json({"ok": False, "msg": "找不到该 mod"})
+                name = e.get("name") or ""
+                ok, msg = do_mod_delete(app.mods_dir(), e)
+                if ok:
+                    # 清掉指向它的配置记录(收藏/使用时间/封面/角色标记), 不留死数据
+                    mid, mpath = e["id"], e["path"]
+                    cfg = app.cfg
+                    cfg["pinned_mods"] = [x for x in (cfg.get("pinned_mods") or [])
+                                          if x != mid and x != mpath]
+                    (cfg.get("usage") or {}).pop(mid, None)
+                    for key in ("thumb_overrides", "char_overrides"):
+                        d = cfg.get(key) or {}
+                        for k in [k for k in d if k == mpath or k == mid]:
+                            d.pop(k, None)
+                    app.save_config()
+                    invalidate_lib_cache()
+                app.rescan()
+                return self._json({"ok": ok, "msg": msg, "state": app.state()})
 
             if act == "list_dirs":
                 """浏览文件夹(给「自定义文件夹」挑选目标用)。只读。"""
