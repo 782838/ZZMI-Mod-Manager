@@ -5,6 +5,15 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.29 更新
+-----------
+* **彻底屏蔽 Edge「超级拖放」搜索条**: 在界面里拖选文字松手, 浏览器会弹出
+  「🔍 松开鼠标以搜索文本」蓝色提示条 —— 这是 Edge 的「超级拖放」功能, 不是网页做的。
+  现在程序每次开窗口前都会往**自己的专属浏览器目录**里写一条设置
+  (`edge_super_drag_drop.enabled = false`, 键名取自 msedge.dll 内部), 相当于替你把
+  edge://settings 里那个开关拨到关 —— **只影响管家窗口, 你日常用的 Edge 一点不动**;
+  启动参数里同时关掉对应功能开关做双保险
+
 v1.5.28 更新
 -----------
 * **修: 变体识别不全的根因** —— 很多 mod 的段头写成 `[KeySwap0]后裙摆` 这种「] 后面带中文
@@ -321,7 +330,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.28"
+VERSION = "1.5.29"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -3647,6 +3656,33 @@ def _browser_profile():
     return prof
 
 
+def _disable_edge_super_drag(prof):
+    """v1.5.29: 关掉 Edge 的「超级拖放」—— 拖选文字松手会弹出
+    「松开鼠标以搜索文本」蓝色提示条, 像浏览器多像网页插件, 玩家很反感。
+    写法: 往**本程序专属浏览器目录**的 Default/Preferences 里写
+    edge_super_drag_drop.enabled=false(键名取自 msedge.dll 内部设置路径),
+    只影响管家自己的窗口, 用户自己日常用的 Edge 完全不动。"""
+    pf = os.path.join(prof, "Default", "Preferences")
+    try:
+        d = {}
+        if os.path.isfile(pf):
+            with open(pf, "r", encoding="utf-8", errors="replace") as f:
+                d = json.load(f)
+        if not isinstance(d, dict):
+            d = {}
+        sec = d.get("edge_super_drag_drop")
+        if isinstance(sec, dict) and sec.get("enabled") is False:
+            return                      # 已经关过, 不重复写
+        d["edge_super_drag_drop"] = dict(sec, enabled=False) \
+            if isinstance(sec, dict) else {"enabled": False}
+        tmp = pf + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(d, f, ensure_ascii=False)
+        os.replace(tmp, pf)
+    except Exception as ex:
+        log("关闭超级拖放失败(不影响使用):", ex)
+
+
 def open_app_window(url, size=None, browser=None):
     """用 Edge/Chrome 的 --app 模式开独立窗口(秒开, 无地址栏/标签栏)。
     默认**打开就全屏**(最大化); 设置里把 win_size 写成 1000,700 才用固定尺寸(居中)。
@@ -3663,6 +3699,7 @@ def open_app_window(url, size=None, browser=None):
         prof = _browser_profile()
         if prof:
             args.append("--user-data-dir=" + prof)
+            _disable_edge_super_drag(prof)
         if maximize:
             args.append("--start-maximized")
             sw, sh = screen_size()
@@ -3679,7 +3716,10 @@ def open_app_window(url, size=None, browser=None):
                  "--proxy-bypass-list=<-loopback>",
                  "--no-first-run",
                  "--no-default-browser-check",
-                 "--disable-features=Translate"]
+                 # msEdgeSuperDragDrop* = Edge「超级拖放」的功能总开关(键名取自
+                 # msedge.dll); 不认识的 feature 名会被静默忽略, 无副作用
+                 "--disable-features=Translate,msEdgeSuperDragDropSupported,"
+                 "msEdgeSuperDragDropSupportedChina"]
     try:
         subprocess.Popen(args, close_fds=True)
         log("已用独立窗口打开: %s  %s" % (os.path.basename(b),

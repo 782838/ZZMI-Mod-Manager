@@ -410,6 +410,22 @@ for name, ok in static_checks16:
         sbad16.append(name)
 assert not sbad16, "v1.5.28 静态检查失败: %s" % sbad16
 
+# ---------- 2.17 v1.5.29 静态检查(屏蔽 Edge 超级拖放搜索条) ----------
+static_checks17 = [
+    ("有 _disable_edge_super_drag 函数", "def _disable_edge_super_drag(" in zsrc),
+    ("开窗口前写专属 profile 的 pref", "_disable_edge_super_drag(prof)" in zsrc),
+    ("pref 键名正确(edge_super_drag_drop.enabled)", '"edge_super_drag_drop"' in zsrc and "enabled" in zsrc),
+    ("启动参数也关掉该 feature", "msEdgeSuperDragDropSupported" in zsrc),
+]
+w()
+w("=== v1.5.29 静态检查 ===")
+sbad17 = []
+for name, ok in static_checks17:
+    w(("  [OK]   " if ok else "  [FAIL] ") + name)
+    if not ok:
+        sbad17.append(name)
+assert not sbad17, "v1.5.29 静态检查失败: %s" % sbad17
+
 
 # 先确认服务真的还活着 —— last_url.txt 记的是"上一次启动"的端口, 进程一关就是死链,
 # 浏览器会安静地渲染出 Edge 的"拒绝连接"错误页, 让渲染校验全部假 FAIL(踩过)。
