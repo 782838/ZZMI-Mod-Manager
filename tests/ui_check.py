@@ -483,7 +483,11 @@ static_checks20 = [
     # v1.5.35 改判据: 老写法「前台 pid != 游戏 pid 就冻结」一旦 PID 对不上, 缓冲永远空,
     # 侧键按下去只会得到「缓冲里还没内容」。现在改成「前台是管家界面才冻结」。
     ("只在自己界面在前台时冻结缓冲", "_is_manager_foreground()" in zsrc),
-    ("切前台时冻结不清空", "self._stop.wait(0.5)" in zsrc),
+    # v1.5.37 把等待句柄从 `self._stop` 换成了 `self._rec_event`(为了让 press() 能
+    # 立刻唤醒录制分支), 所以这里不能写死 `self._stop.wait(0.5)` —— 按"冻结 = 只等
+    # 不 clear_ring"这个**行为**来断言, 不管句柄叫什么名字。
+    ("切前台时冻结不清空(只等不 clear)",
+     re.search(r"if _is_manager_foreground\(\):\s*\n\s*self\._\w+\.wait\(", zsrc) is not None),
     ("照片墙进页即建目录保证可打开", "os.makedirs(PHOTO_DIR, exist_ok=True)" in zsrc),
     ("挑帧条有档位按钮", 'data-tier=' in html and 'id="pbTiers"' in html),
     ("设置页有侧键下拉", 'id="inPhotoBtn"' in html),
@@ -636,7 +640,10 @@ static_checks22 = [
     ("哨兵抽成 pbPingNow 复用", "async function pbPingNow(" in html),
     ("state 暴露钩子状态", '"photo_mouse_ok"' in zsrc),
     ("设置页提示钩子没装上", "S.photo_mouse_ok === false" in html),
-    ("版本号 1.5.37", 'VERSION = "1.5.37"' in zsrc),
+    ("版本号与 changelog 头一致(防下次再忘记同步)",
+     (lambda m1, m2: m1 and m2 and m1.group(1) == m2.group(1))(
+         re.search(r'^VERSION = "([\d.]+)"', zsrc, re.M),
+         re.search(r'^v([\d.]+) 更新', zsrc, re.M))),
     # ---- 钩子回调安全(300ms 红线) —— 只看真实代码(AST) ----
     ("AST 解析到侧键回调 _cb", _cb_node is not None),
     ("AST 解析到 _why_empty", _we_node is not None),
@@ -804,7 +811,10 @@ static_checks24 = [
     ("toggle_manager_window 开新窗前先退避重试", "for _ in range(3):" in zsrc
      and "别急着新开窗口" in zsrc),
     # 8) 版本号
-    ("版本号 1.5.37", 'VERSION = "1.5.37"' in zsrc),
+    ("版本号与 changelog 头一致(防下次再忘记同步)",
+     (lambda m1, m2: m1 and m2 and m1.group(1) == m2.group(1))(
+         re.search(r'^VERSION = "([\d.]+)"', zsrc, re.M),
+         re.search(r'^v([\d.]+) 更新', zsrc, re.M))),
 ]
 w()
 w("=== v1.5.37 静态检查 ===")
