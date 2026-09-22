@@ -8,19 +8,22 @@
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <style>
 :root{
-  --bg:#0b0d10; --bg2:#101318; --panel:#161a20; --panel2:#1d222a; --panel3:#242b34;
-  --line:#272e38; --line2:#333c48;
-  --txt:#e9edf2; --txt2:#b7c0cc; --dim:#808b99;
-  --accent:#d8f425; --accent2:#a7c400; --ink:#0b0d10;
-  --ok:#3ddc84; --off:#ff5d73; --warn:#ffb02e; --info:#5aa9ff;
-  --shadow:0 8px 28px rgba(0,0,0,.45);
-  --r:14px; --r2:10px;
+  --bg:#0e1014; --bg2:#14171d; --panel:#191d24; --panel2:#21262f; --panel3:#2a313c;
+  --line:#262c36; --line2:#364050;
+  --txt:#eef1f6; --txt2:#a7b0be; --dim:#6e7887;
+  --accent:#ff9f1c; --accent2:#e07b00; --ink:#1c1103;
+  --acs:rgba(255,159,28,.15); --acring:rgba(255,159,28,.18);
+  --ok:#34d399; --off:#f87171; --warn:#f5c518; --info:#60a5fa;
+  --shadow:0 10px 30px rgba(0,0,0,.5);
+  --r:16px; --r2:12px;
 }
 html[data-theme="light"]{
-  --bg:#eef1f5; --bg2:#f7f9fb; --panel:#ffffff; --panel2:#f3f6f9; --panel3:#e9eef4;
-  --line:#dde3ea; --line2:#cbd4de;
-  --txt:#111823; --txt2:#3d4756; --dim:#6b7787;
-  --accent:#c8e63c; --accent2:#8fac00; --ink:#111823;
+  --bg:#f1f3f7; --bg2:#f8fafc; --panel:#ffffff; --panel2:#f3f5f9; --panel3:#e9edf3;
+  --line:#e4e8ee; --line2:#cfd6e0;
+  --txt:#15181e; --txt2:#5a6270; --dim:#98a0ae;
+  --accent:#e8890b; --accent2:#b8690a; --ink:#2b1a02;
+  --acs:rgba(232,137,11,.14); --acring:rgba(232,137,11,.20);
+  --ok:#0fa678; --off:#dc4a4a; --warn:#b8860b; --info:#2e6fd6;
   --shadow:0 6px 22px rgba(20,30,50,.10);
 }
 *{box-sizing:border-box}
@@ -51,16 +54,15 @@ header{
   border-bottom:1px solid var(--line);flex:0 0 auto;z-index:20;
 }
 .brand{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+/* v1.5.34: 左上角换成绝区零官方图标(复用已经在供的 /favicon.ico, 不额外加资源) */
 .logo{
-  width:34px;height:34px;border-radius:9px;background:var(--accent);color:var(--ink);
-  display:grid;place-items:center;font-weight:900;font-size:17px;letter-spacing:-1px;
-  box-shadow:0 0 0 3px rgba(216,244,37,.13);
+  width:34px;height:34px;border-radius:11px;display:block;object-fit:cover;
+  background:#0e1015;box-shadow:0 0 0 3px var(--acring);
 }
-html[data-theme="light"] .logo{box-shadow:0 0 0 3px rgba(140,175,0,.16)}
 .brand b{font-size:15px;display:block;line-height:1.15}
 .brand span{font-size:11px;color:var(--dim)}
 .pathchip{
-  display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;
+  display:flex;align-items:center;gap:8px;padding:6px 13px;border-radius:999px;
   background:var(--panel);border:1px solid var(--line);max-width:40vw;min-width:0;
   font-size:12px;color:var(--txt2);cursor:pointer;transition:.15s;
 }
@@ -70,7 +72,7 @@ html[data-theme="light"] .logo{box-shadow:0 0 0 3px rgba(140,175,0,.16)}
 .pathchip code{font-family:Consolas,Menlo,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .spacer{flex:1 1 auto}
 .btn{
-  display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:var(--r2);
+  display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:11px;
   background:var(--panel);border:1px solid var(--line);color:var(--txt2);
   transition:.15s;white-space:nowrap;font-size:13px;
 }
@@ -81,27 +83,28 @@ html[data-theme="light"] .logo{box-shadow:0 0 0 3px rgba(140,175,0,.16)}
 .btn.danger{background:#e5484d;color:#fff;border-color:transparent;font-weight:700}
 .btn.danger:hover{filter:brightness(1.08);color:#fff}
 .btn.ghost{background:transparent}
-.btn.danger{color:var(--off);border-color:rgba(255,93,115,.35)}
-.btn.danger:hover{background:rgba(255,93,115,.12)}
+/* 注意: 这里曾经又写了一遍 .btn.danger —— 它只覆盖了 color 没覆盖第 83 行的红底,
+   于是变成"红字压红底", 危险按钮上的字全看不见(截图已确认)。危险按钮统一走上面的
+   实心红底白字, 不要再在这里改 color。 */
 .btn[disabled]{opacity:.45;pointer-events:none}
 .btn.on{background:var(--accent);color:var(--ink);border-color:transparent;font-weight:700}
 
 main{flex:1 1 auto;display:flex;min-height:0}
 aside{
   width:250px;flex:0 0 250px;border-right:1px solid var(--line);
-  background:var(--bg2);overflow-y:auto;padding:12px 10px 60px;
+  background:var(--bg2);overflow-y:auto;padding:14px 11px 60px;
 }
-.side-h{font-size:11px;letter-spacing:1.4px;color:var(--dim);padding:10px 10px 6px;font-weight:700}
+.side-h{font-size:11px;letter-spacing:1.4px;color:var(--dim);padding:12px 11px 6px;font-weight:700}
 .navi{
-  display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;
+  display:flex;align-items:center;gap:8px;padding:8px 11px;border-radius:11px;
   color:var(--txt2);transition:.12s;width:100%;text-align:left;font-size:13px;
 }
 .navi:hover{background:var(--panel);color:var(--txt)}
-.navi.on{background:var(--panel3);color:var(--txt);box-shadow:inset 2px 0 0 var(--accent)}
+.navi.on{background:var(--acs);color:var(--accent);font-weight:700;box-shadow:none}
 .navi .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .navi .cnt{font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap}
 .navi.on .cnt{color:var(--accent2)}
-html[data-theme="light"] .navi.on .cnt{color:#6b8000}
+html[data-theme="light"] .navi.on .cnt{color:var(--accent2)}
 .navi.multi .cnt{color:var(--warn)}
 .navi.sub{padding-left:24px;font-size:12.5px}
 /* 侧栏行 / 卡片上的收藏星标: 平时淡淡, 悬停或已收藏才显眼 */
@@ -126,24 +129,24 @@ html[data-theme="light"] .navi.on .cnt{color:#6b8000}
 
 section.content{flex:1 1 auto;display:flex;flex-direction:column;min-width:0;min-height:0}
 .toolbar{
-  display:flex;align-items:center;gap:8px;padding:10px 14px;flex-wrap:wrap;
+  display:flex;align-items:center;gap:8px;padding:11px 16px;flex-wrap:wrap;
   border-bottom:1px solid var(--line);background:var(--bg2);flex:0 0 auto;
 }
 .search{
   display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);
-  border-radius:var(--r2);padding:7px 11px;min-width:200px;flex:1 1 200px;max-width:360px;
+  border-radius:999px;padding:8px 15px;min-width:200px;flex:1 1 200px;max-width:360px;
 }
 .search input{background:none;border:0;outline:none;flex:1;min-width:0}
 .search .k{font-size:12px;color:var(--dim)}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{
-  padding:6px 11px;border-radius:999px;background:var(--panel);border:1px solid var(--line);
-  color:var(--txt2);font-size:12px;transition:.13s;
+  padding:7px 14px;border-radius:999px;background:var(--panel);border:1px solid var(--line);
+  color:var(--txt2);font-size:12.5px;transition:.13s;
 }
 .chip:hover{border-color:var(--line2);color:var(--txt)}
 .chip.on{background:var(--accent);border-color:transparent;color:var(--ink);font-weight:700}
-select.sel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);
-  padding:7px 9px;outline:none;font-size:12.5px}
+select.sel{background:var(--panel);border:1px solid var(--line);border-radius:11px;
+  padding:8px 10px;outline:none;font-size:12.5px}
 .scopebar{
   display:flex;align-items:center;gap:9px;padding:9px 16px;flex:0 0 auto;
   border-bottom:1px dashed var(--line);font-size:12.5px;color:var(--txt2);
@@ -160,43 +163,45 @@ select.sel{background:var(--panel);border:1px solid var(--line);border-radius:va
 .banner b{color:var(--txt)}
 .scroll{overflow-y:auto;padding:13px 16px 80px;flex:1 1 auto}
 
-.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(min(216px,100%),1fr))}
+.grid{display:grid;gap:13px;grid-template-columns:repeat(auto-fill,minmax(min(216px,100%),1fr))}
 .grid.list{grid-template-columns:1fr}
 .card{
   background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
   overflow:hidden;display:flex;flex-direction:column;transition:.16s;position:relative;
 }
 .card:hover{border-color:var(--line2);transform:translateY(-2px);box-shadow:var(--shadow)}
-.card.off{opacity:.6}
+.card.off{opacity:.62}
 .card.off .thumbwrap{filter:grayscale(.85)}
 .thumbwrap{
-  position:relative;aspect-ratio:16/10;background:
+  position:relative;aspect-ratio:4/3;background:
     linear-gradient(135deg,var(--panel2),var(--panel3));display:grid;place-items:center;
   overflow:hidden;transition:.2s;
 }
 .grid.list .thumbwrap{aspect-ratio:auto;width:104px;height:74px;flex:0 0 auto}
 .thumbwrap img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .25s}
 .thumbwrap img.ld{opacity:1}
-.thumbwrap .ph{color:var(--dim);font-size:26px;opacity:.5}
-.state{position:absolute;top:8px;left:8px;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;backdrop-filter:blur(6px)}
-.state.on{background:rgba(61,220,132,.9);color:#06240f}
-.state.no{background:rgba(255,93,115,.9);color:#2a060c}
-.cardbody{padding:10px 11px 11px;display:flex;flex-direction:column;gap:7px;flex:1;min-width:0}
-.cardtitle{font-size:13.5px;font-weight:600;line-height:1.32;word-break:break-word}
+.thumbwrap .ph{color:var(--dim);font-size:28px;opacity:.45}
+.state{position:absolute;top:9px;left:9px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;backdrop-filter:blur(6px)}
+.state.on{background:rgba(52,211,153,.92);color:#04231a}
+.state.no{background:rgba(248,113,113,.92);color:#2c0a0a}
+html[data-theme="light"] .state.on{background:rgba(15,166,120,.15);color:#0b7a57;backdrop-filter:none}
+html[data-theme="light"] .state.no{background:rgba(220,74,74,.15);color:#b3312f;backdrop-filter:none}
+.cardbody{padding:11px 12px 12px;display:flex;flex-direction:column;gap:8px;flex:1;min-width:0}
+.cardtitle{font-size:13.5px;font-weight:600;line-height:1.34;word-break:break-word}
 .meta{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
-.tag{font-size:10.5px;padding:2px 7px;border-radius:6px;background:var(--panel3);
+.tag{font-size:10.5px;padding:2.5px 8px;border-radius:999px;background:var(--panel3);
   color:var(--txt2);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
-.tag.cat{background:rgba(90,169,255,.16);color:var(--info)}
-.tag.char{background:rgba(216,244,37,.16);color:var(--accent2)}
-html[data-theme="light"] .tag.char{color:#6b8000}
-.tag.warn{background:rgba(255,176,46,.16);color:var(--warn)}
+.tag.cat{background:rgba(96,165,250,.15);color:var(--info)}
+.tag.char{background:var(--acs);color:var(--accent)}
+html[data-theme="light"] .tag.char{color:var(--accent2)}
+.tag.warn{background:rgba(245,197,24,.16);color:var(--warn)}
 .grid.list .cardinner{display:flex;gap:12px;align-items:stretch}
 .grid.list .cardbody{justify-content:center}
 .cardfoot{display:flex;gap:6px;align-items:center;margin-top:auto;flex-wrap:wrap}
-.mini{padding:5px 9px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);
+.mini{padding:6px 10px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);
   font-size:12px;color:var(--txt2);transition:.13s;flex:1 1 auto;white-space:nowrap;text-align:center}
 .mini:hover{background:var(--panel3);color:var(--txt);border-color:var(--line2)}
-.mini.del{flex:0 0 auto;color:#ff6b6b;border-color:rgba(255,107,107,.35)}
+.mini.del{flex:0 0 auto;color:var(--off);border-color:rgba(248,113,113,.35)}
 .mini.del:hover{background:rgba(229,72,77,.16);color:#ff8a8a;border-color:#e5484d}
 .sw{margin-left:auto;width:44px;height:24px;border-radius:999px;background:var(--line2);
   position:relative;transition:.18s;flex:0 0 auto}
@@ -260,6 +265,44 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
   border-radius:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;
   opacity:0;pointer-events:none;transition:.2s}
 .modal.on{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
+.modal.wide{width:min(1040px,96vw)}
+/* v1.5.31 连拍挑帧 */
+.pb-stage{position:relative;background:#000;border:1px solid var(--line);border-radius:12px;display:grid;
+  place-items:center;height:min(52vh,520px);overflow:hidden}
+.pb-stage img{max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-in}
+/* v1.5.34: 勾选模式下大图左上角的「勾选这张」浮标 */
+.pb-pickbtn{position:absolute;left:12px;top:12px;padding:6px 12px;border-radius:9px;font-size:12px;
+  background:rgba(6,8,11,.72);border:1px solid rgba(255,255,255,.35);color:#fff;transition:.12s}
+.pb-pickbtn:hover{background:rgba(6,8,11,.9)}
+.pb-pickbtn.on{background:#3fbf6f;border-color:#3fbf6f;color:#05230f;font-weight:700}
+.pb-strip{display:flex;gap:8px;overflow-x:auto;padding:12px 2px 4px;scroll-snap-type:x proximity}
+.pb-tiers{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.pb-tiers button{padding:5px 11px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);
+  font-size:12px;color:var(--txt2);transition:.12s;white-space:nowrap}
+.pb-tiers button:hover{background:var(--panel3);color:var(--txt)}
+.pb-tiers button.on{background:var(--accent);color:var(--ink);border-color:transparent;font-weight:700}
+/* v1.5.34: 胶片条每格包一层 .pbs, 勾选模式下叠一个 ✓ 徽标(原来直接放 <img>, 没法挂角标) */
+.pb-strip .pbs{position:relative;flex:0 0 auto;scroll-snap-align:center;line-height:0}
+.pb-strip img{width:132px;height:74px;object-fit:cover;border-radius:8px;cursor:pointer;display:block;
+  border:2px solid transparent;opacity:.72;transition:.12s;background:var(--panel3)}
+.pb-strip img:hover{opacity:1}
+.pb-strip .pbs.on img{border-color:var(--accent);opacity:1}
+.pb-strip .pbs.kept img{outline:2px solid #3fbf6f;outline-offset:1px}
+.pb-strip .pbs.pick img{cursor:copy;opacity:.9}
+.pb-strip .pbs.pick:hover img{opacity:1}
+.pb-strip .pbs.sel img{border-color:#3fbf6f;box-shadow:0 0 0 2px rgba(63,191,111,.35);opacity:1}
+.pb-strip .pbs .ck{position:absolute;left:6px;top:6px;width:20px;height:20px;border-radius:7px;
+  background:rgba(6,8,11,.7);border:1.5px solid rgba(255,255,255,.55);color:#fff;font-size:12px;
+  font-style:normal;display:grid;place-items:center;pointer-events:none;line-height:1}
+.pb-strip .pbs.sel .ck{background:#3fbf6f;border-color:#3fbf6f}
+/* v1.5.31 照片墙 */
+.pw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.pw-cell{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--panel2)}
+.pw-cell img{display:block;width:100%;height:132px;object-fit:cover;cursor:zoom-in}
+.pw-cell .pwbar{display:flex;align-items:center;gap:6px;padding:6px 8px;font-size:11px;color:var(--dim)}
+.pw-cell .pwbar .pwname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pw-cell .pwdel{color:#ff6b6b;padding:2px 6px;border-radius:6px}
+.pw-cell .pwdel:hover{background:rgba(229,72,77,.16)}
 .dh{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);flex:0 0 auto}
 .dh h3{margin:0;font-size:15px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* 预览图放大: 点封面弹大图 */
@@ -286,6 +329,19 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
   font-size:10px;border-radius:6px;padding:1px 5px}
 .dbody{padding:16px;overflow-y:auto;flex:1 1 auto}
 .dfoot{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;flex:0 0 auto}
+.dfoot .sp{margin-left:auto}
+/* v1.5.39: 连拍缓存切换按钮组(放在「侧键自检」右边、「选择留下」左边,
+   最多 3 个 📦N, 当前活动批用 accent 高亮). */
+.pb-bursts{display:inline-flex;gap:4px;align-items:center;margin-right:6px}
+.pb-bursts .btn{padding:5px 10px;font-size:12px;border-radius:8px}
+.pb-bursts .btn.on{background:var(--accent);color:var(--ink);border-color:transparent;font-weight:700}
+/* v1.5.35 侧键自检面板 */
+.diagbox{margin:10px 0 0;border:1px solid var(--line);border-radius:10px;
+  padding:9px 12px;background:var(--bg)}
+.diagline{display:flex;gap:8px;align-items:baseline;font-size:13px;padding:2px 0}
+.diagline .dk{flex:0 0 auto;min-width:92px;color:var(--dim)}
+.diagline .dv{color:var(--txt);word-break:break-all}
+.diagfix{font-size:12px;color:var(--warn);margin:0 0 6px 20px;line-height:1.5}
 .xbtn{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--dim);font-size:17px}
 .xbtn:hover{background:var(--bg);color:var(--ink)}
 .ask-msg{white-space:pre-wrap;line-height:1.6;margin-bottom:12px;color:var(--txt);font-size:14px}
@@ -430,7 +486,7 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
 <div id="app" style="display:none">
   <header>
     <div class="brand">
-      <div class="logo">Z</div>
+      <img class="logo" src="/favicon.ico" alt="绝区零" draggable="false">
       <div><b>ZZMI Mod 管家</b><span id="verline">加载中…</span></div>
     </div>
     <div class="pathchip" id="pathchip" title="点击修改 ZZMI 路径">
@@ -442,6 +498,8 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
     <button class="btn" id="btnRescan" title="重新扫描 Mods 目录">⟳ 重新扫描</button>
     <button class="btn ghost" id="btnLib" title="管理 Mods 外面的仓库目录">🗄 仓库</button>
     <button class="btn ghost" id="btnGB" title="GameBanana 下载区: 抓取 mod 列表和预览图, 一键下载">⬇ 下载区</button>
+    <button class="btn ghost" id="btnPhoto" title="把游戏在前台时的最近几秒摊成五层挑帧条。战斗中直接按鼠标侧键抓拍更方便(可改键); 回到管家点这个按钮也能翻刚才那几秒">📸 连拍</button>
+    <button class="btn ghost" id="btnWall" title="照片墙: 连拍挑中留下的成品">🖼 照片</button>
     <button class="btn ghost" id="btnUpd" title="检查有没有新版本">⬆ 检查更新</button>
     <button class="btn ghost" id="btnSet" title="设置">⚙</button>
   </header>
@@ -640,6 +698,59 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
   <div class="dfoot">
     <button class="btn" id="mAskCancel">取消</button>
     <button class="btn primary" id="mAskOk">确定</button>
+  </div>
+</div>
+
+<!-- v1.5.31: 连拍挑帧 —— 触发后把最近几秒的代表帧摊成胶片条, 点「留」才落盘 -->
+<div class="modal wide" id="mBurst">
+  <div class="dh"><h3>📸 连拍挑帧 <span class="hint" id="pbHint" style="font-weight:400"></span></h3>
+    <button class="xbtn" id="pbX">✕</button></div>
+  <div class="dbody">
+    <div id="pbEmpty" class="hint" style="display:none"></div>
+    <div id="pbDiagBox" style="display:none"></div>
+    <div id="pbBody">
+      <div class="pb-stage"><img id="pbBig" alt="" title="点击全屏查看">
+        <button class="pb-pickbtn" id="pbBigPick" style="display:none">☐ 勾选这张</button>
+      </div>
+      <div class="pb-tiers" id="pbTiers"></div>
+      <div class="pb-strip" id="pbStrip"></div>
+      <p class="hint" id="pbTip" style="margin:8px 0 0">档越往下越细(1 档差异最大, 5 档=全部帧) · 左右方向键换帧 · 按 <b>回车</b>或「留这张」把当前帧存进照片墙 · 点大图可全屏 · 没留的关掉即弃, 不落盘</p>
+    </div>
+  </div>
+  <div class="dfoot">
+    <button class="btn" id="pbClear" title="清掉内存里缓存的连拍帧, 下次侧键从零开始录(照片墙里已留下的成品不受影响)">🧹 清除缓存</button>
+    <button class="btn" id="pbDiag" title="按了侧键没反应? 点这里逐环查一遍, 告诉你卡在哪、怎么修">🩺 侧键自检</button>
+    <!-- v1.5.39: 缓存切换按钮组(最多 3 批), 新批录完自动把最早的挤掉;
+         当前活动批高亮 accent 色, 点其它切换。这一段写在「侧键自检」右边、
+         「选择留下」左边的空白处。空槽位直接不渲染按钮。 -->
+    <span class="pb-bursts" id="pbBursts" style="display:none">
+      <span class="hint" style="margin-right:4px">缓存</span>
+      <button class="btn mini" data-bi="0" title="最新一批">📦1</button>
+      <button class="btn mini" data-bi="1" title="倒数第二批" style="display:none">📦2</button>
+      <button class="btn mini" data-bi="2" title="最旧一批" style="display:none">📦3</button>
+    </span>
+    <span class="sp"></span>
+    <button class="btn" id="pbPick" title="进入勾选模式: 一张张勾出想留下的, 再一次性落盘">☑ 选择留下</button>
+    <button class="btn" id="pbPickX" style="display:none" title="退出勾选模式, 回到逐张翻看">↩ 退出选择</button>
+    <button class="btn primary" id="pbKeep">留这张</button>
+    <button class="btn" id="pbClose">弃掉关闭</button>
+  </div>
+</div>
+
+<!-- v1.5.31: 照片墙 —— 只存你亲手留过的成品 -->
+<div class="modal wide" id="mWall">
+  <div class="dh"><h3>🖼 照片墙 <span class="hint" id="pwHint" style="font-weight:400"></span></h3>
+    <button class="xbtn" id="pwX">✕</button></div>
+  <div class="dbody">
+    <div id="pwEmpty" class="hint" style="display:none"></div>
+    <div class="pw-grid" id="pwGrid"></div>
+    <div class="hint" id="pwDirLine" style="margin-top:10px"></div>
+  </div>
+  <div class="dfoot">
+    <button class="btn" id="pwOpen">📂 打开文件夹</button>
+    <button class="btn" id="pwDir" title="连拍留下的成品存到哪个文件夹(可自定义)">📁 保存位置</button>
+    <button class="btn" id="pwBurst" title="回到刚才那次连拍继续挑">📸 连拍挑帧</button>
+    <button class="btn primary" id="pwClose">关闭</button>
   </div>
 </div>
 
@@ -1149,11 +1260,17 @@ function observeThumbs(){
 }
 
 // ---------- 预览图放大 ----------
-function zoomImage(rel, caption){
-  if (!rel) return;
-  $("#lbImg").src = "/thumb?t=" + encodeURIComponent(T) + "&full=1&p=" + encodeURIComponent(rel);
+// v1.5.34: 抽出 zoomFull —— 连拍挑帧条 / 照片墙 手里已经是一个现成的图片 URL,
+// 不必再绕 /thumb 那套(那是按 mod 相对路径取图的)。
+function zoomFull(src, caption){
+  if (!src) return;
+  $("#lbImg").src = src;
   $("#lbCap").textContent = caption || "";
   $("#lightbox").classList.add("on");
+}
+function zoomImage(rel, caption){
+  if (!rel) return;
+  zoomFull("/thumb?t=" + encodeURIComponent(T) + "&full=1&p=" + encodeURIComponent(rel), caption);
 }
 function closeZoom(){ $("#lightbox").classList.remove("on"); }
 $("#lightbox").onclick = e => { if (e.target === e.currentTarget) closeZoom(); };
@@ -2081,7 +2198,58 @@ function renderSetup(){
       <button class="mini" id="btnHotkey">保存</button>
       <br><span class="hint">绝区零运行时按下即可呼出/最小化管理器窗口(最小化后点任务栏图标也能唤回)。
       字母/数字必须带修饰键(如 <b>F9</b>、Alt+Z), 单独按 F1~F12 也可以。
-      ${S.hotkey_ok === false ? '<b style="color:var(--warn,#e8b339)">⚠ 当前快捷键注册失败(可能被其他程序占用), 请换一个组合。</b>' : ""}</span></span></div>
+      ${(()=>{
+        const bad=[];
+        if(S.hotkey_main_ok===false) bad.push("呼出键 "+(S.hotkey||""));
+        if(S.hotkey_photo_ok===false) bad.push("连拍键 "+(S.photo_hotkey||""));
+        if(!bad.length && S.hotkey_ok===false) bad.push("快捷键");
+        if(!bad.length) return "";
+        const why = S.other_instance
+          ? "检测到<b>另一个管家实例</b>正在运行 —— 它占着这些键(旧进程没退干净时就会这样: 提示失败, 可按 F9 仍有反应, 因为响应的是那个旧实例)。到任务管理器结束多余的 ZZMI-Mod-Manager.exe / python.exe, 再点「保存」重试。"
+          : "可能被其他程序占用: 换一个组合, 或先关掉占用它的程序, 再点「保存」重试。";
+        return '<b style="color:var(--warn,#e8b339)">⚠ '+esc(bad.join(" / "))+" 注册失败。"+why+"</b>";
+      })()}</span></span></div>
+    <h4 style="margin:18px 0 6px;font-size:13px">📸 连拍缓冲</h4>
+    <div class="kv"><span class="k">后台录屏</span><span class="v">
+      <button class="mini" id="btnPhotoOn">${S.photo_on?"关闭":"开启"}</button>
+      <span class="hint">(当前: ${S.photo_on?"开 · 只在游戏运行时录屏":"关"})</span></span></div>
+    <div class="kv"><span class="k">抓拍侧键</span><span class="v">
+      <select class="inp" id="inPhotoBtn" style="max-width:200px;padding:6px 9px;display:inline-block">
+        <option value="0"${S.photo_mouse_btn===0?" selected":""}>关闭</option>
+        <option value="1"${(S.photo_mouse_btn||1)===1?" selected":""}>鼠标侧键1（后退键）</option>
+        <option value="2"${S.photo_mouse_btn===2?" selected":""}>鼠标侧键2（前进键）</option>
+      </select>
+      <button class="mini" id="btnPhotoBtn">保存</button>
+      <br><span class="hint">打斗中直接按<b>鼠标侧键</b>就抓拍（按一下记下最近几秒），回到管家自动弹出挑帧条。
+      只旁听侧键不拦截，鼠标原有功能不受影响。</span>
+      ${S.photo_mouse_ok === false ? '<br><b style="color:var(--warn)">⚠ 侧键监听没装上（可能被安全软件或权限拦了）—— 试试右键管家「以管理员身份运行」，或改用下面的「触发键」。</b>' : ""}</span></div>
+    <div class="kv"><span class="k">触发键</span><span class="v">
+      <input class="inp" id="inPhotoHotkey" value="${esc(S.photo_hotkey||"Ctrl+Shift+C")}"
+        style="max-width:160px;padding:6px 9px;display:inline-block">
+      <button class="mini" id="btnPhotoHotkey">保存</button>
+      <br><span class="hint">键盘快捷键（和侧键并存，随你习惯）。
+      只存你点过「留这张」的。
+      ${S.hotkey_photo_ok === false ? '<br><b style="color:var(--warn,#e8b339)">⚠ 这个组合被占用了，注册不上。</b>' + (S.other_instance ? "检测到另一个管家实例在运行，它占着这个键 —— 结束多余的 ZZMI-Mod-Manager.exe / python.exe 后点「保存」重试。" : "换一个组合，或先关掉占用它的程序，再点「保存」重试。") : ""}</span></span></div>
+    <div class="kv"><span class="k">照片保存位置</span><span class="v">
+      <input class="inp" id="inPhotoDir" value="${esc(S.photo_dir||"")}" placeholder="留空 = 数据目录\\照片"
+        style="max-width:250px;padding:6px 9px;display:inline-block">
+      <button class="mini" id="btnPhotoDirPick">📁 选文件夹</button>
+      <button class="mini" id="btnPhotoDir">保存</button>
+      <button class="mini" id="btnPhotoDirReset">恢复默认</button>
+      <br><span class="hint">连拍留下的成品存到哪。当前: <code>${esc(S.photo_dir||"")}</code>${S.photo_dir_custom?" · 自定义":" · 默认"}
+      　也可以直接把完整路径粘进去(例如 <code>D:\\ZZMI照片</code>)。</span></span></div>
+    <div class="kv"><span class="k">录制时长</span><span class="v">
+      <input class="inp" id="inPhotoSecs" type="number" min="1" max="10" value="${esc(String(S.photo_seconds||3))}"
+        style="max-width:80px;padding:6px 9px;display:inline-block"> 秒
+      <button class="mini" id="btnPhotoSecs">保存</button>
+      <br><span class="hint">按侧键/触发键后，<b>从按下那一刻开始录</b>这么多秒（1~10），
+      录满立刻停下并弹出挑帧页。越长录到的画面越多、内存占得越多，一般 3 秒够用。</span></span></div>
+    <div class="kv"><span class="k">侧键自检</span><span class="v">
+      <button class="mini" id="btnPhotoDiag" title="按了侧键没反应? 点这里逐环查一遍">🩺 侧键自检</button>
+      <button class="mini" id="btnPhotoClear" title="清掉内存里缓存的连拍帧(照片墙里已留下的成品不受影响)">🧹 清除缓存</button>
+      <br><span class="hint">「按了侧键没反应」时点自检 —— 后台录屏 / 侧键监听 / 录制时长 / 上次录到几帧
+      逐环给出结论和修法。清除缓存只清内存, 磁盘上的照片一张不动。</span>
+      <div id="setDiagBox" style="display:none"></div></span></div>
     <h4 style="margin:18px 0 6px;font-size:13px">日志 / 排错</h4>
     <div class="kv"><span class="k">命令窗口</span><span class="v">
       <button class="mini" id="btnConsole">▣ 显示命令窗口(看日志)</button>
@@ -2106,6 +2274,85 @@ function renderSetup(){
     const r = await api("/api/config", {hotkey: $("#inHotkey").value.trim()});
     if (r.state) S = r.state;
     toast(r.msg || "完成", r.ok?"ok":"err");
+  };
+  // v1.5.31 连拍缓冲设置
+  const bpon = $("#btnPhotoOn");
+  if (bpon) bpon.onclick = async () => {
+    const r = await api("/api/config", {photo_on: !S.photo_on});
+    if (r.state) S = r.state;
+    toast(r.msg || "完成", r.ok?"ok":"err"); renderSetup();
+  };
+  const bphk = $("#btnPhotoHotkey");
+  if (bphk) bphk.onclick = async () => {
+    const r = await api("/api/config", {photo_hotkey: $("#inPhotoHotkey").value.trim()});
+    if (r.state) S = r.state;
+    toast(r.msg || "完成", r.ok?"ok":"err");
+  };
+  const bpbtn = $("#btnPhotoBtn");
+  if (bpbtn) bpbtn.onclick = async () => {
+    const r = await api("/api/config", {photo_mouse_btn: $("#inPhotoBtn").value});
+    if (r.state) S = r.state;
+    toast(r.msg || "完成", r.ok?"ok":"err");
+  };
+  const bpsec = $("#btnPhotoSecs");
+  if (bpsec) bpsec.onclick = async () => {
+    const r = await api("/api/config", {photo_seconds: $("#inPhotoSecs").value});
+    if (r.state) S = r.state;
+    toast(r.msg || "完成", r.ok?"ok":"err");
+  };
+  // v1.5.34: 照片保存位置(空 = 恢复默认 数据目录\照片)
+  const bpd = $("#btnPhotoDir");
+  if (bpd) bpd.onclick = async () => {
+    const r = await api("/api/config", {photo_dir: $("#inPhotoDir").value.trim()});
+    if (r.state) S = r.state;
+    toast(r.msg || "完成", r.ok?"ok":"err");
+    if (r.ok) renderSetup();
+  };
+  const bpdp = $("#btnPhotoDirPick");
+  if (bpdp) bpdp.onclick = async () => {
+    const btn = bpdp, old = btn.textContent;
+    btn.disabled = true; btn.textContent = "选择中…";
+    try{
+      const r = await api("/api/pick_dir",
+                          {base: $("#inPhotoDir").value.trim() || (S.photo_dir || "")});
+      if (!r || !r.ok){ toast((r && r.msg) || "没选文件夹", "err"); return; }
+      const c = await api("/api/config", {photo_dir: r.path});
+      if (c.state) S = c.state;
+      toast(c.msg || "完成", c.ok?"ok":"err");
+      if (c.ok) renderSetup();
+    }catch(e){ toast("选择文件夹失败: " + e.message, "err"); }
+    finally{ btn.disabled = false; btn.textContent = old; }
+  };
+  const bpdr = $("#btnPhotoDirReset");
+  if (bpdr) bpdr.onclick = async () => {
+    const r = await api("/api/config", {photo_dir: ""});
+    if (r.state) S = r.state;
+    toast(r.msg || "完成", r.ok?"ok":"err");
+    if (r.ok) renderSetup();
+  };
+  // v1.5.35: 侧键自检 + 清除缓存(和挑帧页里那两个按钮是同一套后端动作)
+  const bpdg = $("#btnPhotoDiag");
+  if (bpdg) bpdg.onclick = async () => {
+    const btn = bpdg, old = btn.textContent, box = $("#setDiagBox");
+    btn.disabled = true; btn.textContent = "自检中…";
+    try{
+      const d = await runPhotoDiag();
+      if (!d){ toast("自检失败", "err"); return; }
+      box.innerHTML = diagHTML(d);
+      box.style.display = "";
+    }catch(e){ toast("自检失败: " + e.message, "err"); }
+    finally{ btn.disabled = false; btn.textContent = old; }
+  };
+  const bpcl = $("#btnPhotoClear");
+  if (bpcl) bpcl.onclick = async () => {
+    const btn = bpcl, old = btn.textContent;
+    btn.disabled = true; btn.textContent = "清除中…";
+    try{
+      const r = await api("/api/photo_clear", {});
+      toast(r.ok ? (r.msg || "已清除连拍缓存") : (r.msg || "清除失败"), r.ok?"ok":"err");
+      if (r.ok){ _pbShown = 0; _pressSeen = 0; }
+    }catch(e){ toast("清除失败: " + e.message, "err"); }
+    finally{ btn.disabled = false; btn.textContent = old; }
   };
   const bcon = $("#btnConsole");
   if (bcon) bcon.onclick = async () => {
@@ -2321,6 +2568,10 @@ $("#mAskInput").addEventListener("keydown", e => {
   else if (e.key === "Escape"){ e.preventDefault(); closeAsk(null); }
 });
 function ask(text, defval){ return openAsk(text, defval); }
+// v1.5.30: 二次确认框。返回 Promise<boolean>。danger=true 时确定按钮标红。
+function confirmBox(msg, okText, danger){
+  return openAsk(msg, null, {confirm:true, okText: okText || "确定", danger: !!danger});
+}
 
 // v1.5.10: 界面窗口关了(pagehide) -> 通知后端延迟几秒自动退出,
 // 不再留一个看不见又杀不掉的后台进程(提权进程普通方式杀不掉)
@@ -2338,6 +2589,9 @@ document.addEventListener("keydown", e => {
 });
 window.openSetup = openSetup; window.autoDetect = autoDetect;
 window.showConflicts = showConflicts; window.setTheme = setTheme; window.setHide = setHide;
+// v1.5.37: 暴露给 jsdom 行为测试(tests/ui_burst.js 场景13/14 直接调它)
+window.pbSeedFromState = pbSeedFromState;
+window.pbPingNow = pbPingNow;
 
 /* ===================== v1.5.12: GameBanana 下载区 ===================== */
 const gbS = {
@@ -3031,20 +3285,487 @@ if ($("#tgImport")) $("#tgImport").onclick = async () => {
 };
 
 load();
+// ---------------- v1.5.31 连拍挑帧 + 照片墙 ----------------
+// v1.5.32: 代表帧改成五层金字塔 —— 1 档最粗(差异最大), 逐层细分, 5 档=全部帧。
+// v1.5.34: ① 删掉没用的「📷 补抓一张」 ②「全部留下」改成勾选式「☑ 选择留下」
+//          ③ 点照片全屏预览 ④ 侧键一按不管管家开着什么页面都立刻把挑帧页顶到最前
+const PH = { id: 0, frames: [], tiers: [], tier: 0, pos: 0, kept: {}, pick: false, sel: {},
+             emptyMsg: "" };
+function pimg(qs, w){
+  // v1.5.38 修复: 加 `_b=<burst_id>` 缓存破坏 —— 两批帧数接近时, 同一个
+  // 帧号 `i=X` 会让浏览器拿上一批的缓存图当这一批的(用户报"大图是新的,
+  // 小图是上一批的"就是这条)。burst_id 一变 URL 就变, 强制 refetch;
+  // 同批内 URL 不变, 翻页/切档还是走正常缓存, 不浪费流量。
+  return "/api/photoimg?t=" + encodeURIComponent(T) + "&" + qs + "&w=" + (w||0) +
+         "&_b=" + (PH.id || 0);
+}
+// v1.5.37: 这一批已经弹出来给用户看过了 -> 告诉后端清掉 pending 标记。
+// 为什么需要它: 按完侧键切回管家时, 后端可能刚好"没找到已有窗口"于是新开一个
+// 窗口 —— 那是全新页面加载, 老写法在首帧把 _pbShown 播种成当前 burst_id,
+// 刚抓的那批就被静默吞掉(用户看到的就是"回到管家却没有弹出截图那个界面")。
+function pbAck(id){
+  try{ api("/api/photo_ack", {burst_id: id || 0}).catch(()=>{}); }catch(e){}
+}
+function pbShow(meta){
+  PH.id = (meta||{}).burst_id || 0;
+  PH.frames = (meta||{}).frames || [];
+  PH.tiers = (meta||{}).tiers && (meta||{}).tiers.length ? meta.tiers
+             : [PH.frames.map(f => f.i)];           // 旧后端兜底: 当一层
+  PH.tier = 0;
+  PH.pos = Math.max(0, (PH.tiers[0]||[]).length - 1);
+  PH.kept = {};
+  PH.pick = false;
+  PH.sel = {};
+  PH.emptyMsg = "";
+  $("#mBurst").classList.add("on");
+  $("#mask").classList.add("on");
+  pbRender();
+  pbBurstsRender();        // v1.5.39: 同步刷新"缓存 1/2/3"按钮的高亮与可见性
+  // v1.5.38 修复: 只在页面可见时才告诉后端"这批已展示"(清 pending)。隐藏时弹出的
+  // 弹窗用户没看见, 若立刻 ack 会让回来时的补弹被压掉(这就是"回管家没弹"的根因)。
+  if (!document.hidden) pbAck(PH.id);                // v1.5.37(可见时才 ack)
+}
+// v1.5.39: 缓存切换按钮 —— 拉一次后端, 把每一槽的 📦N 渲染出来, 当前活动 idx
+// 加 on 类(accent 高亮)。后端给的是 {active, bursts:[{id,count,secs,t,pending}]}。
+// 只在「有 2 批或更多」时显示按钮组 —— 单一批时切换没意义, 也省点视觉噪声。
+async function pbBurstsRender(){
+  const wrap = $("#pbBursts");
+  if (!wrap) return;
+  try{
+    const r = await api("/api/photo_bursts", {});
+    const bs = (r && r.bursts) || [];
+    if (bs.length < 2){ wrap.style.display = "none"; return; }
+    wrap.style.display = "";
+    const btns = $$("#pbBursts [data-bi]");
+    btns.forEach((b, k) => {
+      b.style.display = (k < bs.length) ? "" : "none";
+      b.classList.toggle("on", k === (r.active || 0));
+      const meta = bs[k] || {};
+      b.textContent = "📦" + (k + 1) + " · " + (meta.count || 0) + "帧";
+      b.title = "第 " + (k + 1) + " 批 · " + (meta.count || 0) + " 帧" +
+                (meta.pending ? " · 待查看" : "");
+    });
+  }catch(e){ wrap.style.display = "none"; }
+}
+// 点击 📦N -> 后端切活动批, 重新渲染整个挑帧页(meta/帧号都从那一批拿)
+// 切回来后弹窗里看到的是**那一批**的图, 胶片条 + 大图 + 档位全跟着切。
+async function pbBurstSwitch(idx){
+  try{
+    const r = await api("/api/photo_switch", {idx: idx});
+    if (!r || !r.ok || !r.meta) return;
+    PH.kept = {}; PH.sel = {}; PH.pick = false;
+    pbShow(r.meta);
+  }catch(e){ toast("切换失败: " + (e && e.message || e), "warn"); }
+}
+// 把点击挂上去(只挂一次, 多次 bind 会泄漏)
+if ($("#pbBursts") && !window._pbBurstsWired){
+  window._pbBurstsWired = true;
+  $$("#pbBursts [data-bi]").forEach(b => {
+    b.onclick = () => pbBurstSwitch(+b.dataset.bi);
+  });
+}
+
+// v1.5.35: 侧键按了但没抓到帧 -> 也要把挑帧页弹出来, 把原因写在里面。
+// 以前这种情况后端什么都不做, 用户看到的就是"按了没反应"。
+function pbShowEmpty(msg){
+  PH.id = 0; PH.frames = []; PH.tiers = [[]]; PH.tier = 0; PH.pos = 0;
+  PH.kept = {}; PH.pick = false; PH.sel = {};
+  PH.emptyMsg = msg || "这次没抓到帧。";
+  $("#mBurst").classList.add("on");
+  $("#mask").classList.add("on");
+  pbRender();
+  if (!document.hidden) pbAck(0);                    // v1.5.37(可见时才 ack)
+}
+function pbCurFrame(){
+  const list = PH.tiers[PH.tier] || [];
+  const i = list[Math.min(PH.pos, list.length-1)];
+  return i == null ? null : PH.frames.find(f => f.i === i) || null;
+}
+// v1.5.34 勾选模式: 点胶片条(或大图左上角浮标) = 勾上 / 取消。勾选记在帧号上,
+// 所以可以跨档勾 —— 1 档挑一张、再切到 5 档挑一张, 互不干扰。
+function pbToggleSel(fi){
+  if (fi == null || isNaN(fi)) return;
+  if (PH.sel[fi]) delete PH.sel[fi]; else PH.sel[fi] = 1;
+  pbRender();
+}
+function pbSelCount(){ return Object.keys(PH.sel).length; }
+function pbPickUI(){
+  const on = PH.pick, n = pbSelCount(), has = PH.frames.length > 0;
+  $("#pbPick").textContent = on ? ("✅ 留下选中的 " + n + " 张") : "☑ 选择留下";
+  $("#pbPick").classList.toggle("primary", on && n > 0);
+  // v1.5.35: 空批(没抓到帧)时把「留这张/选择留下」藏起来 —— 没帧可留,
+  // 只留「🧹 清除缓存」和「弃掉关闭」两个能用的。
+  $("#pbPick").style.display = has ? "" : "none";
+  $("#pbPickX").style.display = (on && has) ? "" : "none";
+  $("#pbKeep").style.display = (has && !on) ? "" : "none";
+  $("#pbBigPick").style.display = (on && has) ? "" : "none";
+  const fr = pbCurFrame();
+  const cur = !!(fr && PH.sel[fr.i]);
+  $("#pbBigPick").textContent = cur ? "☑ 已勾选" : "☐ 勾选这张";
+  $("#pbBigPick").classList.toggle("on", cur);
+  const tip = $("#pbTip");
+  if (tip) tip.innerHTML = !has
+    ? "没抓到帧的时候按不了「留这张」。先按上面的提示排一下(或点左下「🩺 侧键自检」), 然后回游戏再按一次侧键重录一段。"
+    : (on
+      ? "勾选模式: 点胶片条(或大图左上角)把想留下的勾上, 可以跨档勾 · 点大图可全屏 · " +
+        "勾完点「✅ 留下选中的 N 张」一次性落盘"
+      : "档越往下越细(1 档差异最大, 5 档=全部帧) · 左右方向键换帧 · 按 <b>回车</b>或" +
+        "「留这张」把当前帧存进照片墙 · 点大图可全屏 · 没留的关掉即弃, 不落盘");
+  // v1.5.39: 缓存切换按钮(高亮活动 idx, 隐藏空槽位)
+  pbBurstsRender();
+}
+function pbRender(){
+  const n = PH.frames.length;
+  $("#pbEmpty").style.display = n ? "none" : "";
+  $("#pbBody").style.display = n ? "" : "none";
+  if (!n){
+    $("#pbEmpty").textContent = PH.emptyMsg || ("这一段没录到帧 —— 可能是屏幕捕获被拦了" +
+      "(独占全屏 / 杀软), 或者后台录屏关着(设置 → 📸 连拍缓冲)。");
+    $("#pbHint").textContent = "";
+    pbPickUI();
+    return;
+  }
+  const list = PH.tiers[PH.tier] || [];
+  if (PH.pos >= list.length) PH.pos = Math.max(0, list.length - 1);
+  const cur = pbCurFrame();
+  $("#pbHint").textContent = "本批共 " + n + " 帧 · 第 " + (PH.tier+1) + " 档 " +
+    (PH.pos+1) + "/" + list.length + " 张 · 已留 " + Object.keys(PH.kept).length + " 张" +
+    (PH.pick ? " · 已勾选 " + pbSelCount() + " 张" : "");
+  $("#pbTiers").innerHTML = PH.tiers.map((t, k) =>
+    `<button data-tier="${k}" class="${k===PH.tier?"on":""}">${k+1} 档 · ${t.length} 张</button>`).join("");
+  $$("#pbTiers button").forEach(b => b.onclick = () => {
+    PH.tier = +b.dataset.tier; PH.pos = Math.max(0, (PH.tiers[PH.tier]||[]).length - 1);
+    pbRender();
+  });
+  if (cur){
+    $("#pbBig").src = pimg("i=" + cur.i);
+    $("#pbStrip").innerHTML = list.map((fi, k) => {
+      const fr = PH.frames.find(f => f.i === fi) || {};
+      const cls = (k === PH.pos ? " on" : "") + (PH.kept[fi] ? " kept" : "") +
+                  (PH.pick ? " pick" + (PH.sel[fi] ? " sel" : "") : "");
+      const ck = PH.pick ? `<i class="ck">${PH.sel[fi] ? "✓" : ""}</i>` : "";
+      return `<span class="pbs${cls}" data-k="${k}" data-i="${fi}" ` +
+             `title="第 ${k+1} 张 · ${fr.t!=null?(fr.t+"s"):""}">` +
+             `<img src="${pimg("i=" + fi, 264)}" alt="">${ck}</span>`;
+    }).join("");
+    $$("#pbStrip .pbs").forEach(el => el.onclick = () => {
+      if (PH.pick){ pbToggleSel(+el.dataset.i); return; }
+      PH.pos = +el.dataset.k; pbRender();
+    });
+    const el = $("#pbStrip").children[PH.pos];
+    if (el && el.scrollIntoView) el.scrollIntoView({block:"nearest", inline:"center"});
+  }
+  pbPickUI();
+}
+// 顶栏「📸 连拍」和照片墙里的「📸 连拍挑帧」用同一套动作(用户要求保持一致):
+// 有刚抓的那批就直接摊开挑, 没有才去抓一次。
+function pbOpenOrTrigger(){
+  const b = (S && S.photo_burst) || {};
+  if (b.burst_id && b.frames && b.frames.length) pbShow(b);
+  else pbTrigger();
+}
+async function pbTrigger(){
+  const r = await api("/api/photo_trigger", {});
+  if (!r.ok) return toast(r.msg || "没抓到连拍帧", "err");
+  pbShow(r.meta);
+}
+async function pbKeep(){
+  const fr = pbCurFrame(); if (!fr) return;
+  const r = await api("/api/photo_keep", {i: fr.i});
+  if (!r.ok) return toast(r.msg || "保存失败", "err");
+  PH.kept[fr.i] = r.name;
+  delete PH.sel[fr.i];
+  toast("已留下这张 → 照片墙", "ok");
+  pbRender();
+}
+// v1.5.34: 「选择留下」—— 第一次点进勾选模式, 第二次点把勾上的全部落盘
+async function pbPickKeep(){
+  if (!PH.pick){ PH.pick = true; PH.sel = {}; pbRender(); return; }
+  const ids = Object.keys(PH.sel).map(Number);
+  if (!ids.length){ PH.pick = false; pbRender(); return; }
+  let n = 0;
+  for (const fi of ids){
+    const r = await api("/api/photo_keep", {i: fi});
+    if (r.ok){ n++; PH.kept[fi] = r.name; }
+  }
+  PH.pick = false; PH.sel = {};
+  toast("已留下 " + n + " 张 → 照片墙", "ok");
+  pbRender();
+}
+function pbPickExit(){ PH.pick = false; PH.sel = {}; pbRender(); }
+async function pbClose(){
+  PH.frames = []; PH.tiers = []; PH.id = 0; PH.pick = false; PH.sel = {};
+  $("#mBurst").classList.remove("on");
+  if (!$("#mWall").classList.contains("on")) $("#mask").classList.remove("on");
+  try{ await api("/api/photo_close", {}); }catch(e){}
+}
+document.addEventListener("keydown", e => {
+  if (!$("#mBurst").classList.contains("on")) return;
+  // 全屏预览盖在挑帧页上面时, 方向键/回车交给 lightbox, 别偷偷换帧
+  if ($("#lightbox").classList.contains("on")) return;
+  const list = PH.tiers[PH.tier] || [];
+  if (e.key === "ArrowLeft" && list.length){ PH.pos = (PH.pos+list.length-1)%list.length; pbRender(); e.preventDefault(); }
+  else if (e.key === "ArrowRight" && list.length){ PH.pos = (PH.pos+1)%list.length; pbRender(); e.preventDefault(); }
+  else if (e.key === "ArrowUp"){ if (PH.tier > 0){ PH.tier--; pbRender(); } e.preventDefault(); }
+  else if (e.key === "ArrowDown"){ if (PH.tier < PH.tiers.length-1){ PH.tier++; pbRender(); } e.preventDefault(); }
+  else if (e.key === " " && PH.pick && !(e.target && e.target.tagName === "BUTTON")){
+    const fr = pbCurFrame(); if (fr) pbToggleSel(fr.i); e.preventDefault();
+  }
+  else if (e.key === "Enter"){ if (e.target && e.target.tagName === "BUTTON") return; pbKeep(); e.preventDefault(); }
+});
+
+let PW = {photos: [], dir: ""};
+async function pwOpen(){
+  const r = await api("/api/photo_list", {});
+  PW.photos = r.photos || []; PW.dir = r.dir || "";
+  pwRender();
+  $("#mWall").classList.add("on");
+  $("#mask").classList.add("on");
+}
+function pwRender(){
+  const items = PW.photos;
+  $("#pwEmpty").style.display = items.length ? "none" : "";
+  $("#pwGrid").style.display = items.length ? "" : "none";
+  $("#pwHint").textContent = items.length ? items.length + " 张 · 只存你点过「留这张」的成品" : "";
+  const dl = $("#pwDirLine");
+  if (dl) dl.innerHTML = "保存位置: <code>" + esc(PW.dir || "") + "</code>" +
+    (S && S.photo_dir_custom ? " · 自定义" : " · 默认") +
+    " —— 点左下「📁 保存位置」可以换一个文件夹。";
+  if (!items.length){
+    $("#pwEmpty").innerHTML = "照片墙还空着 —— 看到漂亮瞬间按一下<b>鼠标侧键</b>（游戏里就能按），" +
+      "回到这里挑一张「留这张」，成品就会出现在这里。";
+    return;
+  }
+  $("#pwGrid").innerHTML = items.map(p =>
+    `<div class="pw-cell"><img src="${pimg("f=" + encodeURIComponent(p.name), 520)}" data-z="${esc(p.name)}" title="点击放大">
+      <div class="pwbar"><span class="pwname">${esc(p.name)}</span><span>${esc(p.size_h)}</span>
+      <button class="pwdel" data-pdel="${esc(p.name)}" title="移到回收站(可还原)">🗑</button></div></div>`).join("");
+  $$("#pwGrid img[data-z]").forEach(im => im.onclick = () => {
+    // 不传 w -> 后端原图直出, 点开就是全尺寸
+    zoomFull("/api/photoimg?t=" + encodeURIComponent(T) + "&f=" + encodeURIComponent(im.dataset.z),
+             im.dataset.z);
+  });
+  $$("#pwGrid [data-pdel]").forEach(b => b.onclick = async () => {
+    const nm = b.dataset.pdel;
+    if (!(await confirmBox("删除这张照片？\n「" + nm + "」会移到回收站，去回收站右键→还原就能回来。", "🗑 移入回收站", true))) return;
+    const r = await api("/api/photo_del", {name: nm});
+    toast(r.ok ? "已移到回收站" : (r.msg||"删除失败"), r.ok?"ok":"err");
+    if (r.ok){ PW.photos = r.photos || []; pwRender(); }
+  });
+}
+function pwClose(){
+  $("#mWall").classList.remove("on");
+  if (!$("#mBurst").classList.contains("on")) $("#mask").classList.remove("on");
+}
+
+if ($("#btnPhoto")) $("#btnPhoto").onclick = pbOpenOrTrigger;
+if ($("#btnWall")) $("#btnWall").onclick = pwOpen;
+if ($("#pbX")) $("#pbX").onclick = pbClose;
+if ($("#pbClose")) $("#pbClose").onclick = pbClose;
+// v1.5.35: 「🧹 清除缓存」—— 清掉内存里的滚动缓冲 + 当前这批, 下次侧键从零开始录。
+// 只清内存, 照片墙里已经「留这张」落盘的成品一张不动。
+if ($("#pbClear")) $("#pbClear").onclick = async () => {
+  const btn = $("#pbClear"), old = btn.textContent;
+  btn.disabled = true; btn.textContent = "清除中…";
+  try{
+    const r = await api("/api/photo_clear", {});
+    toast(r.ok ? (r.msg || "已清除连拍缓存") : (r.msg || "清除失败"), r.ok ? "ok" : "err");
+    if (r.ok){
+      PH.frames = []; PH.tiers = []; PH.id = 0; PH.pick = false; PH.sel = {};
+      PH.kept = {}; PH.emptyMsg = "";
+      _pbShown = 0; _pressSeen = 0;
+      $("#pbDiagBox").style.display = "none";
+      pbClose();                       // 顺带把挑帧页收起来, 下次侧键再弹
+    }
+  }catch(e){ toast("清除失败: " + e.message, "err"); }
+  finally{ btn.disabled = false; btn.textContent = old; }
+};
+// v1.5.35: 「🩺 侧键自检」—— 按了侧键没反应时, 一键把每一环查清楚
+if ($("#pbDiag")) $("#pbDiag").onclick = async () => {
+  const btn = $("#pbDiag"), old = btn.textContent;
+  const box = $("#pbDiagBox");
+  btn.disabled = true; btn.textContent = "自检中…";
+  try{
+    const d = await runPhotoDiag();
+    if (!d){ toast("自检失败", "err"); return; }
+    box.innerHTML = diagHTML(d) +
+      `<div style="margin-top:8px"><button class="mini" id="pbDiagHide">收起自检</button></div>`;
+    box.style.display = "";
+    const h = $("#pbDiagHide"); if (h) h.onclick = () => { box.style.display = "none"; };
+  }catch(e){ toast("自检失败: " + e.message, "err"); }
+  finally{ btn.disabled = false; btn.textContent = old; }
+};
+if ($("#pbKeep")) $("#pbKeep").onclick = pbKeep;
+if ($("#pbPick")) $("#pbPick").onclick = pbPickKeep;
+if ($("#pbPickX")) $("#pbPickX").onclick = pbPickExit;
+if ($("#pbBigPick")) $("#pbBigPick").onclick = () => {
+  const fr = pbCurFrame(); if (fr) pbToggleSel(fr.i);
+};
+// v1.5.34: 点大图 = 全屏预览(原图, 不压缩)
+if ($("#pbBig")) $("#pbBig").onclick = () => {
+  const fr = pbCurFrame(); if (!fr) return;
+  zoomFull(pimg("i=" + fr.i),
+           "连拍第 " + (PH.pos+1) + " 张 · 共 " + PH.frames.length + " 帧");
+};
+if ($("#pwX")) $("#pwX").onclick = pwClose;
+if ($("#pwClose")) $("#pwClose").onclick = pwClose;
+if ($("#pwOpen")) $("#pwOpen").onclick = async () => {
+  const r = await api("/api/openroot", {path: PW.dir});
+  if (!r.ok) toast("打不开这个文件夹", "err");
+};
+// v1.5.34: 照片墙里直接改保存位置(选文件夹 -> 落进 config.photo_dir)
+if ($("#pwDir")) $("#pwDir").onclick = async () => {
+  const btn = $("#pwDir"), old = btn.textContent;
+  btn.disabled = true; btn.textContent = "选择中…";
+  try{
+    const r = await api("/api/pick_dir", {base: PW.dir});
+    if (!r || !r.ok) return toast((r && r.msg) || "没选文件夹", "err");
+    const c = await api("/api/config", {photo_dir: r.path});
+    if (!c.ok) return toast(c.msg || "保存失败", "err");
+    if (c.state) S = c.state;
+    const rr = await api("/api/photo_list", {});
+    PW.photos = rr.photos || []; PW.dir = rr.dir || r.path;
+    pwRender();
+    toast("照片保存位置已改为 " + PW.dir, "ok");
+  }catch(e){ toast("选择文件夹失败: " + e.message, "err"); }
+  finally{ btn.disabled = false; btn.textContent = old; }
+};
+if ($("#pwBurst")) $("#pwBurst").onclick = async () => {
+  const b = (S && S.photo_burst) || {};
+  if (b.burst_id && b.frames && b.frames.length){ pwClose(); pbShow(b); }
+  else pbTrigger();
+};
+
+// v1.5.34: 抓拍后不管管家当时开着哪个页面(设置/仓库/照片墙/详情抽屉…), 都立刻把挑帧页
+// 顶到最前。2 秒的整页轮询和 0.6 秒的轻量哨兵都可能先发现, 用 _pbShown 去重, 保证
+// 只弹一次 —— 否则第二次会把用户已经翻到的档位重置掉。
+// v1.5.35: 顺带加 _pressSeen —— 侧键"没抓到帧"也要弹(空状态 + 原因), 以前这种情况
+// 后端什么都不做, 用户看到的就是"按了没反应"。
+let _pbShown = 0, _pressSeen = 0, _recSeen = 0, _pbMax = 0;
+function burstForceShow(meta){
+  const id = (meta||{}).burst_id || 0;
+  if (!id || id === _pbShown) return;
+  // v1.5.37: 单调性护栏 —— 迟到的**旧批次**响应(在途的 ping/state 请求)不许把
+  // 已经展示过的新批次顶掉。`_pbShown = 0` 的"允许再弹"语义靠 _pbMax 保留:
+  // 下一批的 id 一定更大, 照样能弹。
+  if (id <= _pbMax) return;
+  // v1.5.38 修复: 页面被全屏游戏盖住(隐藏)时弹出的, 不算"已看" —— 不记 _pbShown,
+  // 也不 ack, 留着 pending, 等用户 alt-tab 回来(visibilitychange→pbPingNow)再补弹。
+  // 旧写法无论可见与否都立刻记"已展示"并 pbAck, 于是隐藏时弹出的弹窗(用户根本没看见)
+  // 也被算成"已展示", 回来时 pbSeedFromState 按 pending=False 把补弹压掉 = "回管家没弹"。
+  if ($("#mBurst").classList.contains("on")){
+    if (!document.hidden){ _pbShown = id; _pbMax = id; }
+    pbShow(meta); pbBurstsRender(); return;
+  }
+  closeAll();                       // 先收掉其它遮罩, 免得两层叠在一起
+  pbShow(meta);
+  pbBurstsRender();
+  // v1.5.38 修复: 只在本页**真正可见**时才记"已展示" + 通知后端清 pending。
+  if (!document.hidden){
+    _pbShown = id;                  // v1.5.35: 放到 pbShow 之后 —— 万一 pbShow 抛错, 下次还能重试
+    _pbMax = id;
+  }
+}
+function burstPressShow(r){
+  const seq = (r||{}).press_seq || 0;
+  if (!seq || seq === _pressSeen) return;
+  _pressSeen = seq;
+  if (r.press_ok) return;                       // 抓到的那批由 burstForceShow 负责摊开
+  if ($("#mBurst").classList.contains("on")) return;   // 已经在挑帧页, 别打断用户
+  closeAll();
+  pbShowEmpty(r.press_msg || "这次没抓到帧。");
+  _pbShown = 0;                                 // 空批不算"已展示过", 下一批照弹
+}
+// v1.5.37: 按下之后的"录 N 秒" —— 一次按下只提示一次(按 rec_seq 去重)。
+// 这是**反馈**不是额外动作: 让用户知道"这一下按到了, 正在录", 录满自动弹挑帧页。
+function burstRecIndicator(r){
+  const seq = (r||{}).rec_seq || 0;
+  if (!seq || seq === _recSeen) return;
+  _recSeen = seq;
+  if (!r.recording) return;
+  toast("🎬 正在录制 " + (r.rec_seconds || 3) + " 秒…录满会自动弹出挑帧页", "ok");
+}
+// v1.5.37: 页面**第一次**拿到 state 时的播种 + 补弹。抽成具名函数有两个原因:
+//   ① 逻辑本身要讲清楚(见下), ② 能被 jsdom 行为测试直接调用。
+// 关键: 播种**只在"这批已经给用户看过"时才做**。pending=True 说明用户还没看到
+// 刚抓的那批(最典型: 按完侧键切回管家时, 后端刚好没找到已有窗口于是新开了一个
+// 窗口 = 全新页面加载), 那就别播种, 让它照常弹出来 —— 老写法无条件播种
+// _pbShown, 刚抓的那批就被静默吞掉, 用户看到的就是"回到管家却没弹出挑帧页"。
+function pbSeedFromState(st){
+  st = st || {};
+  const pb0 = st.photo_burst || {};
+  _pbShown = pb0.pending ? 0 : (pb0.burst_id || 0);
+  _pressSeen = st.photo_press_pending ? 0 : (st.photo_press_seq || 0);
+  if (pb0.pending && pb0.burst_id) burstForceShow(pb0);
+  else if (st.photo_press_pending && st.photo_press_seq){
+    burstPressShow({press_seq: st.photo_press_seq,
+                    press_ok: !!st.photo_press_ok,
+                    press_msg: st.photo_press_msg || ""});
+  }
+}
+async function pbPingNow(){
+  try{
+    const r = await api("/api/photo_ping", {});
+    if (!r || !r.ok) return;
+    burstRecIndicator(r);
+    if (r.press_seq) burstPressShow(r);
+    if (r.burst_id) burstForceShow(r.meta);
+  }catch(e){}
+}
+setInterval(pbPingNow, 600);
+// v1.5.35: Chromium 会把被遮挡/最小化窗口的定时器节流到 1 分钟一次(全屏游戏盖住管家时
+// 正好命中), 于是"回到管家还要等一会儿才弹"。窗口一回到前台就立刻补一次, 不干等定时器。
+document.addEventListener("visibilitychange", () => { if (!document.hidden) pbPingNow(); });
+window.addEventListener("focus", pbPingNow);
+
 setInterval(async () => {
   try{
     const st = await api("/api/state");
-    if (!S){ S = st; renderAll(); return; }
+    if (!S){
+      S = st; renderAll();
+      pbSeedFromState(st);
+      return;
+    }
     const detecting = !st.configured && st.detect && st.detect.done === false;
     const changed = st.game_running !== S.game_running
       || st.thumb_pending !== S.thumb_pending
       || (S.detect||{}).done !== (st.detect||{}).done
       || (S.detect||{}).step !== (st.detect||{}).step;
+    // v1.5.31: 热键/侧键触发连拍 -> 后端把新 burst 塞进 state, 这里检测到就弹挑帧条
+    const nb = (st.photo_burst||{}).burst_id || 0;
+    const ob = (S.photo_burst||{}).burst_id || 0;
+    // v1.5.35: 侧键按了但没抓到帧 -> 也要弹, 把原因写出来
+    const np = st.photo_press_seq || 0;
+    const op = S.photo_press_seq || 0;
     S = st;
+    if (nb && nb !== ob) burstForceShow(st.photo_burst);
+    if (np && np !== op){
+      // ⚠️ v1.5.37: 必须**先弹再更新** _pressSeen。老写法先把 _pressSeen 推到 np,
+      // 紧接着 burstPressShow 里 `seq === _pressSeen` 直接 return —— 空批的提示
+      // 被静默吞掉, 用户看到的就是"按了没反应 / 没弹出挑帧页"。
+      if (ob === 0 && nb === 0) burstPressShow({press_seq: np, press_ok: false,
+        press_msg: st.photo_press_msg ||
+          "这次没抓到帧 —— 打开 设置 → 📸 连拍缓冲, 点「🩺 侧键自检」看看卡在哪。"});
+      _pressSeen = Math.max(_pressSeen, np);
+    }
     if (detecting){ renderAll(); const m = $("#mSet"); if (m.classList.contains("on")) renderSetup(); }
     else if (changed) renderAll();
   }catch(e){}
 }, 2000);
+
+// v1.5.35: 侧键自检 —— 挑帧页和设置页共用同一份渲染
+function diagHTML(d){
+  return `<div class="diagbox">` + ((d && d.steps) || []).map(s =>
+    `<div class="diagline"><b style="color:${s.ok ? "var(--ok)" : "var(--warn)"}">${s.ok ? "✅" : "⚠"}</b>` +
+    `<span class="dk">${esc(s.k)}</span><span class="dv">${esc(s.v)}</span></div>` +
+    (s.ok ? "" : `<div class="diagfix">→ ${esc(s.fix)}</div>`)
+  ).join("") + `</div>`;
+}
+async function runPhotoDiag(){
+  const r = await api("/api/photo_diag", {});
+  if (!r || !r.ok) return null;
+  return r;
+}
 </script>
 </body>
 </html>

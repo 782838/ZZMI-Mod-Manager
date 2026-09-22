@@ -87,6 +87,8 @@ json.dump({
 env = dict(os.environ)
 env["ZZMI_MANAGER_DATA"] = DATA
 env["ZZMI_NO_BROWSER"] = "1"
+# v1.5.36: 测试实例不抢全局热键(否则孤儿进程会占住 F9, 干扰用户真机使用)
+env["ZZMI_TEST_MODE"] = "1"
 env["PYTHONIOENCODING"] = "utf-8"
 
 proc = subprocess.Popen([PY, APP], env=env, cwd=os.path.join(HERE, ".."),

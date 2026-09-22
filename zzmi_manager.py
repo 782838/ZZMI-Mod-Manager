@@ -5,6 +5,117 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.37 更新
+-----------
+* **改成「按下之后录 N 秒」**(用户拍板) —— 以前是**回溯**: 后台一直滚着录, 按下时
+  把**之前** N 秒的帧捞出来。现在: 按下瞬间开始录 `photo_seconds` 秒 -> 录满立刻停
+  -> 拆帧 -> 弹挑帧页, 不再有任何额外动作。配套: 顶窗**推迟到录满之后**(否则这 3 秒
+  录到的全是管家自己), 录制期间给一条"🎬 正在录制…"的提示。
+* **各档数量翻倍 + 帧率翻倍** —— `TARGET_FPS` 12 → **24**, 五档金字塔
+  `(4,8,16,32)` → **`(8,16,32,64)`**。为了让 24fps 真跑得动, 把差异指纹从
+  `list(getdata())` + 逐像素生成器(纯 Python 循环, 实测 ~6.9ms/帧)换成
+  `convert("L").resize((16,16)).tobytes()`(实测 ~2.3ms)。**"拿多少算多少"**:
+  帧不够时 `_thin()` 天然降级, 不硬凑、不报错。
+* **修: 回到管家没弹出挑帧页**(用户真机反馈) —— 两处一起修:
+  1. 2 秒整页轮询里 **`_pressSeen` 先更新再调用** `burstPressShow`, 于是
+     `seq === _pressSeen` 直接 return —— "没抓到帧"的空状态提示被**静默吞掉**。
+     改成先弹再记。
+  2. 切回管家时若后端"没找到已有窗口"会**新开一个窗口**(全新页面加载), 老写法
+     首帧无条件把 `_pbShown` 播种成当前 `burst_id`, 刚抓的那批就被吞掉。新增
+     **pending / ack 机制**: 一批帧要等界面**弹出来给用户看过**(`POST
+     /api/photo_ack`)才清 pending, 首帧据此决定"要不要补弹"。同时
+     `find_manager_window()` 加了不挑窗口类的兜底、`toggle_manager_window()`
+     在开新窗口前先退避重试, 减少误判。
+* **修: mod 读取不全**(用户真机反馈: 一个含三层结构的分类文件夹只显示成 6 个 mod) —— 真实库里
+  几种层级是**混在一起**的: `Mods/<分类>/<mod>/`(2 层)、
+  `Mods/<分类>/<分组>/<mod>/`(3 层)、`Mods/<分类>/<分组>/<mod>/<子目录>/`(4 层)、
+  `Mods/<mod>/<body|coat|face>/`(多部件 mod)。老 `mod_root_for` **硬编码「mod 就在
+  第 2 层」**, 于是把那个分类下 6 个分组当成了 6 个 mod, 里面 98 个真 mod 全被吞。
+  现在改成**从最浅一层往下逐层下钻**, 靠「这一层是容器还是 mod」判定, 支持任意深度。
+  实测该库 133 → **234** 个 mod, 那个分类 6 → **98**(= 48+3+15+5+9+18)。
+* **修: 「每次启动管家会开启两个」+ F9 被占用** —— 实测确认: 免安装版是 PyInstaller
+  **onefile**, 一次启动就是**引导进程 + 主进程 = 2 个进程**(父子关系明确), 这是
+  **正常结构, 不是开了两个管家**, 也不会双重注册热键; 启动横幅里已写明。真正会让
+  F9 被占的是**没退干净的孤儿进程**(关窗口时 `bye` 没送达 / Edge 被强杀)。两道防线:
+  ① **热键自动重试** —— 启动没注册上的键, 后台每 5 秒重试一次(最多 2 分钟), 占键的
+  旧进程一死就自动接管; ② **`WindowWatchdog`** —— 曾经找到过窗口、之后连续 180 秒
+  都找不到, 就判定为孤儿并主动退出, 把键让出来(`ZZMI_NO_WATCHDOG=1` 可关)。
+* `photo_diag()` 口径跟着新模型改(看"上次录到几帧"而不是"ring 里攒了几帧")。
+
+v1.5.35 更新
+-----------
+* **修: 按了鼠标侧键却什么都没发生** —— v1.5.34 的「侧键一按立刻弹挑帧页」在真机上
+  不生效, 根因有两处:
+  1. 缓冲的冻结判据是「前台不是游戏就冻结」。一旦 `foreground_pid()` 和 tasklist 给的
+     游戏 PID 对不上(全屏覆盖层、别的启动方式、PID 解析失败…), 缓冲就**永远是空的**,
+     `trigger()` 只会返回「缓冲里还没内容」—— 而老代码**只在成功时才顶窗**, 于是失败
+     路径彻底静默, 表现就是"按了没反应"。现在判据放宽成「**前台是管家界面才冻结**」,
+     其它情况照录, 宁可多录几帧也绝不让缓冲空着。
+  2. 失败路径没有反馈。现在侧键/热键一律走 `BurstBuffer.press()`: 成功失败都记一笔
+     `press_seq`, 前端哨兵读到就**必定弹出挑帧页** —— 抓到了摊开挑, 没抓到弹空状态
+     并把原因写清楚(后台录屏关着 / 游戏没跑 / 管家在前台冻结 / 帧还没攒够)。
+* **新增「🧹 清除缓存」按钮**(挑帧页底部) —— 一键清掉内存里的滚动缓冲, 下次侧键从零
+  开始录。只清内存, 照片墙里已落盘的成品一张不动。
+* **新增「🩺 侧键自检」**(设置 → 📸 连拍缓冲) —— 把侧键链逐环查一遍并给修法:
+  后台录屏 / 侧键监听(钩子装没装上) / 抓拍侧键 / 游戏进程 / 缓冲帧数 / 管家窗口 /
+  管家是否在前台。以后"按了没反应"点一下就知道卡在哪。
+* **后台窗口不再漏事件** —— Chromium 会把被遮挡/最小化窗口的定时器节流到 1 分钟一次,
+  管家被全屏游戏盖住时正好命中。现在窗口一回到前台(`visibilitychange`/`focus`)
+  立刻补一次哨兵, 不干等定时器。
+* 顶窗改成退避重试(窗口可能正在恢复/重绘), 并返回结果; 顶不上去会写一条日志。
+* 设置页在侧键钩子没装上时给出黄色警告。
+
+v1.5.34 更新
+-----------
+* **修: 所有红色按钮上的字看不见了** —— `.btn.danger` 在样式表里被写了两次, 后一条
+  只改了文字颜色没改背景, 于是「红字压红底」。删 mod 的「移入回收站」、抽屉里的
+  「切换状态」、设置里的「⏻ 退出 ZZMI 管家」等几个危险按钮全中招。删掉重复规则即可。
+* **照片保存位置可自定义** —— 以前成品固定写进 `数据目录\照片`, 现在设置里能改
+  (设置 → 📸 连拍缓冲 → 照片保存位置), 照片墙里也加了「📁 保存位置」直接选文件夹;
+  留空 = 恢复默认。
+* **「全部留下」改成勾选式「☑ 选择留下」** —— 以前是一键把当前整档全留下, 太粗暴。
+  现在点一下进勾选模式: 胶片条每格左上角出现 ✓ 徽标, 点一下就勾上, **还能跨档勾**
+  (1 档挑一张、切到 5 档再挑一张), 勾完点「✅ 留下选中的 N 张」一次性落盘。
+* **删掉没用的「📷 补抓一张」** —— 这个按钮在挑帧页里点着没反应, 去掉。
+* **点照片可以全屏预览** —— 挑帧条点大图即全屏看原图(照片墙里一直可以, 这次补齐)。
+* **侧键一按立刻弹挑帧页** —— 以前靠 2 秒一次的整页轮询, 慢半拍, 而且管家开着
+  设置/照片墙等页面时会被压在下面。现在: 后端在侧键/热键抓拍后**把管家窗口顶到最前**
+  (最小化也会自动恢复), 前端加了 0.6 秒的轻量哨兵接口, 一发现新的一批就**先收掉其它
+  遮罩再把挑帧页顶上来** —— 不管管家当时处于什么状态, 都立刻看到挑帧页。
+* 左上角 logo 换成绝区零官方图标。
+
+v1.5.33 更新
+-----------
+* **界面整体翻新**: 配色收敛成一套变量, 主色换成橙金, 深/浅双主题同步重做。
+  搜索框与标签改药丸形, 卡片圆角加大、缩略图改 4:3, 侧栏选中态改成填充胶囊,
+  工具栏/按钮的内边距与层级一起收拾了一遍 —— 功能一个没动, 只是比原来好看。
+* **修: 删 mod 误弹「移到回收站失败(code=2)」** —— 部分机器上 shell 层返回的码不可信
+  (rc=2 不属于任何文档化的错误码), 但删除其实已经成功。判定改成「调用前存在 +
+  调用后不存在」, 不再把成功报成失败; 顺带修好了因此被跳过的收藏/封面等死记录清理。
+
+v1.5.32 更新
+-----------
+* **连拍改用鼠标侧键抓拍**: 打斗中按 Ctrl+Shift+C 三键根本来不及 —— 现在默认
+  **按一下鼠标侧键(后退键)就抓拍**(前进键也行, 设置里三选: 关/侧键1/侧键2)。
+  用低级鼠标钩子"旁听"侧键, 从不拦截, 侧键原有功能不受影响; 键盘快捷键仍并存。
+* **挑帧改成五层金字塔**: 以前只给"差异最大"的几张, 差之毫厘的想要的帧被丢了。
+  现在一次触发分五档: 1 档最粗(几帧, 差异最大)→ 逐层往下把相似的再细分 →
+  5 档=全部帧。挑帧条顶部有「1档·4张 … 5档·全部」按钮, 上下方向键也能换档。
+* **只在游戏"在前台"时录屏**: 切回管理器/浏览器时缓冲**冻结不清空**, 所以打完一套
+  回到管理器点「📸 连拍」, 挑帧条里仍是刚才那几秒的游戏画面(以前会把管理器自己录进去)。
+* **修: 照片墙「打开文件夹」点了没反应** —— 一张照片都没留过时目录还不存在, 现在进照片墙即建。
+
+v1.5.31 更新
+-----------
+* **📸 连拍缓冲(拍照模式)**: 解决"精彩瞬间手速跟不上帧率" —— 游戏运行时后台
+  悄悄抓屏, 内存里滚动保留最近 N 秒(默认 3 秒, 可在设置改 1~10), **不落盘、不占硬盘**。
+  看到漂亮瞬间按一下 **Ctrl+Shift+C**(可改键), 回到管家就有一条"挑帧胶片":
+  自动去重后最多 16 张代表帧摊开任你挑, 左右方向键换帧、回车留帧;
+  只有点了「留这张」的才存进 **数据目录\\照片**, 没挑中的关掉即弃 —— 照片墙永远只有成品。
+  顶栏「🖼 照片」进照片墙: 放大看/删除(删除也走回收站, 可还原)/一键打开文件夹。
+  **全程只读屏幕画面, 不碰游戏进程一根手指, 零风险**; 游戏没开时自动休眠不费电,
+  也可以点「📷 补抓一张」直接截当前桌面。
+
 v1.5.30 更新
 -----------
 * **卡片上新增「🗑 删除」按钮(开关左边, 标红)**: 点删除要走**两道确认弹窗** ——
@@ -319,6 +430,7 @@ ZZMI_NO_BROWSER=1  不自动打开窗口
 import base64
 import ctypes
 from ctypes import wintypes
+import collections
 import hashlib
 import io
 import json
@@ -339,7 +451,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.30"
+VERSION = "1.5.37"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -366,6 +478,41 @@ PRESETS_PATH = os.path.join(DATA_DIR, "presets.json")
 JOURNAL_PATH = os.path.join(DATA_DIR, "journal.jsonl")
 THUMB_DIR = os.path.join(DATA_DIR, "thumbs")
 THUMB_PX = 420
+PHOTO_DIR_DEFAULT = os.path.join(DATA_DIR, "照片")   # v1.5.31 连拍选帧后留下的成品
+# v1.5.34: 照片成品目录可在设置里自定义(config.photo_dir), 留空 = 用上面这个默认值。
+# 这里仍保留模块级 PHOTO_DIR 这个名字, 是因为 Burst.keep / list_photos /
+# photo_file_path / state() 好几处直接引用它; apply_photo_dir() 负责把配置刷进来。
+PHOTO_DIR = PHOTO_DIR_DEFAULT
+
+# v1.5.36: 测试/演示模式 —— 出图脚本(gen_censored_shots / gen_preview)和测试脚本
+# (tests/live_check / tests/test_http)会各起一份**源码实例**。那份实例**绝不能**去抢
+# 全局热键和鼠标钩子:
+#   它抢到 F9 之后, 脚本一旦超时/被中断没回收, 就变成**孤儿进程**一直占着 F9;
+#   之后用户真正的管家每次启动都报「注册失败」, 可按 F9 又有反应 ——
+#   因为响应的是那个孤儿(它的 toggle_manager_window「没窗口就开」)。
+#   用户看到的就是「提示注册失败, 但我明明可以调用」。
+# 用法: 在这些子进程的环境里设 ZZMI_TEST_MODE=1。
+TEST_MODE = os.environ.get("ZZMI_TEST_MODE") == "1"
+
+# 单实例互斥体名(见 detect_other_instance)。不带 Global\ 前缀 = 会话命名空间,
+# 普通用户也能建; 提权实例和非提权实例仍在同一会话, 互相看得见。
+INSTANCE_MUTEX = "ZZMI_Mod_Manager_SingleInstance_v1"
+
+
+def apply_photo_dir(cfg):
+    """v1.5.34: 把 config.photo_dir 应用成当前生效的照片目录, 返回生效值。
+    空 / 非法 -> 回落到默认的 数据目录\\照片。"""
+    global PHOTO_DIR
+    raw = (cfg or {}).get("photo_dir")
+    raw = raw.strip() if isinstance(raw, str) else ""
+    if raw:
+        try:
+            PHOTO_DIR = os.path.abspath(raw)
+        except Exception:
+            PHOTO_DIR = PHOTO_DIR_DEFAULT
+    else:
+        PHOTO_DIR = PHOTO_DIR_DEFAULT
+    return PHOTO_DIR
 
 
 def _res_dir():
@@ -404,6 +551,11 @@ DEFAULT_CONFIG = {
     "update_repo": UPDATE_REPO,
     "downloads_dir": "",        # v1.5.12 下载区: mod 下载到哪(空=数据目录/downloads)
     "show_translated": True,    # v1.5.12 下载区: 是否显示中文译名
+    "photo_on": True,           # v1.5.31 连拍缓冲: 游戏运行时是否后台录屏
+    "photo_hotkey": "Ctrl+Shift+C",   # v1.5.31 连拍触发键(可改)
+    "photo_mouse_btn": 1,       # v1.5.32 鼠标侧键: 0=关 1=侧键1(后退) 2=侧键2(前进)
+    "photo_seconds": 3,         # v1.5.31 往前回溯几秒(1~10)
+    "photo_dir": "",            # v1.5.34 照片成品存哪(空=数据目录\照片)
 }
 
 ROOT_SKIP = {"resources", "themes", "locale", "backups", "dds", "bin",
@@ -899,6 +1051,66 @@ def looks_like_inner_dir(name):
     return False
 
 
+# v1.5.37: 纯英文短词(body/coat/face/tex/data…)看着像 mod 内部的资源目录,
+# 不像一个 mod 自己的名字。用来判断「这一层到底是 mod 还是 mod 里的资源文件夹」。
+_ASCII_WORD_RE = re.compile(r"^[A-Za-z_\- ]+$")
+
+
+def looks_like_mod_name(name):
+    """这一层的名字像不像「一个 mod 的名字」。
+
+    不像的典型: body / coat / face / tex / data / resources 这类纯英文短词 ——
+    它们是 mod 内部资源目录, 说明**上一层**才是 mod。
+    """
+    n = strip_disabled(name or "").strip()
+    if not n:
+        return False
+    if looks_like_inner_dir(n):
+        return False
+    # 短、纯 ASCII 字母(无数字/中文) -> 更像资源目录而不是 mod 名
+    if len(n) <= 12 and n.isascii() and _ASCII_WORD_RE.match(n):
+        return False
+    return True
+
+
+def self_looks_like_mod(name, imgs=None):
+    """v1.5.40: 这一层**自己**像不像「一个完整的 mod」(而不是分类/分组容器)?
+
+    为什么需要它: 老 `is_container_dir` 只问「我下面挂着几个像 mod 名的子目录」,
+    **从不问「我自己像不像 mod」**。于是作者把多个变体/部件塞进同一个 mod 目录时:
+
+        MOD\\示例 mod (多变体)\\                 <- 这**才是一个 mod**
+            icon.png                          <- 作者给整个 mod 配的图标
+            变体A\\resources\\                     (2 ini)
+            变体B\\resources\\                     (1 ini)
+
+    父目录会因为它下面挂着 2 个"像 mod 名"的分支(作者的英文长名)被判成容器,
+    继续下钻 —— 一个 mod 被拆成 2 张卡。这类"变体目录"光看名字分不出来
+    (它们本来就是作者起的英文长名), 但**作者给整个 mod 配的预览图/icon 一定
+    放在父目录** —— 这是唯一可靠的反向证据。
+
+    判据(三条全中才算):
+      1. 这一层直接有预览图/icon
+      2. 名字像 mod 名(不是 body/coat/face 这类资源词, 也不是纯英文短词)
+      3. 名字不像分类词(合集/分类/备份/未使用…)
+
+    只认"有图 + 名字像 mod", 所以 `分类A/子组`(名字命中分类词)、
+    `分类A`(没图) 这类真容器不会被误判。
+    """
+    n = strip_disabled(name or "").strip()
+    if not n:
+        return False
+    low = n.lower()
+    for w in CLASSIFY_WORDS:
+        if w in low:
+            return False            # 名字像分类/合集/备份 -> 不是 mod
+    if not looks_like_mod_name(n):
+        return False                # 名字不像 mod 名(纯英文短词/资源词)
+    if not imgs:
+        return False                # 没有预览图/icon -> 证据不足, 不敢乱停
+    return True
+
+
 def is_classifier_dir(name, strong=False):
     """Mods 下的第 1 层目录是「分类文件夹」还是「直接放在根下的 mod」。
 
@@ -1325,6 +1537,7 @@ def scan_mods(mods_dir, char_overrides=None, thumb_overrides=None, meta=None):
             "rel": rel, "name": os.path.basename(cur), "parts": parts,
             "depth": len(parts), "size": sz, "files": len(files), "mtime": mt,
             "ini": local_ini, "imgs": imgs,
+            "kids": list(dirs),          # v1.5.37: 层级判定要看直接子目录
             "disabled": any(is_disabled_name(p) for p in parts),
         }
         if local_ini:
@@ -1338,42 +1551,78 @@ def scan_mods(mods_dir, char_overrides=None, thumb_overrides=None, meta=None):
         res.duration = time.time() - t0
         return res
 
-    def mod_root_for(d):
-        """从「含 ini 的目录」往上归并出这个 mod 的根目录。
+    # ---- v1.5.37: 「哪一层才是 mod」不再硬编码「第 2 层」 --------------
+    # 真实库里几种结构是**混在一起**的, 同一个 Mods 下可能同时存在:
+    #   Mods/<mod>/                         (mod 直接放根)
+    #   Mods/<分类>/<mod>/                   (2 层)
+    #   Mods/<分类>/<分组>/<mod>/            (3 层, 例: 分类A/子组/示例 mod)
+    #   Mods/<分类>/<分组>/<mod>/<资源目录>/  (4 层, 例: MOD/11号/11haoMod)
+    #   Mods/<mod>/<body|coat|face>/         (多部件 mod, ini 在资源子目录里)
+# 老写法只认第 2 层, 于是把那个分类下 6 个分组当成了 6 个 mod, 里面
+# 98 个真 mod 全被吞掉 —— 用户看到的就是"这个文件夹不可能只有 6 个 mod"。
+    #
+    # 新判定: 从最浅一层往下走, 只要当前层是「容器」就继续往下, 直到某层自己
+    # 就是 mod 根。容器 = 自己没有直接 ini, 且下面挂着 >=2 个像 mod 名的分支
+    # (或名字像分类词且确实挂着像 mod 的分支)。
+    with_ini = set()
+    _mods_abs = os.path.abspath(mods_dir)
+    for d in ini_dirs:
+        p = d
+        while p and os.path.abspath(p) != _mods_abs:
+            with_ini.add(p)
+            np = os.path.dirname(p)
+            if np == p:
+                break
+            p = np
 
-        层级判定:
-          * ini 直接散落在 Mods 根目录   -> 就是 Mods 根自己(单独一条)
-          * 第 1 层是分类文件夹          -> mod 在第 2 层(更深的一律收到第 2 层)
-          * 第 1 层自己就是 mod(直接放根) -> mod 就是第 1 层, 不再往里钻
-        """
+    def is_container_dir(p):
+        """p 是 Mods 下的一个目录: 它是「容器」(分类/分组) 还是 mod 本身?"""
+        info = dir_info.get(p)
+        if info is None:
+            return False
+        if info["ini"]:
+            return False            # 自己直接含 ini -> 自己就是 mod 根
+        kids = [k for k in info["kids"]
+                if os.path.join(p, k) in with_ini]
+        if not kids:
+            return False
+        modlike = [k for k in kids if looks_like_mod_name(k)]
+        if len(modlike) >= 2:
+            # v1.5.40: 反向信号 —— 我自己就有预览图/icon 且名字像 mod, 说明作者是
+            # 把**这一层**当一个完整 mod 在发布的(下面那几个只是它的变体/部件),
+            # 别再往下钻了。实测本库: 5 处被拆开的 mod 全部合并回来
+            # (示例 mod A 4→1 / 示例 mod B 5→1 / 示例 mod C 2→1 / 示例 mod D 2→1 /
+            #  示例 mod E 3→1), 其余 218 条一个没动。
+            if self_looks_like_mod(os.path.basename(p), info.get("imgs")):
+                return False
+            return True             # 结构证据: 下面挂着多个像 mod 的分支
+        name = strip_disabled(os.path.basename(p))
+        if modlike and any(w in name.lower() for w in CLASSIFY_WORDS):
+            return True             # 兜底: 名字像分类, 且下面确实有像 mod 的分支
+        return False
+
+    def mod_root_for(d):
+        """从「含 ini 的目录」归并出这个 mod 的根目录(逐层下钻, 支持任意深度)。"""
         parts = dir_info[d]["parts"]
         if not parts:
             return d                  # ini 散落在 Mods 根目录
-        if len(parts) == 1:
-            return d                  # mod 直接放在 Mods 根下
-        top = os.path.join(mods_dir, parts[0])
-        # 第 2 层看着像 mod 内部的资源目录(resources/贴图/body…) -> 第 1 层才是 mod
-        if looks_like_inner_dir(parts[1]):
-            return top
-        # 第 1 层下面挂着多个含 ini 的分支 -> 它一定是分类文件夹
-        if len(branch_count.get(parts[0], ())) >= 2:
-            return os.path.join(mods_dir, parts[0], parts[1])
-        # 只有一个分支: 名字像分类才是分类, 否则第 1 层自己就是那个 mod
-        if is_classifier_dir(parts[0], strong=True):
-            return os.path.join(mods_dir, parts[0], parts[1])
-        return top                    # 第 1 层不是分类, 那它本身就是个 mod
+        last = len(parts) - 1
+        for i in range(len(parts)):
+            cand = os.path.join(mods_dir, *parts[:i + 1])
+            if i == last:
+                # 最深层就是含 ini 的那层。若它只是 mod 内部的资源目录
+                # (body/coat/face/tex…), 退回上一层当 mod 根。
+                if i > 0 and not dir_info[cand]["ini"] \
+                        and looks_like_inner_dir(parts[i]):
+                    return os.path.join(mods_dir, *parts[:i])
+                return cand
+            if not is_container_dir(cand):
+                return cand
+        return os.path.join(mods_dir, parts[0])
 
     def is_ancestor(a, b):
         a, b = os.path.abspath(a), os.path.abspath(b)
         return b != a and b.startswith(a + os.sep)
-
-    # 每个「第 1 层目录」下面挂着几个含 ini 的分支 —— 用来判断它是分类还是单个 mod
-    branch_count = {}
-    for d in ini_dirs:
-        ps = dir_info[d]["parts"]
-        if not ps:
-            continue
-        branch_count.setdefault(ps[0], set()).add(ps[1] if len(ps) > 1 else "")
 
     cand = {}
     for d in ini_dirs:
@@ -3050,6 +3299,8 @@ def recycle_path(abs_path):
     op.pFrom = abs_path + "\0\0"
     op.pTo = None
     op.fFlags = FLAGS
+    # 记下调用前的存在状态 —— 下面判成败要用(部分机器上 rc 不可信)
+    existed_before = os.path.exists(abs_path)
     try:
         rc = ctypes.windll.shell32.SHFileOperationW(ctypes.byref(op))
     except Exception as ex:
@@ -3058,6 +3309,14 @@ def recycle_path(abs_path):
         return True, "已移到回收站"
     if op.fAnyOperationsAborted:
         return False, "已取消"
+    # 修复: 有些机器上 shell 层会返回非 0 的怪码(实测 rc=2, 不属于任何已文档化的 DE_* 码),
+    # 但删除其实已经成功了。判据改用「调用前存在 + 调用后不存在」, 而不是只看 rc ——
+    # 否则界面会误弹红字, 还跳过配置清理。
+    # 反过来: 本来就存在的目标没消失 = 真失败; 本来就不存在的路径绝不算成功。
+    if not existed_before:
+        return False, "没找到这个文件夹(可能已被移走)"
+    if not os.path.exists(abs_path):
+        return True, "已移到回收站"
     return False, {
         0x7C: "没找到这个文件夹(可能已被移走)",
         0x74: "这个文件夹正被占用 —— 先关掉游戏再试",
@@ -3396,7 +3655,7 @@ def presets_save(obj):
     write_json(PRESETS_PATH, obj)
 
 
-_proc_cache = {"t": 0, "game": False, "launcher": False}
+_proc_cache = {"t": 0, "game": False, "launcher": False, "game_pid": 0}
 _lib_cache = {"t": 0, "data": None}
 
 
@@ -3407,9 +3666,12 @@ def invalidate_lib_cache():
 
 def proc_probe(cfg, force=False):
     now = time.time()
-    if not force and now - _proc_cache["t"] < 5:
-        return _proc_cache["game"], _proc_cache["launcher"]
+    # 用 .get 兜住: state() 是界面每 2 秒轮询的接口, 缓存若被清成空字典(测试/热重载)
+    # 也不能让整个 /api/state 抛 KeyError 把界面搞死。
+    if not force and now - _proc_cache.get("t", 0) < 5:
+        return _proc_cache.get("game"), _proc_cache.get("launcher")
     game = launcher = False
+    pid = _proc_cache.get("game_pid") or 0
     try:
         out = subprocess.run(["tasklist", "/NH"], capture_output=True, text=True,
                              timeout=8, errors="replace",
@@ -3418,10 +3680,41 @@ def proc_probe(cfg, force=False):
         exe = os.path.basename(cfg.get("game_exe") or "ZenlessZoneZero.exe").lower()
         game = exe in txt
         launcher = "xxmi launcher.exe" in txt
+        if game:
+            pid = 0
+            for line in txt.splitlines():
+                parts = line.split()
+                # tasklist 行: "进程名.exe   30892   Console  ..." —— 第二段是 PID
+                if parts and parts[0] == exe and len(parts) > 1:
+                    try:
+                        pid = int(parts[1])
+                    except ValueError:
+                        pass
+                    break
+        else:
+            pid = 0
     except Exception:
         pass
-    _proc_cache.update({"t": now, "game": game, "launcher": launcher})
+    _proc_cache.update({"t": now, "game": game, "launcher": launcher,
+                        "game_pid": pid})
     return game, launcher
+
+
+def foreground_pid():
+    """当前前台窗口的进程 PID(0=拿不到)。"""
+    if not _WIN:
+        return 0
+    try:
+        import ctypes
+        u = ctypes.windll.user32
+        h = u.GetForegroundWindow()
+        if not h:
+            return 0
+        p = ctypes.c_ulong()
+        u.GetWindowThreadProcessId(h, ctypes.byref(p))
+        return p.value
+    except Exception:
+        return 0
 
 
 def launch_game(cfg):
@@ -3805,6 +4098,771 @@ def open_app_window(url, size=None, browser=None):
 
 
 # ===========================================================================
+# v1.5.31 连拍缓冲: 只在游戏运行时后台悄悄抓屏, 帧留在内存里滚动覆盖
+# (不落盘)。到点按一下热键 -> 把最近 N 秒的帧去重挑代表 -> 弹挑帧条 ->
+# 亲手点「留」的那几张才写进 数据目录/照片。全程只读屏幕, 不碰游戏进程。
+# ===========================================================================
+
+class BurstBuffer(object):
+    """v1.5.37: 改成「按下**之后**」录 N 秒(不再回溯按下之前)。
+
+    用户拍板的行为: 点侧键 -> **从点击瞬间**开始录 photo_seconds 秒 ->
+    录满立刻停 -> 拆帧 -> 弹挑帧页, 不再有任何额外动作。
+    录满之前**绝不把管家窗口顶到最前** —— 否则这 3 秒录的就是管家自己。
+    """
+
+    TARGET_FPS = 24          # v1.5.37: 12 -> 24(用户要"每一档数量翻倍")
+    BURST_TTL = 600.0        # 触发后 10 分钟没挑 = 自动丢弃, 不占内存
+    # v1.5.37: 各档数量翻倍 (4,8,16,32) -> (8,16,32,64)。"拿多少算多少":
+    # 帧不够时 _thin() 天然降级, 不会硬凑, 也不报错。
+    TIERS = (8, 16, 32, 64)
+
+    def __init__(self, app):
+        self.app = app
+        self.ring = []                 # [(ts, jpeg_bytes, hash_bytes)] 最旧在前
+        self.lock = threading.Lock()
+        self.burst = None              # {"id":int, "frames":[...], "tiers":[...], "t":float}
+        self._seq = 0
+        self.thread = None
+        self._stop = threading.Event()
+        self.grab = None               # 惰性绑定的抓屏函数(测试可注入假帧)
+        # v1.5.35: 每次「按下抓拍键」都记一笔(成功/失败都记)。前端哨兵读到新序号
+        # 就一定会弹出挑帧页 —— 抓到了就摊开挑, 没抓到就弹空状态把原因说清楚,
+        # 不再出现"按了完全没反应"。
+        # v1.5.37: 序号在**按下瞬间**就占好, 但 last_press 只在录完那一刻才写 ——
+        # 前端因此只在"录满 3 秒"之后才弹页, 录制中间不会误弹空状态。
+        self.press_seq = 0
+        self.last_press = None
+        # v1.5.37: 按下之后的"录 N 秒"状态。None = 当前没在录。
+        # {"until":float, "frames":[(ts,jpeg,hb)], "kind":str, "secs":float, "t0":float}
+        self.rec = None
+        # v1.5.37 录制触发修复: press() 一按下就 set 这个事件, 让 _loop 立刻从任意
+        # wait 里醒过来进入录制分支 —— 否则 _loop 可能正卡在 0.8s/0.5s/0.04s 的
+        # self._stop.wait 里, 侧键按了要等一个等待周期才真正开始录(看起来就是"没立即开始")。
+        self._rec_event = threading.Event()
+        # v1.5.39 帧率校正: deadline 节流。上一版固定 sleep(1/24) 没把 PIL 抓屏
+        # 实际耗时算进去, 抓 30ms + 睡 41.7ms = 71.7ms/帧 -> 实测 ~12fps,
+        # 3 秒只能录 37 帧(用户真机反馈:"5 档位才三十多张")。改用 deadline: 每帧
+        # 的理想时刻 = 第一帧时刻 + n*step, grab 完睡到那一刻; grab 慢 -> sleep 少,
+        # 帧率不再被 PIL 拖低, 3 秒应能录到 ~70 帧。
+        self._rec_next_deadline = None
+        # v1.5.39 多次缓存: 最多保留最近 3 批连拍, 默认显示最新的; 旧版一按下就清空,
+        # 上一批再也回不去。deque(maxlen=3) 是天然环形缓冲, 满了会自动挤掉最旧的。
+        # active_idx 指向当前展示给用户的那个(0=最新), 可被前端切换。
+        self.bursts = collections.deque(maxlen=3)
+        self.active_idx = 0
+
+    # ---- 生命周期 ----
+    def start(self):
+        if self.thread and self.thread.is_alive():
+            return
+        self._stop.clear()
+        self.thread = threading.Thread(target=self._loop, daemon=True)
+        self.thread.start()
+
+    def stop(self):
+        self._stop.set()
+
+    def _loop(self):
+        while not self._stop.is_set():
+            cfg = self.app.cfg
+            if not cfg.get("photo_on", True):
+                self._clear_ring()
+                self.rec = None
+                self._rec_event.clear()
+                self._rec_event.wait(1.0)
+                continue
+            # ---- v1.5.37: 按下之后的"录 N 秒"优先, 且**不看前台是谁** ----
+            # 用户是在游戏里按的, 这 3 秒必须老实录游戏画面; 不查 proc_probe
+            # (少一次 tasklist), 也不因为管家在前台就冻结。
+            rec = self.rec
+            if rec is None:
+                # v1.5.37 防御: 没在录时清掉唤醒事件, 避免残留 set 让 _loop 空转。
+                self._rec_event.clear()
+            if rec is not None:
+                # v1.5.37 录制触发修复: 一进录制分支就清掉唤醒事件, 避免 set 残留
+                # 误唤醒; press() 在录制进行中再被按会直接返回"上一段还在录", 不会再来 set。
+                self._rec_event.clear()
+                if time.time() >= rec["until"]:
+                    self._finish_rec()
+                    continue
+                t0 = time.time()
+                try:
+                    self._grab_into_rec(rec)
+                except Exception:
+                    log("连拍录制失败:\n" + traceback.format_exc())
+                    self._rec_event.wait(0.2)
+                    continue
+                # v1.5.37 修复: 严格只录到 until —— 剩余时间<=0 立刻收尾,
+                # 绝不把"三秒之后"的帧塞进批次(旧写法要等下一轮循环才收尾,
+                # 期间多等了一个等待周期, 看起来就是"录超了三秒")。
+                left = rec["until"] - time.time()
+                if left <= 0:
+                    self._finish_rec()
+                    continue
+                # v1.5.39 帧率校正: deadline 节流。每一帧的"理想时刻"是
+                # 第一帧时刻 + n*step; grab 完算 sleep_for = deadline - now,
+                # grab 慢 -> sleep 少(甚至不睡), 帧率不再被 PIL 拖低。
+                # v1.5.38 的"固定 sleep(1/24)"解决了 tight-loop 但没把 grab 耗时
+                # 算进去, 实测 ~12fps、3 秒只录 ~37 帧(用户真机反馈)。
+                step = 1.0 / self.TARGET_FPS
+                deadline = self._rec_next_deadline or (time.time() + step)
+                self._rec_next_deadline = deadline + step   # 推到下一帧, 漂移自动校
+                sleep_for = max(0.0, deadline - time.time())
+                if sleep_for > 0:
+                    time.sleep(sleep_for)
+                continue
+            game, _ = proc_probe(cfg)
+            if not game:
+                self._clear_ring()
+                # v1.5.37 修复: 用 rec_event 等, press() 一 set 立刻醒来做录制分支,
+                # 不再傻等 0.8s 才回头看见 self.rec。
+                self._rec_event.wait(0.8)
+                continue
+            # v1.5.32: 只在**游戏在前台**时录。切回管理器/浏览器时冻结缓冲,
+            # 这样打完一套回到管理器再点「📸」, 挑帧条里仍是刚才的游戏画面。
+            # v1.5.35: 判据从「前台不是游戏就冻结」放宽成「前台是管家界面才冻结」。
+            # 老写法一旦 foreground_pid() 和 tasklist 给的 PID 对不上(全屏覆盖层、
+            # 别的启动方式、PID 解析失败…), 缓冲就永远是空的 —— 侧键按下去只会得到
+            # 「缓冲里还没内容」, 用户看到的就是"按了没反应"。现在只在自己界面在前台
+            # 时冻结, 其它情况照录, 宁可多录几帧, 也绝不让缓冲空着。
+            if _is_manager_foreground():
+                self._rec_event.wait(0.5)
+                continue
+            t0 = time.time()
+            try:
+                self._grab_one()
+            except Exception:
+                log("连拍抓屏失败:\n" + traceback.format_exc())
+                self._rec_event.wait(1.0)
+                continue
+            # 节流到目标帧率
+            left = 1.0 / self.TARGET_FPS - (time.time() - t0)
+            if left > 0:
+                self._rec_event.wait(left)
+
+    def _clear_ring(self):
+        with self.lock:
+            if self.ring:
+                self.ring = []
+
+    def _grab_one(self):
+        """滚动缓冲(📸 手动触发用): 抓一帧塞进 ring, 按帧数上限滚动覆盖。"""
+        grab = self.grab or self._default_grab
+        got = grab()
+        if not got:
+            return
+        ts, jpeg, hb = got
+        secs = self._secs()
+        cap = max(6, int(self.TARGET_FPS * secs))
+        with self.lock:
+            self.ring.append((ts, jpeg, hb))
+            if len(self.ring) > cap:
+                del self.ring[:len(self.ring) - cap]
+
+    def _grab_into_rec(self, rec):
+        """v1.5.37: 按下之后的「录 N 秒」—— 抓到的帧直接进这一批(不进 ring)。
+
+        "拿多少算多少": 抓多快就录多少帧, 绝不为了凑够目标帧数卡住线程、
+        也不因为帧少就报错 —— `_tiers()`/`_thin()` 会自然降级。
+        v1.5.37 录制触发修复: 过截止时间、或这一帧时间戳已越过 until 的, 一律丢弃,
+        绝不留"三秒之后"的帧。
+        """
+        if time.time() >= rec["until"]:
+            return
+        grab = self.grab or self._default_grab
+        got = grab()
+        if not got:
+            return
+        ts, jpeg, hb = got
+        if ts > rec["until"]:
+            return
+        rec["frames"].append(got)
+
+    def _default_grab(self):
+        from PIL import ImageGrab
+        img = ImageGrab.grab(all_screens=False)
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+        buf = io.BytesIO()
+        img.save(buf, "JPEG", quality=82)
+        jpeg = buf.getvalue()
+        # v1.5.37: 差异指纹从 list(getdata())+逐像素生成器(纯 Python 循环, 实测
+        # ~6.9ms/帧, 占整帧 1/4)换成 C 层的 灰度+缩放+取字节(实测 ~2.3ms)。
+        # 省下来的时间全给帧率(12 -> 24fps), 指纹长度仍是 16*16=256 字节, 语义不变。
+        hb = img.convert("L").resize((16, 16)).tobytes()
+        return time.time(), jpeg, hb
+
+    def _secs(self):
+        try:
+            v = float(self.app.cfg.get("photo_seconds", 3))
+        except (TypeError, ValueError):
+            v = 3.0
+        return max(1.0, min(10.0, v))
+
+    # ---- 触发: 快照当前 ring -> 五层递进的代表帧金字塔 ----
+    # 第 1 层最粗(差异巨大, 一眼扫完), 每往下一层把上层每帧"再细分"出
+    # 相近但不同的帧, 第 5 层 = 全部帧。用户从粗到细逐层深挖想要的瞬间。
+
+    def _build_burst(self, snap, secs=0.0):
+        """把一批帧封成一个待挑的 burst。v1.5.37: 记 pending=True, 前端弹过并
+        确认(/api/photo_ack)之后才清掉 —— 这样"页面重新加载"不会把刚抓的那批
+        悄悄吞掉(切回管家时新开窗口 = 全新页面, 老写法首帧播种 _pbShown 就吞了)。
+        v1.5.39: 推入 self.bursts(deque maxlen=3), 自动挤掉最旧的; active_idx
+        指向最新(0)。同时保留 self.burst 兼容旧代码路径(photo_ping_payload 等)。"""
+        if len(snap) < 1:
+            return {"ok": False, "msg": self._why_empty()}
+        frames = [(i, ts, jpeg, hb) for i, (ts, jpeg, hb) in enumerate(snap)]
+        tiers = self._tiers(snap)
+        self._seq += 1
+        burst = {"id": self._seq, "frames": frames, "tiers": tiers,
+                 "t": time.time(), "pending": True, "secs": secs,
+                 "count": len(frames)}
+        # v1.5.39 多缓存: deque(maxlen=3) 满了自动挤 oldest, 最新永远在 [0]
+        self.bursts.appendleft(burst)
+        self.burst = burst     # 兼容: photo_ping_payload / photoimg / frame 等旧调用方
+        self.active_idx = 0     # 新批次总是当前的"活动批"
+        return {"ok": True, "count": len(frames), "burst_id": self._seq}
+
+    def active(self):
+        """当前展示给用户的那一档(默认最新; 可被前端切换)。
+        v1.5.39: 取代单一 self.burst, 老调用方用 self.active() 拿当前批。"""
+        if not self.bursts:
+            return None
+        if self.active_idx < 0 or self.active_idx >= len(self.bursts):
+            self.active_idx = 0
+        return self.bursts[self.active_idx]
+
+    def switch(self, idx):
+        """切换活动批; 返回新的活动 burst(或 None)。idx 越界则夹紧。"""
+        if not self.bursts:
+            return None
+        self.active_idx = max(0, min(len(self.bursts) - 1, int(idx)))
+        return self.active()
+
+    def bursts_meta(self):
+        """返回所有缓存批的摘要(给前端切换按钮用)。"""
+        out = []
+        for i, b in enumerate(self.bursts):
+            out.append({"id": b.get("id") or 0,
+                        "count": b.get("count") or len(b.get("frames") or []),
+                        "secs": b.get("secs") or 0.0,
+                        "t": b.get("t") or 0.0,
+                        "pending": bool(b.get("pending"))})
+        return {"active": self.active_idx, "bursts": out, "max": 3}
+
+    def trigger(self):
+        """📸 手动触发: 拿滚动缓冲里现有的帧封一批(保留旧行为)。"""
+        with self.lock:
+            snap = list(self.ring)
+        if len(snap) < 2:
+            return {"ok": False, "msg": self._why_empty()}
+        return self._build_burst(snap)
+
+    def ack(self, burst_id=0):
+        """v1.5.37: 前端把这一批**弹出来给用户看过**了, 可以清 pending 标记。
+        只清标记, 不动帧数据(用户可能还在挑)。
+        v1.5.39: 多缓存版 —— 优先活动批; bursts 为空时回退到 self.burst(兼容
+        直接写 self.burst 的旧代码/测试)。"""
+        out = {"ok": True, "acked": 0}
+        b = self.active() or self.burst     # 兼容: 老路径直接写 self.burst 时
+        if b:
+            try:
+                match = (not burst_id) or int(burst_id) == int(b.get("id") or 0)
+            except (TypeError, ValueError):
+                match = not burst_id
+            if match:
+                b["pending"] = False
+                out["acked"] = b.get("id") or 0
+        p = self.last_press
+        if p:
+            p["pending"] = False
+        return out
+
+    def _why_empty(self):
+        """v1.5.37: 这段录制为什么一帧都没抓到 —— 给人话原因 + 怎么修。
+        用户按了侧键却什么都没看到时, 挑帧页会把这句原样显示出来。
+
+        ⚠️⚠️ 这个函数仍可能被**低级鼠标钩子(WH_MOUSE_LL)的回调**调用 —— 只有
+        「按下瞬间 photo_on 是关的」那条分支(侧键路径: _cb -> press -> _why_empty)。
+        Windows 对低级钩子回调有 `LowLevelHooksTimeout`(默认 **300ms**)限制,
+        **超时会把钩子静默摘掉** —— 那之后侧键就真的彻底没反应了, 而且没有任何报错。
+
+        所以这里**绝对不能调 proc_probe()**(它会起 `tasklist` 子进程, 冷缓存时
+        可能几百 ms 到 8s)。只读 `_proc_cache` 里现成的值就够。"""
+        cfg = self.app.cfg or {}
+        if not cfg.get("photo_on", True):
+            return ("连拍缓冲是关着的 —— 去 设置 → 📸 连拍缓冲 → 后台录屏, "
+                    "点一下「开启」再来。")
+        secs = cfg.get("photo_seconds") or 3
+        return ("按下之后那 %s 秒里一帧都没抓到 —— 多半是屏幕捕获被拦住了。"
+                "可以试: ① 游戏别用「独占全屏」, 改「无边框窗口」; "
+                "② 把管家加进杀软/安全软件白名单; "
+                "③ 打开 设置 → 📸 连拍缓冲, 点「🩺 侧键自检」看卡在哪一环。"
+                % secs)
+
+    def press(self, kind="btn"):
+        """v1.5.37: 抓拍键(侧键/热键)按下的统一入口 —— **从这一刻开始录 N 秒**。
+
+        老版本是"回溯": 后台一直滚着录, 按下时把**之前** N 秒的帧捞出来。
+        用户拍板要的是"按下**之后**录 3 秒", 所以改成:
+          按下 -> 记一个 rec(until = now + photo_seconds) -> `_loop` 一直抓 ->
+          时间到 -> `_finish_rec()` 封批 + 写 last_press -> 前端哨兵弹挑帧页。
+
+        ⚠️ 录制期间**绝不顶窗**(见 `_finish_rec`), 否则这 3 秒录的是管家自己。
+
+        返回值只说明"录制定没定上", 不是最终结果 —— 结果在 `_finish_rec` 里出。
+        低级钩子回调链上这个函数仍是 **0 子进程 / 0 文件 I/O**(只读时钟 + 建 dict)。
+        """
+        if self.rec is not None:
+            return {"ok": False, "recording": True,
+                    "msg": "上一段还在录, 这次按得不算"}
+        if not (self.app.cfg or {}).get("photo_on", True):
+            return {"ok": False, "msg": self._why_empty()}
+        secs = self._secs()
+        self.press_seq += 1
+        self.rec = {"until": time.time() + secs, "frames": [], "kind": kind,
+                    "secs": secs, "t0": time.time(), "seq": self.press_seq}
+        # v1.5.39: 第一帧 deadline = "现在" —— _loop 进来立即抓, 下一帧的
+        # deadline 在录制分支里逐帧往后推。deadline 化节流(见 _loop)才能
+        # 抵消 PIL ImageGrab 的耗时、稳住目标帧率。
+        self._rec_next_deadline = time.time()
+        self._rec_event.set()   # v1.5.37 修复: 立刻唤醒 _loop, 按下即开始录
+        return {"ok": True, "recording": True, "seconds": secs,
+                "seq": self.press_seq}
+
+    def _finish_rec(self):
+        """v1.5.37: 录满 -> 拆帧封批 -> 记 last_press -> 后台顶窗 + 写日志。
+
+        跑在 `_loop` 线程里(不是钩子回调), 所以这里做文件 I/O / 起线程都安全。
+        顶窗必须**推迟到这里**才做: 录制那 3 秒里管家窗口一旦到前台, 录到的
+        就全是管家自己。
+        """
+        rec = self.rec
+        self.rec = None
+        if not rec:
+            return
+        snap = rec["frames"]
+        if snap:
+            r = self._build_burst(snap, secs=rec.get("secs") or 0.0)
+        else:
+            r = {"ok": False, "msg": self._why_empty()}
+        self.last_press = {"seq": rec.get("seq") or self.press_seq,
+                           "ok": bool(r.get("ok")), "msg": r.get("msg") or "",
+                           "kind": rec.get("kind") or "btn", "t": time.time(),
+                           "pending": True}
+        try:
+            threading.Thread(target=_after_press_bg,
+                             args=("连拍", r), daemon=True).start()
+        except Exception:
+            pass
+
+    def recording(self):
+        """当前在不在录(前端拿它显示"🎬 录制中…")。"""
+        rec = self.rec
+        if not rec:
+            return {"recording": False, "left": 0.0, "seconds": 0.0}
+        return {"recording": True,
+                "left": max(0.0, round(rec["until"] - time.time(), 2)),
+                "seconds": rec.get("secs") or 0.0,
+                "seq": rec.get("seq") or 0}
+
+    def clear_cache(self):
+        """v1.5.35: 清掉内存里的连拍缓存 —— 滚动缓冲 ring + 当前这批。
+        v1.5.37: 顺带把"正在录"的那一段也丢掉。
+        v1.5.39: 一并清空 3 次缓存(用户明确说"清除" = 全部清, 跟新行为一致)。
+        ⚠️ 只清内存: 照片墙里已经「留这张」落盘的成品一张都不会动。"""
+        with self.lock:
+            n = len(self.ring)
+            self.ring = []
+        self.burst = None
+        self.bursts.clear()
+        self.active_idx = 0
+        self.last_press = None
+        self.rec = None
+        self._rec_next_deadline = None
+        return {"ok": True, "cleared": n, "burst_id": 0,
+                "msg": "已清除连拍缓存(%d 帧), 下次侧键从零开始录" % n}
+
+    def _tiers(self, snap):
+        """自底向上建 5 层: 第 5 层=全部, 每往上按「与前一帧的差异」挑更有代表性的
+        一组(保证最小间隔, 不会挤在同一瞬间), 上层一定是下层的子集。"""
+        idxs = list(range(len(snap)))
+        tiers = [idxs]
+        for want in reversed(self.TIERS):
+            idxs = self._thin(snap, idxs, want)
+            tiers.insert(0, idxs)
+        return tiers
+
+    @staticmethod
+    def _hdiff(a, b):
+        return sum(abs(x - y) for x, y in zip(a, b)) / (len(a) * 255.0)
+
+    @classmethod
+    def _thin(cls, snap, idxs, want):
+        if len(idxs) <= want:
+            return list(idxs)
+        # 新颖度 = 与序列里前一帧的差异(首帧用和后帧的差异)
+        scores = []
+        for k, i in enumerate(idxs):
+            if k == 0:
+                d = cls._hdiff(snap[i][2], snap[idxs[1]][2]) if len(idxs) > 1 else 1.0
+            else:
+                d = cls._hdiff(snap[idxs[k - 1]][2], snap[i][2])
+            scores.append(d)
+        min_gap = max(1, len(idxs) // (want * 2))
+        chosen = []
+        for order in sorted(range(len(idxs)), key=lambda k: -scores[k]):
+            if all(abs(order - c) >= min_gap for c in chosen):
+                chosen.append(order)
+            if len(chosen) >= want:
+                break
+        chosen = sorted(set(chosen) | {len(idxs) - 1})   # 永远保留最新一帧
+        return [idxs[k] for k in chosen]
+
+    # ---- 读一次触发结果(带 TTL 回收) ----
+    def current(self):
+        """v1.5.39: 返回**当前活动批**(跟随 active_idx); 过期则回收并弹掉。"""
+        b = self.active()
+        if not b:
+            return None
+        if time.time() - b["t"] > self.BURST_TTL:
+            # 过期批从 deque 里清掉, 重建索引; 保守起见 active_idx 重置为 0
+            try:
+                self.bursts.remove(b)
+            except ValueError:
+                pass
+            self.active_idx = 0
+            if self.bursts:
+                self.burst = self.bursts[0]
+            else:
+                self.burst = None
+            return None
+        return b
+
+    def frame(self, idx):
+        b = self.current()
+        if not b:
+            return None
+        for (i, ts, jpeg, hb) in b["frames"]:
+            if i == idx:
+                return jpeg
+        return None
+
+    def meta(self):
+        b = self.current()
+        if not b:
+            return {"burst_id": 0, "frames": [], "tiers": [], "pending": False}
+        return {"burst_id": b["id"],
+                "frames": [{"i": i, "t": round(ts - b["t"], 2)}
+                           for (i, ts, jpeg, hb) in b["frames"]],
+                "tiers": b.get("tiers") or [],
+                # v1.5.37: pending=True = 这一批还没被界面弹出来给用户看过。
+                # 页面重新加载时前端靠它决定"要不要把旧的那批补弹出来"。
+                "pending": bool(b.get("pending")),
+                "secs": b.get("secs") or 0.0}
+
+    def keep(self, idx):
+        """把挑中的这一帧落盘到 照片/。返回 (ok, msg, name)。"""
+        jpeg = self.frame(idx)
+        if not jpeg:
+            return False, "这一帧已经不在了(可能超时)", ""
+        try:
+            os.makedirs(PHOTO_DIR, exist_ok=True)
+            name = time.strftime("zzmi_%Y%m%d_%H%M%S_") + "%03d.jpg" % idx
+            with open(os.path.join(PHOTO_DIR, name), "wb") as f:
+                f.write(jpeg)
+            return True, "已留下 1 张", name
+        except Exception as ex:
+            return False, "保存失败: %s" % ex, ""
+
+    def shot_now(self):
+        """手动单张: 立刻抓一张当前屏幕进挑帧条(游戏没开也能用)。"""
+        try:
+            self._grab_one()
+        except Exception as ex:
+            return {"ok": False, "msg": "截屏失败: %s" % ex}
+        with self.lock:
+            snap = list(self.ring)
+        if not snap:
+            return {"ok": False, "msg": "截屏失败"}
+        return self._build_burst(snap[-1:])
+
+
+class MouseBtnWatcher(object):
+    """v1.5.32: 全局监听鼠标侧键(低级鼠标钩子 WH_MOUSE_LL)。
+    RegisterHotKey 不认鼠标键, 只能走钩子; 只"旁听"从不拦截,
+    游戏里的侧键功能(后退/前进等)完全不受影响。cfg photo_mouse_btn:
+    0=关, 1=侧键1(后退), 2=侧键2(前进)。"""
+
+    def __init__(self, app):
+        self.app = app
+        self.thread = None
+        self.tid = None
+        self._evt = threading.Event()
+        self.ok = None                 # None=未启动, True/False=钩子装没装上
+        self._stop = threading.Event()
+
+    def restart(self):
+        self.stop()
+        self._stop = threading.Event()
+        self._evt = threading.Event()
+        self.thread = threading.Thread(target=self._loop, daemon=True)
+        self.thread.start()
+        self._evt.wait(2.0)
+        return bool(self.ok)
+
+    def stop(self):
+        self._stop.set()
+        if self.tid and self.thread and self.thread.is_alive():
+            try:
+                ctypes.windll.user32.PostThreadMessageW(self.tid, WM_QUIT, 0, 0)
+            except Exception:
+                pass
+            self.thread.join(timeout=1.5)
+        self.thread, self.tid, self.ok = None, None, None
+
+    def _loop(self):
+        from ctypes import wintypes
+        if not _WIN:
+            self.ok = False
+            self._evt.set()
+            return
+        user32, kernel32 = ctypes.windll.user32, ctypes.windll.kernel32
+        self.tid = kernel32.GetCurrentThreadId()
+        WH_MOUSE_LL, HC_ACTION = 14, 0
+        WM_XBUTTONDOWN = 0x020B   # v1.5.37 修复: 要"按下即刻开始录"就得监听按下(XBUTTONDOWN);
+                                  # 老写法是 0x040C(WM_XBUTTONUP=松开), 导致"按下侧键"实际从
+                                  # 松开那一刻才开始计时, 看起来就是"没立即开始 + 录超了三秒"。
+
+        class MSLLHOOKSTRUCT(ctypes.Structure):
+            _fields_ = [("pt", wintypes.POINT),
+                        ("mouseData", wintypes.DWORD),
+                        ("flags", wintypes.DWORD),
+                        ("time", wintypes.DWORD),
+                        ("dwExtraInfo", ctypes.c_void_p)]
+        HOOKPROC = ctypes.WINFUNCTYPE(ctypes.c_long, ctypes.c_int,
+                                      wintypes.WPARAM, wintypes.LPARAM)
+        # 64 位下必须声明签名: lParam 是指针, 默认按 32 位 int 传会 OverflowError,
+        # 回调抛异常返回 0 还会把鼠标事件整个吞掉(鼠标失灵)
+        user32.CallNextHookEx.restype = ctypes.c_long
+        user32.CallNextHookEx.argtypes = [ctypes.c_void_p, ctypes.c_int,
+                                          wintypes.WPARAM, wintypes.LPARAM]
+        want = self.app.cfg.get("photo_mouse_btn", 1)
+
+        def _cb(nCode, wParam, lParam):
+            try:
+                if (nCode == HC_ACTION and want
+                        and wParam == WM_XBUTTONDOWN and lParam):
+                    info = ctypes.cast(lParam,
+                                       ctypes.POINTER(MSLLHOOKSTRUCT)).contents
+                    btn = (info.mouseData >> 16) & 0xFFFF
+                    if btn == want:
+                        r = self.app.burst.press("mouse")
+                        # v1.5.37: 这里**只负责"开始录"**。按下之后那 N 秒录完,
+                        # 由 BurstBuffer._finish_rec() 拿着最终结果再叫一次
+                        # _after_press_bg 去顶窗 —— 录制中间顶窗会把管家自己录进去。
+                        # ⚠️ 连失败日志都丢后台(它要 append 落盘): 回调链上
+                        # 不留任何文件 I/O —— 超 LowLevelHooksTimeout(300ms)
+                        # 会被 Windows 静默摘钩, 侧键从此彻底失效且无报错。
+                        threading.Thread(target=_after_press_bg,
+                                         args=("侧键连拍", r), daemon=True).start()
+            except Exception:
+                # ⚠️ 连异常处理都不在回调里做: traceback.format_exc() 会经 linecache
+                # 读源码文件, log() 会 append 落盘 —— 都是 I/O。只把 exc_info
+                # 抓下来(纯内存), 格式化和落盘都丢后台线程。
+                _log_exc_bg("侧键处理出错", sys.exc_info())
+            return user32.CallNextHookEx(None, nCode, wParam, lParam)
+
+        cb = HOOKPROC(_cb)
+        user32.SetWindowsHookExW.restype = ctypes.c_void_p
+        user32.SetWindowsHookExW.argtypes = [ctypes.c_int, HOOKPROC,
+                                             wintypes.HINSTANCE, wintypes.DWORD]
+        user32.UnhookWindowsHookEx.argtypes = [ctypes.c_void_p]
+        hhk = user32.SetWindowsHookExW(WH_MOUSE_LL, cb, None, 0)
+        self.ok = bool(hhk)
+        self._evt.set()
+        if not hhk:
+            return
+        msg = wintypes.MSG()
+        while not self._stop.is_set() and \
+                user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
+            if msg.message == WM_QUIT:
+                break
+        user32.UnhookWindowsHookEx(hhk)
+
+    def discard(self):
+        # v1.5.39: 弃掉**当前活动批**; 切换按钮旁的"弃掉关闭"还是只丢活动那一档,
+        # 其它缓存批(用户切过去还能看)不受影响。
+        b = self.active()
+        if b:
+            try:
+                self.bursts.remove(b)
+            except ValueError:
+                pass
+        self.active_idx = 0
+        self.burst = self.bursts[0] if self.bursts else None
+        return {"ok": True}
+
+
+def photo_ping_payload(app):
+    """v1.5.34: 极轻量的连拍哨兵负载 —— 前端每 ~600ms 问一次, 侧键一按就能立刻弹出
+    挑帧页, 不用等 2 秒的整页轮询, 也不搬整份 state(那玩意儿很大)。顺带把 meta 一起
+    给回去(只是帧号+时间戳, 没有图像数据), 前端就不用再单独拉一次 state 了。
+
+    v1.5.35: 再加 press_seq / press_ok / press_msg —— 侧键**没抓到帧**时前端也能
+    立刻弹挑帧页并把原因写出来, 不再"按了没反应"。
+
+    ⚠️ 前端 `api(path, {})` 会走 **POST**(JS 里 {} 是真值), 所以这个接口在 do_GET 和
+    do_POST 两处都要挂 —— 只挂 GET 的话前端拿到的是 {"ok":false,"msg":"未知操作"},
+    哨兵静默失效(踩过)。"""
+    b = getattr(app, "burst", None)
+    meta = b.meta() if b else {}
+    p = (getattr(b, "last_press", None) or {}) if b else {}
+    rec = b.recording() if b else {"recording": False, "left": 0.0, "seconds": 0.0}
+    return {"ok": True,
+            "burst_id": meta.get("burst_id") or 0,
+            "count": len(meta.get("frames") or []),
+            "meta": meta,
+            # ⚠️ press_seq=0 表示"当前没有待处理的抓拍事件"(从没按过 / 刚清过缓存)。
+            # 它是**待处理事件的序号**, 不是"按过多少次"的计数器 —— 前端拿它做去重,
+            # 所以清零是安全的: 下一次真按下去, 序号一定比前端记着的大。
+            "press_seq": p.get("seq") or 0,
+            "press_ok": bool(p.get("ok")),
+            "press_msg": p.get("msg") or "",
+            # v1.5.37: press_pending = 这次抓拍结果还没被界面弹出来给用户看过。
+            # 页面重新加载(切回管家时新开了窗口)时前端靠它决定"要不要补弹"。
+            "press_pending": bool(p.get("pending")),
+            # v1.5.37: 正在"按下之后录 N 秒"的那一段, 前端拿它显示录制提示。
+            "recording": bool(rec.get("recording")),
+            "rec_left": rec.get("left") or 0.0,
+            "rec_seconds": rec.get("seconds") or 0.0,
+            "rec_seq": rec.get("seq") or 0}
+
+
+def photo_diag(app):
+    """v1.5.35: 侧键自检 —— 把「按了侧键没反应」卡在哪一环一次问清楚。
+    v1.5.37: 口径跟着新模型改 —— 现在是「按下**之后**录 N 秒」, 不再看滚动缓冲,
+    所以自检看的是「上次那段录到了几帧」而不是「ring 里攒了几帧」。"""
+    b = getattr(app, "burst", None)
+    mw = getattr(app, "mwatch", None)
+    cfg = app.cfg or {}
+    try:
+        game, launcher = proc_probe(cfg, force=True)
+    except Exception:
+        game, launcher = False, False
+    gpid = _proc_cache.get("game_pid") or 0
+    try:
+        fg = foreground_pid()
+    except Exception:
+        fg = 0
+    ring = 0
+    try:
+        with b.lock:
+            ring = len(b.ring)
+    except Exception:
+        pass
+    try:
+        hwnd = find_manager_window() or 0
+    except Exception:
+        hwnd = 0
+    mgr_fg = _is_manager_foreground()
+    want = int(cfg.get("photo_mouse_btn", 1) or 0)
+    hook_ok = getattr(mw, "ok", None)
+    try:
+        secs = b._secs()
+    except Exception:
+        secs = float(cfg.get("photo_seconds") or 3)
+    rec = b.recording() if b else {"recording": False, "left": 0.0, "seconds": 0.0}
+    try:
+        cur = b.current() if b else None
+    except Exception:
+        cur = None
+    last = (getattr(b, "last_press", None) or {}) if b else {}
+    last_n = (cur or {}).get("count") or 0
+
+    def step(k, ok, v, fix):
+        return {"k": k, "ok": bool(ok), "v": v, "fix": fix}
+
+    steps = [
+        step("后台录屏", cfg.get("photo_on", True),
+             "开" if cfg.get("photo_on", True) else "关",
+             "设置 → 📸 连拍缓冲 → 后台录屏, 点「开启」"),
+        step("侧键监听", hook_ok is True,
+             {True: "已装上", False: "装不上", None: "没启动"}.get(hook_ok, "?"),
+             "装不上多半是安全软件/权限拦了低级鼠标钩子 —— 试试右键管家"
+             "「以管理员身份运行」, 或者改用下面的「触发键」"),
+        step("抓拍侧键", want != 0,
+             {0: "关闭", 1: "侧键1(后退键)", 2: "侧键2(前进键)"}.get(want, str(want)),
+             "设置 → 抓拍侧键, 选一个再点「保存」(选完钩子会自动重装)"),
+        step("录制时长", True, "按下之后录 %g 秒" % secs,
+             "想改就去 设置 → 📸 连拍缓冲 → 回溯时长(1~10 秒)"),
+        step("正在录制", not rec.get("recording"),
+             ("录制中 · 还剩 %.1fs" % (rec.get("left") or 0))
+             if rec.get("recording") else "没有",
+             "按一下侧键就会开始录, 录满自动停下并弹出挑帧页"),
+        step("游戏进程", game,
+             ("在跑 · PID %d" % gpid) if game else "没检测到",
+             "录的是整块屏幕, 游戏没开也会录 —— 只是录到的就是桌面。"
+             "想拍游戏画面就先把绝区零开起来"),
+        step("上次录到几帧", last_n >= 1,
+             ("%d 帧" % last_n) if last_n else
+             ("上一段没抓到帧: %s" % (last.get("msg") or "原因未知")
+              if last else "还没按过侧键"),
+             "0 帧基本是屏幕捕获被拦了 —— ① 游戏改「无边框窗口」(别用独占全屏); "
+             "② 把管家加进杀软白名单; ③ 换一个抓拍侧键再试"),
+        step("管家窗口", hwnd,
+             "已找到" if hwnd else "没找到",
+             "找不到就没法自动把界面顶到最前(挑帧页仍会弹) —— 手动把管家界面"
+             "打开/还原一下就行"),
+        step("管家在前台?", not mgr_fg,
+             "是(按下后那几秒会录到管家自己)" if mgr_fg else "不是(正常)",
+             "按侧键之前先切回游戏画面, 否则录到的就是管家界面"),
+    ]
+    return {"ok": True, "steps": steps, "ring": ring, "game_pid": gpid,
+            "fg_pid": fg, "manager_fg": mgr_fg, "hook_ok": hook_ok,
+            "mouse_btn": want, "photo_on": bool(cfg.get("photo_on", True)),
+            "hwnd": hwnd, "game_running": bool(game),
+            "launcher_running": bool(launcher),
+            "seconds": secs, "recording": bool(rec.get("recording")),
+            "last_count": last_n}
+
+
+def list_photos():
+    """照片墙: 列出 数据目录/照片 里的图片(新在前)。目录不存在就建出来,
+    保证「打开文件夹」永远能打开。"""
+    try:
+        os.makedirs(PHOTO_DIR, exist_ok=True)
+    except OSError:
+        pass
+    out = []
+    try:
+        for nm in os.listdir(PHOTO_DIR):
+            if not nm.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+                continue
+            p = os.path.join(PHOTO_DIR, nm)
+            if os.path.isfile(p):
+                out.append({"name": nm, "size": _size(p),
+                            "mtime": os.path.getmtime(p)})
+    except OSError:
+        return []
+    out.sort(key=lambda x: -x["mtime"])
+    for x in out:
+        x["size_h"] = human_size(x["size"])
+    return out
+
+
+def photo_file_path(name):
+    """把请求的照片名安全解析成 照片/ 下的真实路径(防 ../ 越界)。"""
+    nm = os.path.basename(name or "")
+    p = os.path.join(PHOTO_DIR, nm)
+    if os.path.normcase(os.path.abspath(p)) != \
+            os.path.normcase(os.path.abspath(os.path.join(PHOTO_DIR, nm))):
+        return None
+    return p if os.path.isfile(p) else None
+
+
+# ===========================================================================
 # 应用状态
 # ===========================================================================
 
@@ -3826,6 +4884,9 @@ class App(object):
         self.last_error = ""
         self.httpd = None
         self.hotkey = HotkeyManager(self)
+        self.burst = BurstBuffer(self)
+        self.mwatch = MouseBtnWatcher(self)   # v1.5.32 鼠标侧键
+        self.watchdog = WindowWatchdog(self)  # v1.5.37 孤儿进程看门狗
 
     def load_config(self):
         raw = read_json(CONFIG_PATH, None)
@@ -3848,9 +4909,11 @@ class App(object):
             except Exception:
                 pass
         self.cfg = cfg
+        apply_photo_dir(cfg)          # v1.5.34: 让 PHOTO_DIR 跟着配置走
         return True
 
     def save_config(self):
+        apply_photo_dir(self.cfg)     # v1.5.34: 存盘前先同步一次生效目录
         write_json(CONFIG_PATH, self.cfg)
 
     # ---- v1.5.10: 界面关闭 -> 自动退出 ---------------------------------
@@ -3983,6 +5046,13 @@ class App(object):
             "hide_preview": bool(self.cfg.get("hide_preview")),
             "hotkey": self.cfg.get("hotkey", "F9"),
             "hotkey_ok": self.hotkey.ok is not False,
+            # v1.5.36: 逐键状态, 让界面能指出到底是哪个键被占
+            # None=没试(没配/解析失败), True/False=试过且成/败
+            "hotkey_main_ok": getattr(self.hotkey, "ok_main", None),
+            "hotkey_photo_ok": getattr(self.hotkey, "ok_photo", None),
+            # v1.5.36: 有没有另一个管家实例在跑(遗留旧进程会占着全局快捷键)
+            "other_instance": bool(getattr(self, "other_instance", False)),
+            "test_mode": TEST_MODE,
             "downloads_dir": gb_downloads_dir(self.cfg),
             "show_translated": bool(self.cfg.get("show_translated", True)),
             "tg_enabled": bool(TG_ENABLED),   # v1.5.22: 蓝飞机总开关(关=前端隐藏 tab)
@@ -4003,6 +5073,33 @@ class App(object):
             "thumb_pending": _thumb_q.qsize(),
             "error": self.last_error,
             "game_running": game, "launcher_running": launcher,
+            # v1.5.31 连拍缓冲
+            "photo_on": bool(self.cfg.get("photo_on", True)),
+            "photo_hotkey": self.cfg.get("photo_hotkey", "Ctrl+Shift+C"),
+            "photo_mouse_btn": int(self.cfg.get("photo_mouse_btn", 1) or 0),
+            "photo_seconds": self.cfg.get("photo_seconds", 3),
+            "photo_dir": PHOTO_DIR,
+            "photo_dir_custom": bool((self.cfg.get("photo_dir") or "").strip()),
+            "photo_dir_default": PHOTO_DIR_DEFAULT,
+            "photo_burst": (getattr(self, "burst", None).meta()
+                            if getattr(self, "burst", None)
+                            else {"burst_id": 0, "frames": []}),
+            # v1.5.35: 侧键钩子装没装上 / 抓拍事件序号 —— 界面拿来提示和去重。
+            # photo_press_seq 的口径必须和 /api/photo_ping 完全一致(0 = 没有待处理事件),
+            # 否则 2 秒轮询和 0.6 秒哨兵会互相打架(踩过)。
+            "photo_mouse_ok": getattr(getattr(self, "mwatch", None), "ok", None),
+            "photo_press_seq": (getattr(getattr(self, "burst", None),
+                                       "last_press", None) or {}).get("seq") or 0,
+            # v1.5.37: 和 ping 同口径 —— 抓拍结果/录制状态/待展示标记
+            "photo_press_ok": bool((getattr(getattr(self, "burst", None),
+                                            "last_press", None) or {}).get("ok")),
+            "photo_press_msg": ((getattr(getattr(self, "burst", None),
+                                         "last_press", None) or {}).get("msg") or ""),
+            "photo_press_pending": bool((getattr(getattr(self, "burst", None),
+                                                 "last_press", None) or {}).get("pending")),
+            "photo_rec": (getattr(self, "burst", None).recording()
+                          if getattr(self, "burst", None)
+                          else {"recording": False, "left": 0.0, "seconds": 0.0}),
         }
         if with_entries:
             st["entries"] = [{k: v for k, v in e.items() if k not in SLIM_DROP}
@@ -5108,8 +6205,70 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"error": "unauthorized"}, 403)
             if path == "/api/state":
                 return self._json(self.app.state())
+            if path == "/api/photo_ping":
+                return self._json(photo_ping_payload(self.app))
+            if path == "/api/photo_diag":
+                # v1.5.35: 侧键自检(GET/POST 都挂, 见 photo_ping_payload 注释)
+                return self._json(photo_diag(self.app))
+            if path == "/api/photo_ack":
+                # v1.5.37: 前端把这一批弹出来给用户看过了 -> 清 pending 标记。
+                # GET/POST 都挂(前端 api() 走 POST)。
+                try:
+                    bid = int(qs.get("burst_id") or 0)
+                except ValueError:
+                    bid = 0
+                return self._json(self.app.burst.ack(bid))
+            if path == "/api/photo_bursts":
+                # v1.5.39: 列出最近 3 批连拍的摘要 + 当前活动批 idx(给前端切换按钮)
+                return self._json(self.app.burst.bursts_meta())
+            if path == "/api/photo_switch":
+                # v1.5.39: 切换活动批(idx 越界自动夹紧)。GET 走 qs["idx"], POST 走 body
+                try:
+                    idx = int(qs.get("idx") or 0)
+                except (TypeError, ValueError):
+                    idx = 0
+                b = self.app.burst.switch(idx)
+                return self._json({"ok": True, "active": self.app.burst.active_idx,
+                                   "meta": self.app.burst.meta() if b else {}})
             if path == "/api/detail":
                 return self._json(self.detail(qs.get("id") or ""))
+            if path == "/api/photoimg":
+                # v1.5.31: 挑帧条/大图 与 照片墙 都走这里
+                #   ?i=<帧号>&w=<宽>   -> 本次触发 burst 的第 i 帧(w 缺省=原图)
+                #   ?f=<文件名>&w=<宽>  -> 照片目录里的成品
+                try:
+                    w = int(qs.get("w") or 0)
+                except ValueError:
+                    w = 0
+                jpeg = None
+                if qs.get("f"):
+                    p = photo_file_path(qs["f"])
+                    if p:
+                        try:
+                            with open(p, "rb") as f:
+                                jpeg = f.read()
+                        except OSError:
+                            jpeg = None
+                elif qs.get("i") is not None:
+                    try:
+                        idx = int(qs["i"])
+                    except ValueError:
+                        return self._json({"error": "bad i"}, 400)
+                    jpeg = self.app.burst.frame(idx)
+                if not jpeg:
+                    return self._json({"error": "not found"}, 404)
+                if w > 0:
+                    try:
+                        from PIL import Image
+                        im = Image.open(io.BytesIO(jpeg))
+                        im.thumbnail((w, w))
+                        buf = io.BytesIO()
+                        im.convert("RGB").save(buf, "JPEG", quality=78)
+                        jpeg = buf.getvalue()
+                    except Exception:
+                        pass
+                return self._send(200, jpeg, "image/jpeg",
+                                  extra={"Cache-Control": "no-store"})
             if path == "/api/library":
                 return self._json(self.library_list())
             if path == "/api/images":
@@ -5385,7 +6544,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, "msg": "已清空下载记录"})
 
             if act == "pick_dir":
-                base = gb_downloads_dir(app.cfg)
+                # v1.5.34: 允许调用方指定打开时的起始目录(body.base), 不给就还是下载目录
+                base = (body.get("base") or "").strip() or gb_downloads_dir(app.cfg)
                 # v1.5.15: 把界面窗口 hwnd 传进去当 owner —— 选择框就是它的子窗口,
                 # 天然压在浏览器之上; 再加看门狗反复置顶, 双保险。
                 hwnd = None
@@ -5601,6 +6761,75 @@ class Handler(BaseHTTPRequestHandler):
                     invalidate_lib_cache()
                 app.rescan()
                 return self._json({"ok": ok, "msg": msg, "state": app.state()})
+
+            # ---------- v1.5.31 连拍缓冲 ----------
+            if act == "photo_ping":
+                # v1.5.34: 前端 api(path, {}) 走 POST, 所以这里也得挂一份(见函数注释)
+                return self._json(photo_ping_payload(app))
+
+            if act == "photo_diag":
+                # v1.5.35: 侧键自检
+                return self._json(photo_diag(app))
+
+            if act == "photo_ack":
+                # v1.5.37: 界面已经把这批弹给用户看过了 -> 清 pending
+                try:
+                    bid = int(body.get("burst_id") or 0)
+                except (TypeError, ValueError):
+                    bid = 0
+                return self._json(app.burst.ack(bid))
+
+            if act == "photo_bursts":
+                # v1.5.39: 列出 3 批缓存 + 活动 idx (前端切换按钮渲染数据源)
+                return self._json(app.burst.bursts_meta())
+
+            if act == "photo_switch":
+                # v1.5.39: 切换活动批, 返回新的 meta 让前端重新渲染
+                try:
+                    idx = int(body.get("idx") or 0)
+                except (TypeError, ValueError):
+                    idx = 0
+                b = app.burst.switch(idx)
+                return self._json({"ok": True, "active": app.burst.active_idx,
+                                   "meta": app.burst.meta() if b else {}})
+
+            if act == "photo_clear":
+                # v1.5.35: 挑帧页的「🧹 清除缓存」—— 只清内存缓冲, 不动磁盘成品
+                return self._json(app.burst.clear_cache())
+
+            if act == "photo_trigger":
+                r = app.burst.trigger()
+                if r.get("ok"):
+                    r["meta"] = app.burst.meta()
+                return self._json(r)
+
+            if act == "photo_shot":
+                # 立即截一张(不走缓冲, 游戏没开也能用)
+                r = app.burst.shot_now()
+                if r.get("ok"):
+                    r["meta"] = app.burst.meta()
+                return self._json(r)
+
+            if act == "photo_keep":
+                ok, msg, name = app.burst.keep(body.get("i"))
+                return self._json({"ok": ok, "msg": msg, "name": name,
+                                   "photos": list_photos()})
+
+            if act == "photo_close":
+                return self._json(app.burst.discard())
+
+            if act == "photo_list":
+                return self._json({"ok": True, "photos": list_photos(),
+                                   "dir": PHOTO_DIR})
+
+            if act == "photo_del":
+                # 删照片也走回收站(和 mod 一个规矩, 没有物理删除)
+                p = photo_file_path(body.get("name"))
+                if not p:
+                    return self._json({"ok": False, "msg": "找不到这张照片"})
+                ok, msg = recycle_path(p)
+                return self._json({"ok": ok, "msg": msg,
+                                   "photos": list_photos()})
 
             if act == "list_dirs":
                 """浏览文件夹(给「自定义文件夹」挑选目标用)。只读。"""
@@ -6041,9 +7270,78 @@ class Handler(BaseHTTPRequestHandler):
                         "单独按 F1~F12 也可以。"}
             app.cfg["hotkey"] = body["hotkey"].strip()
             app.save_config()
-            ok, msg = app.hotkey.register(combo)
+            pcombo = parse_hotkey(app.cfg.get("photo_hotkey") or "Ctrl+Shift+C")
+            ok, msg = app.hotkey.register(combo, pcombo)
             return {"ok": ok, "msg": msg if not ok else
                     "快捷键已设为 " + app.cfg["hotkey"], "state": app.state()}
+        # v1.5.31 连拍: 触发键 / 开关 / 回溯秒数
+        if "photo_hotkey" in body:
+            pcombo = parse_hotkey(body["photo_hotkey"])
+            if not pcombo:
+                return {"ok": False, "msg":
+                        "连拍键格式不对。要带修饰键, 如 Ctrl+Shift+C。"}
+            app.cfg["photo_hotkey"] = body["photo_hotkey"].strip()
+            app.save_config()
+            combo = parse_hotkey(app.cfg.get("hotkey") or "F9")
+            ok, msg = app.hotkey.register(combo, pcombo)
+            return {"ok": ok, "msg": "连拍键已设为 " + app.cfg["photo_hotkey"]
+                    if ok else msg, "state": app.state()}
+        if "photo_on" in body:
+            app.cfg["photo_on"] = bool(body["photo_on"])
+            app.save_config()
+            return {"ok": True, "msg": "连拍缓冲已" +
+                    ("开启" if app.cfg["photo_on"] else "关闭"),
+                    "state": app.state()}
+        if "photo_mouse_btn" in body:
+            try:
+                v = int(body["photo_mouse_btn"])
+            except (TypeError, ValueError):
+                v = 0
+            v = v if v in (0, 1, 2) else 0
+            app.cfg["photo_mouse_btn"] = v
+            app.save_config()
+            app.mwatch.restart()
+            name = {0: "关闭", 1: "侧键1(后退)", 2: "侧键2(前进)"}[v]
+            return {"ok": True, "msg": "抓拍侧键: " + name,
+                    "state": app.state()}
+        if "photo_seconds" in body:
+            try:
+                v = int(body["photo_seconds"])
+            except (TypeError, ValueError):
+                v = 3
+            app.cfg["photo_seconds"] = max(1, min(10, v))
+            app.save_config()
+            return {"ok": True, "msg": "回溯时长已设为 %d 秒" %
+                    app.cfg["photo_seconds"], "state": app.state()}
+        if "photo_dir" in body:
+            # v1.5.34: 照片成品存哪。空 = 恢复默认(数据目录\照片)。
+            raw = body.get("photo_dir")
+            raw = raw.strip() if isinstance(raw, str) else ""
+            if not raw:
+                app.cfg["photo_dir"] = ""
+                app.save_config()
+                return {"ok": True, "msg": "照片保存位置已恢复默认",
+                        "state": app.state()}
+            # 和下载目录一个规矩: 先剥引号, 再判绝对路径, 免得带引号被当成相对路径
+            clean = strip_path_quotes(strip_abs_prefix(raw))
+            if re.match(r"^[A-Za-z]:$", clean):
+                clean = clean + "\\"            # "D:" -> "D:\"
+            if not is_abs_path(clean):
+                return {"ok": False, "msg":
+                        "请填完整路径(例如 D:\\ZZMI照片), 相对路径不知道该放哪"}
+            p = os.path.abspath(clean)
+            if not p or os.path.dirname(p) == p:
+                return {"ok": False, "msg": "路径不合法(不能直接用盘符根目录)"}
+            try:
+                os.makedirs(p, exist_ok=True)
+            except Exception as ex:
+                return {"ok": False, "msg": "建不了这个文件夹: %s" % ex}
+            if not os.path.isdir(p):
+                return {"ok": False, "msg": "这个路径不是文件夹: %s" % p}
+            app.cfg["photo_dir"] = p
+            app.save_config()
+            return {"ok": True, "msg": "照片保存位置已改为 %s" % p,
+                    "state": app.state()}
         if changed:
             app.save_config()
             app.rescan()
@@ -6208,6 +7506,7 @@ MOD_ALT, MOD_CONTROL, MOD_SHIFT, MOD_WIN = 0x0001, 0x0002, 0x0004, 0x0008
 MOD_NOREPEAT = 0x4000  # 避免长按重复触发
 WM_HOTKEY, WM_QUIT = 0x0312, 0x0012
 _HOTKEY_ID = 0x5A4D  # 'ZM'
+_HOTKEY_ID2 = 0x5A50  # 'ZP' —— v1.5.31 连拍触发键
 
 
 def parse_hotkey(s):
@@ -6253,7 +7552,14 @@ def parse_hotkey(s):
 
 
 def find_manager_window():
-    """找管理器的 Edge/Chrome app 窗口 (按窗口类 + 标题匹配)。"""
+    """找管理器的 Edge/Chrome app 窗口 (按窗口类 + 标题匹配)。
+
+    v1.5.37: 加了**不挑窗口类**的兜底。老写法只认 `Chrome_WidgetWin_1`,
+    可用户可能把管家用别的浏览器/别的模式打开(普通标签页、其他 Chromium 壳),
+    那时类名不一样 —— 找不到就 `toggle_manager_window` 会**再开一个新窗口**,
+    新窗口 = 全新页面加载, 刚抓的那批帧就被首帧播种吞掉, 用户看到的就是
+    "切回管家却没弹出挑帧页"。多一层兜底能明显减少这种误判。
+    """
     import ctypes
     user32 = ctypes.windll.user32
     # --app 模式的窗口标题就是页面 <title>: "ZZMI Mod 管家"
@@ -6265,32 +7571,174 @@ def find_manager_window():
     hits = []
     GetWindowTextW = user32.GetWindowTextW
     GetClassNameW = user32.GetClassNameW
-    IsWindowVisible = user32.IsWindowVisible
 
-    def _cb(hwnd, _lparam):
-        try:
-            buf = ctypes.create_unicode_buffer(64)
-            GetClassNameW(hwnd, buf, 64)
-            if buf.value != "Chrome_WidgetWin_1":
-                return 1
-            buf = ctypes.create_unicode_buffer(128)
-            GetWindowTextW(hwnd, buf, 128)
-            if buf.value.startswith(APP_NAME):
+    def _scan(only_chromium):
+        hits[:] = []
+
+        def _cb(hwnd, _lparam):
+            try:
+                buf = ctypes.create_unicode_buffer(128)
+                GetWindowTextW(hwnd, buf, 128)
+                title = buf.value or ""
+                # v1.5.35: 用 in 而不是 startswith —— 用户拿普通标签页打开时标题是
+                # "ZZMI Mod 管家 - 个人 - Microsoft Edge", 前缀匹配会漏掉。
+                if APP_NAME not in title:
+                    return 1
+                if only_chromium:
+                    cbuf = ctypes.create_unicode_buffer(64)
+                    GetClassNameW(hwnd, cbuf, 64)
+                    if cbuf.value != "Chrome_WidgetWin_1":
+                        return 1
                 hits.append(hwnd)
+            except Exception:
+                pass
+            return 1
+
+        cb = proto(_cb)
+        try:
+            user32.EnumWindows(cb, None)
         except Exception:
             pass
-        return 1
 
-    cb = proto(_cb)
-    try:
-        user32.EnumWindows(cb, None)
-    except Exception:
-        pass
+    _scan(True)
+    if hits:
+        return hits[0]
+    _scan(False)          # v1.5.37: 不挑窗口类的兜底
     return hits[0] if hits else None
 
 
 def _bring_to_front(hwnd):
     return force_foreground(hwnd)
+
+
+def detect_other_instance():
+    """v1.5.36: 是否已经有另一个管家实例在跑(命名互斥体)。
+
+    为什么需要它: 遗留的旧实例(尤其是出图/测试脚本起的**源码实例**没被回收)
+    会一直占着全局快捷键。于是新实例 `RegisterHotKey` 失败 -> 界面报
+    「注册失败」, 可用户按 F9 **仍然有反应** —— 响应的是那个旧实例。
+    用户看到的就是「为什么提示注册失败, 我明明可以调用」。
+
+    ⚠️ 返回的句柄必须**留着**(挂到 app 上) —— 一旦被 GC 关掉, 互斥体就释放了,
+    下一个实例就检测不到了。所以不要 `CloseHandle`。
+
+    返回 (handle, already_running)。拿不到就 (None, False), 不影响主流程。"""
+    if not _WIN:
+        return None, False
+    try:
+        import ctypes
+        k = ctypes.WinDLL("kernel32", use_last_error=True)
+        k.CreateMutexW.restype = ctypes.c_void_p
+        k.CreateMutexW.argtypes = [ctypes.c_void_p, ctypes.c_int,
+                                   ctypes.c_wchar_p]
+        ctypes.set_last_error(0)
+        h = k.CreateMutexW(None, 0, INSTANCE_MUTEX)
+        already = (ctypes.get_last_error() == 183)   # ERROR_ALREADY_EXISTS
+        return h, already
+    except Exception:
+        return None, False
+
+
+def _is_manager_foreground():
+    """v1.5.35: 前台窗口是不是管家自己的界面(标题里含 APP_NAME)。
+    连拍缓冲靠它决定"冻不冻结" —— 拿不到就返回 False(照录, 宁可多录)。
+
+    为什么用"含"而不是"以…开头": 用户拿普通标签页打开管家时标题是
+    "ZZMI Mod 管家 - 个人 - Microsoft Edge", 前缀匹配会漏, 缓冲就会一直录到
+    管家自己 —— 那正是当初要冻结的原因。"""
+    if not _WIN:
+        return False
+    try:
+        import ctypes
+        u = ctypes.windll.user32
+        h = u.GetForegroundWindow()
+        if not h:
+            return False
+        buf = ctypes.create_unicode_buffer(200)
+        u.GetWindowTextW(h, buf, 200)
+        return APP_NAME in (buf.value or "")
+    except Exception:
+        return False
+
+
+def _raise_manager_window(tries=6):
+    """v1.5.34: 把管家界面窗口顶到最前(侧键抓拍后用)。
+    不管它当时是最小化、被游戏盖住, 还是开着设置/照片墙等别的页面,
+    都要让玩家马上看到挑帧页 —— 找不到窗口就算了, 绝不抛错。
+
+    v1.5.35: 改成退避重试 + 返回结果。窗口可能正在恢复/重绘, 一次找不到很正常;
+    返回 True/False 也方便写日志, 免得"到底顶没顶上去"全靠猜。"""
+    for _ in range(max(1, int(tries))):
+        try:
+            hwnd = find_manager_window()
+            if hwnd:
+                try:
+                    if ctypes.windll.user32.IsIconic(hwnd):
+                        ctypes.windll.user32.ShowWindow(hwnd, 9)     # SW_RESTORE
+                except Exception:
+                    pass
+                if _bring_to_front(hwnd):
+                    return True
+        except Exception:
+            pass
+        time.sleep(0.12)
+    return False
+
+
+def _log_exc_bg(tag, exc_info):
+    """v1.5.35: 后台线程里格式化 + 写异常日志。
+
+    ⚠️ **必须在后台线程里 format** —— `traceback.format_exc()` 会走 `linecache`
+    去读源码文件, 在低级钩子回调里做等于往回调链上挂 I/O。调用方只负责用
+    `sys.exc_info()` 把异常信息(纯内存)抓下来传进来。
+
+    配套不变量: 回调链 `_cb -> press`(v1.5.37 起 press 只"开始录", 不再快照 ring)
+    是 **0 子进程 / 0 文件 I/O**。由 tests/_v1535_check.py 第 10 节(运行时把
+    open/spawn 全钉死) + tests/ui_check.py 2.22(静态抠回调体) 双保险守卫。"""
+    try:
+        tb = "".join(traceback.format_exception(*exc_info))
+    except Exception:
+        try:
+            tb = repr(exc_info[1]) if exc_info and len(exc_info) > 1 else "?"
+        except Exception:
+            tb = "?"
+    log("%s:\n%s" % (tag, tb))
+
+
+def _after_press_bg(tag, r):
+    """v1.5.35: 抓拍键按完之后的**全部**慢活都挪到这条后台线程里 ——
+    失败日志(会 append 落盘) + 顶窗(会枚举窗口)。
+
+    这样低级鼠标钩子回调链(`_cb -> press`)上就只剩「纯内存 + 起一个线程」,
+    不变量是 **0 子进程 / 0 文件 I/O**。
+
+    v1.5.37: 新增「还在录」的短路 —— 按下瞬间 `press()` 返回的是
+    `{"recording": True}`, 那时候**绝对不能顶窗**, 否则按下之后那 N 秒录到的
+    全是管家自己。录满时 `_finish_rec()` 会拿着最终结果再叫一次这条线程。
+
+    v1.5.38 修复: 录满不再强制把管家窗口顶到最前 —— 把玩家正在玩的游戏顶
+    下去太扰人。挑帧页已经在前端 DOM 里 ready(`pbShow` 已经给 mBurst 加了
+    "on"), 玩家自己 alt-tab 回管家就能看到, 游戏焦点不会被抢走。
+
+    为什么这么较真: WH_MOUSE_LL 回调受 LowLevelHooksTimeout(默认 300ms)约束,
+    超时 Windows 会**静默摘钩** —— 之后侧键彻底失效, 而且没有任何报错。
+    `log()` 平时只有 ~0.2ms(实测 80 次: median 0.24 / p95 0.50 / max 1.04 ms),
+    但在杀软实时扫描或慢盘上会飙, 属于"平时没事、偶尔要命"的类型, 不值得赌。
+    `tests/_v1535_check.py` 第 10 节把 open / spawn 全钉死来守这条不变量。"""
+    r = r or {}
+    if r.get("recording"):
+        return                     # v1.5.37: 录制中, 顶窗推迟到 _finish_rec
+    if not r.get("ok"):
+        log("%s: %s" % (tag, r.get("msg") or ""))
+    # v1.5.38: 删掉 _raise_manager_window_bg() —— 挑帧页已 ready, 不要抢
+    # 游戏焦点(alt-tab 回来就看到)。
+
+
+def _raise_manager_window_bg():
+    """后台线程用的包装: 顶窗 + 顶不上去时留一条日志(只在失败时写, 不刷屏)。"""
+    if not _raise_manager_window():
+        log("抓拍: 没找到管家界面窗口, 没法自动顶到最前 "
+            "(界面被关掉/最小化到托盘了? 手动打开界面即可, 挑帧页照样会弹)")
 
 
 def toggle_manager_window(app):
@@ -6299,6 +7747,15 @@ def toggle_manager_window(app):
     import ctypes
     user32 = ctypes.windll.user32
     hwnd = find_manager_window()
+    if not hwnd:
+        # v1.5.37: 窗口可能刚在恢复/重绘, 一次找不到很正常 —— 退避再找两轮。
+        # 别急着新开窗口: 新窗口 = 全新页面加载, 而按完侧键切回来时那一批帧
+        # 还没给用户看过, 多余的一次加载只会让"挑帧页弹没弹"更难判断。
+        for _ in range(3):
+            time.sleep(0.15)
+            hwnd = find_manager_window()
+            if hwnd:
+                break
     if not hwnd:
         url = ""
         try:
@@ -6318,6 +7775,81 @@ def toggle_manager_window(app):
         user32.ShowWindow(hwnd, 2)              # SW_SHOWMINIMIZED
 
 
+class WindowWatchdog(object):
+    """v1.5.37: 界面窗口真的没了就自己退出 —— 兜住「bye 没送达」的孤儿进程。
+
+    ## 为什么需要它
+
+    界面关闭时前端会 `sendBeacon /api/bye`, 后端 5 秒后退出。但这条路径**不保证**
+    送达: Edge 被强杀 / 崩溃 / 整个浏览器进程树被结束 / 杀软拦截 beacon —— 那时
+    pagehide 不触发, 那个管家进程就永远活着, **一直占着全局快捷键(F9)**。
+    用户下次启动新实例时 F9 注册失败, 而按 F9 又"有反应"(响应的是旧进程),
+    现象非常反直觉。日志里「109 次启动 / 51 次退出」就是这种痕迹。
+
+    ## 判据为什么这么保守
+
+    * **只在"曾经找到过窗口"之后才开始判**(`seen`)。这样即使某台机器上
+      `find_manager_window()` 完全不灵, 也永远不会被误杀。
+    * 要**连续 `grace` 秒都找不到**才退。窗口被游戏盖住、最小化到任务栏
+      都算"还在" —— `FindWindow` 找的是窗口本身, 不看可见性, 所以**玩游戏时
+      绝不会误判**。
+    * 可以用环境变量 `ZZMI_NO_WATCHDOG=1` 整个关掉。
+    """
+
+    def __init__(self, app, grace=180.0, interval=5.0):
+        self.app = app
+        self.grace = float(grace)
+        self.interval = float(interval)
+        self.thread = None
+        self.seen = False
+        self._last_seen = None
+        self._stop = threading.Event()
+
+    def start(self):
+        if TEST_MODE or not _WIN:
+            return
+        if os.environ.get("ZZMI_NO_WATCHDOG") == "1":
+            return
+        if self.thread and self.thread.is_alive():
+            return
+        self._stop.clear()
+        self.thread = threading.Thread(target=self._loop, daemon=True)
+        self.thread.start()
+
+    def stop(self):
+        self._stop.set()
+
+    def _loop(self):
+        while not self._stop.is_set():
+            self._stop.wait(self.interval)
+            if self._stop.is_set():
+                return
+            try:
+                hwnd = find_manager_window()
+            except Exception:
+                hwnd = None
+            now = time.time()
+            if hwnd:
+                self.seen = True
+                self._last_seen = now
+                continue
+            if not self.seen:
+                continue          # 还没见过窗口(界面可能还没起来) -> 一律不判
+            if self._last_seen is None:
+                self._last_seen = now
+                continue
+            if now - self._last_seen >= self.grace:
+                log("界面窗口已经 %g 秒找不到了, 判定为孤儿进程 —— 主动退出, "
+                    "把全局快捷键让出来(免得一直占着 F9 让新实例注册不上)"
+                    % self.grace)
+                try:
+                    if self.app.httpd:
+                        self.app.httpd.server_close()
+                except Exception:
+                    pass
+                os._exit(0)
+
+
 class HotkeyManager(object):
     """后台线程 RegisterHotKey + 消息循环; 换键 = 线程发 WM_QUIT 后重启。"""
 
@@ -6326,54 +7858,143 @@ class HotkeyManager(object):
         self.tid = None
         self.thread = None
         self.ok = None
+        # v1.5.36: 分开记两个键各自成没成 —— 老版本只留一个 ok,
+        # 界面只能说"快捷键注册失败", 用户不知道是哪个键、该改哪个。
+        # None = 这个键压根没试(配置里没填 / 解析失败), True/False = 试过且成/败。
+        self.ok_main = None      # 呼出/最小化键
+        self.ok_photo = None     # 连拍触发键
         self._evt = threading.Event()
+        # v1.5.37: 自动重试线程和「设置里点保存」会同时进来, 串行化一下,
+        # 免得两个 register() 交叉 stop/start 把消息泵搅乱。
+        self._reg_lock = threading.RLock()
 
     def start(self):
         s = parse_hotkey(self.app.cfg.get("hotkey") or "F9")
-        if s:
-            return self.register(s)
+        p = parse_hotkey(self.app.cfg.get("photo_hotkey") or "Ctrl+Shift+C")
+        if s or p:
+            return self.register(s, p)
         return True, ""
 
-    def register(self, combo):
-        """返回 (ok, msg)。"""
-        self.stop()
-        self.ok, self._evt = None, threading.Event()
-        self.thread = threading.Thread(target=self._loop, args=(combo,),
-                                       daemon=True)
-        self.thread.start()
-        self._evt.wait(2.0)
-        if self.ok:
-            return True, "全局快捷键已生效"
-        return False, "快捷键注册失败(可能被其他程序占用)"
+    def retry_lost(self, tries=24, interval=5.0):
+        """v1.5.37: 启动时没注册上的键 -> 后台每隔几秒再试一次, 成功就停。
+
+        为什么需要: 占着 F9 的十有八九是**没退干净的旧管家进程**(关窗口时
+        `bye` 没送达 / 被强杀 / 杀软拦了)。它一死键就空了, 主动重试比让用户
+        手动点「保存」友好得多 —— 用户根本不需要知道"为什么失败"。
+
+        只在"确实有键没注册上"时才启动; 全成了就直接返回, 不占资源。
+        成功一次立刻退出循环, 绝不反复抢键。
+        """
+        if TEST_MODE:
+            return
+        if self.ok_main is not False and self.ok_photo is not False:
+            return
+
+        def _worker():
+            for _ in range(max(1, int(tries))):
+                time.sleep(max(1.0, float(interval)))
+                if self.ok_main is not False and self.ok_photo is not False:
+                    return
+                try:
+                    s = parse_hotkey(self.app.cfg.get("hotkey") or "F9")
+                    p = parse_hotkey(self.app.cfg.get("photo_hotkey") or "")
+                    if not (s or p):
+                        return
+                    ok, _msg = self.register(s, p)
+                except Exception:
+                    continue
+                if ok:
+                    log("全局快捷键重试成功: %s%s"
+                        % (self.app.cfg.get("hotkey") or "(无)",
+                           (" / " + self.app.cfg.get("photo_hotkey"))
+                           if self.app.cfg.get("photo_hotkey") else ""))
+                    return
+            log("全局快捷键重试 %d 次仍然失败 —— 多半是另一个管家进程还占着键。"
+                "到任务管理器结束多余的 ZZMI-Mod-Manager.exe / python.exe, "
+                "再在 设置 里点一下「保存」。" % int(tries))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def register(self, combo, combo2=None):
+        """返回 (ok, msg)。combo=呼出/最小化键, combo2=连拍键(可 None)。"""
+        if TEST_MODE:
+            # v1.5.36: 测试/演示模式不真去抢系统热键 —— 抢了又没被回收,
+            # 就会变成占着 F9 的孤儿进程, 让用户真管家报"注册失败"。
+            # 这里只把状态置成"已生效"(dry-run), 调用方照常能断言接口与校验逻辑。
+            self.ok, self.ok_main, self.ok_photo = True, True, True
+            return True, "全局快捷键已生效(测试模式 dry-run, 未占用系统热键)"
+        with self._reg_lock:
+            self.stop()
+            self.ok, self._evt = None, threading.Event()
+            self.ok_main = self.ok_photo = None
+            self.thread = threading.Thread(target=self._loop,
+                                           args=(combo, combo2), daemon=True)
+            self.thread.start()
+            self._evt.wait(2.0)
+            if self.ok:
+                return True, "全局快捷键已生效"
+            # v1.5.36: 把"哪个键被占"说清楚, 而不是笼统一句失败
+            bad = []
+            if self.ok_main is False:
+                bad.append(self.app.cfg.get("hotkey") or "呼出键")
+            if self.ok_photo is False:
+                bad.append(self.app.cfg.get("photo_hotkey") or "连拍键")
+            which = "、".join(bad) if bad else "快捷键"
+            if getattr(self.app, "other_instance", False):
+                return False, ("%s 被占用 —— 检测到**另一个管家实例**正在运行, "
+                               "它会占着这些键。到任务管理器结束多余的 "
+                               "ZZMI-Mod-Manager.exe / python.exe 再点「保存」重试。" % which)
+            return False, "%s 注册失败(可能被其他程序占用), 换一个组合或点「保存」重试。" % which
 
     def stop(self):
-        if self.tid and self.thread and self.thread.is_alive():
-            import ctypes
-            ctypes.windll.user32.PostThreadMessageW(
-                self.tid, WM_QUIT, 0, 0)
-            self.thread.join(timeout=1.5)
-        self.thread, self.tid = None, None
+        with self._reg_lock:
+            if self.tid and self.thread and self.thread.is_alive():
+                import ctypes
+                ctypes.windll.user32.PostThreadMessageW(
+                    self.tid, WM_QUIT, 0, 0)
+                self.thread.join(timeout=1.5)
+            self.thread, self.tid = None, None
 
-    def _loop(self, combo):
+    def _loop(self, combo, combo2):
         import ctypes
         from ctypes import wintypes
         user32, kernel32 = ctypes.windll.user32, ctypes.windll.kernel32
         self.tid = kernel32.GetCurrentThreadId()
-        mods, vk = combo
-        if not user32.RegisterHotKey(None, _HOTKEY_ID, mods | MOD_NOREPEAT, vk):
-            self.ok = False
-            self._evt.set()
-            return
-        self.ok = True
+        registered = []
+        # v1.5.36: 逐键记录成败 —— None=没试(没配/解析失败), False=试了但被占
+        self.ok_main = None if not combo else False
+        self.ok_photo = None if not combo2 else False
+        if combo:
+            mods, vk = combo
+            if user32.RegisterHotKey(None, _HOTKEY_ID, mods | MOD_NOREPEAT, vk):
+                registered.append(_HOTKEY_ID)
+                self.ok_main = True
+        if combo2:
+            mods2, vk2 = combo2
+            if user32.RegisterHotKey(None, _HOTKEY_ID2, mods2 | MOD_NOREPEAT, vk2):
+                registered.append(_HOTKEY_ID2)
+                self.ok_photo = True
+        self.ok = bool(registered)
         self._evt.set()
         msg = wintypes.MSG()
         while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
             if msg.message == WM_HOTKEY:
                 try:
-                    toggle_manager_window(self.app)
+                    if msg.wParam == _HOTKEY_ID:
+                        toggle_manager_window(self.app)
+                    elif msg.wParam == _HOTKEY_ID2:
+                        r = self.app.burst.press("key")
+                        # v1.5.37: 同侧键 —— 这里只"开始录", 顶窗推迟到录满之后。
+                        # 这条走 WM_HOTKEY 消息循环(不是低级钩子, 没 300ms 硬约束),
+                        # 但同样别在消息泵里落盘/枚举窗口, 会拖慢后续热键。
+                        threading.Thread(target=_after_press_bg,
+                                         args=("热键连拍", r), daemon=True).start()
                 except Exception:
-                    log("快捷键处理出错:\n" + traceback.format_exc())
-        user32.UnregisterHotKey(None, _HOTKEY_ID)
+                    # v1.5.36: 和侧键回调一个待遇 —— 连 format_exc() 都不在消息泵里做
+                    # (它会经 linecache 读源码文件 = I/O, 拖慢后续热键响应)。
+                    _log_exc_bg("快捷键处理出错", sys.exc_info())
+        for rid in registered:
+            user32.UnregisterHotKey(None, rid)
 
 
 # ===========================================================================
@@ -6401,7 +8022,25 @@ def main():
     threading.Thread(target=thumb_worker, daemon=True).start()
 
     app = App()
+    # v1.5.36: 单实例检测 —— 遗留的旧实例会占着全局快捷键, 让新实例报
+    # "注册失败"却又"能被 F9 呼出"(响应的是旧实例)。句柄挂在 app 上保活。
+    if TEST_MODE:
+        # 测试/演示实例不参与单实例检测: 否则它拿着互斥体时, 用户真管家会误报
+        # "另一个实例在运行"。它们本来就不抢热键, 没资格当"实例"。
+        app._mutex, app.other_instance = None, False
+    else:
+        app._mutex, app.other_instance = detect_other_instance()
+        if app.other_instance:
+            log("⚠ 检测到另一个管家实例正在运行 —— 它会占用全局快捷键(F9 等)。"
+                "如果是没退干净的旧进程, 请到任务管理器结束多余的 "
+                "ZZMI-Mod-Manager.exe / python.exe。")
+    app.burst.start()          # v1.5.31: 连拍缓冲线程(游戏没开时自动休眠, 不费电)
     have_cfg = app.load_config()
+    if TEST_MODE:
+        log("测试/演示模式(ZZMI_TEST_MODE=1): 不注册全局快捷键、不装鼠标钩子, "
+            "免得和真管家抢 F9 —— 抢了又没被回收就会变成占着键的孤儿进程")
+    elif app.cfg.get("photo_mouse_btn", 1):
+        app.mwatch.restart()   # v1.5.32: 鼠标侧键抓拍(低级钩子, 只旁听不拦截)
     md = app.mods_dir()
     pending_detect = False
     if have_cfg and md and os.path.isdir(md):
@@ -6460,13 +8099,28 @@ def main():
         threading.Thread(target=hide_console, args=(1.8,), daemon=True).start()
     if pending_detect:
         threading.Thread(target=run_detection, args=(app,), daemon=True).start()
-    try:
-        ok_hk, msg_hk = app.hotkey.start()
-    except Exception as ex:
-        ok_hk, msg_hk = False, str(ex)
-    if app.cfg.get("hotkey"):
+    if TEST_MODE:
+        ok_hk, msg_hk = True, "测试模式跳过全局快捷键"
+    else:
+        try:
+            ok_hk, msg_hk = app.hotkey.start()
+        except Exception as ex:
+            ok_hk, msg_hk = False, str(ex)
+    if app.cfg.get("hotkey") and not TEST_MODE:
         log("全局快捷键: %s%s" % (app.cfg["hotkey"],
                                  "" if ok_hk else "  (注册失败: %s)" % msg_hk))
+    # v1.5.37: 没注册上的键别就认了 —— 占着键的往往是没退干净的旧管家,
+    # 它一死键就空了。后台每 5 秒重试一次(最多 24 次 = 2 分钟), 成功就停。
+    if not TEST_MODE:
+        try:
+            app.hotkey.retry_lost()
+        except Exception:
+            pass
+        # v1.5.37: 看门狗 —— 兜住"bye 没送达"的孤儿进程(它会一直占着 F9)
+        try:
+            app.watchdog.start()
+        except Exception:
+            pass
     # v1.5.20: HTTP 服务转到后台线程(界面窗口由主线程负责拉起)。
     # 这里把异常吃掉: 进程退出瞬间 socket 回收会让 serve_forever 抛一次,
     # 那是正常收尾, 不该在命令行里甩一段吓人的 traceback。
@@ -6477,6 +8131,10 @@ def main():
             pass
     threading.Thread(target=_serve, daemon=True).start()
     if _WIN:
+        # v1.5.37: 说清楚"为什么任务管理器里有俩" —— 免安装版是 PyInstaller
+        # onefile, 引导进程 + 主进程是**正常结构**, 不是开了两个管家。
+        log("  ⓘ 任务管理器里会看到两个同名进程 —— 那是免安装版的"
+            "引导进程 + 主进程(onefile 的正常结构), 只有主进程会占用全局快捷键。")
         log("  关掉界面窗口即可结束程序")
     try:
         while True:

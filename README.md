@@ -34,20 +34,35 @@ are prohibited. Full text: [DISCLAIMER.md](DISCLAIMER.md).
   shows how many variants exist and **which key combo cycles them in game** — e.g. `Ctrl+Alt+Y+6`
   (in 3DMigoto, a space in `key =` means `+`, so the whole line is one chord).
   **Read-only: your `.ini` files are never modified.**
+- **Batch operations & presets** — multi-select to enable/disable/disable-others, move between
+  libraries, and save the whole setup as a named preset you can re-apply in one click
+- **⬇ Download area** — paste a GameBanana link, pick the character and the exact files you want,
+  download straight into your own folder (mod titles are machine-translated to Chinese, optional)
+- **📸 Burst capture (photo mode)** — while the game runs, frames are buffered in RAM (last few
+  seconds, never written to disk). Hit the **mouse side button** mid-fight and the manager shows a
+  five-tier contact sheet so you can pick the exact frame; only frames you explicitly keep are saved.
+  Screen contents are read-only — the game process is never touched
+- **🗑 Delete = Recycle Bin** — deleting a mod or a photo goes through the native Windows recycle
+  bin (two confirmations first); there is **no physical-delete code path** at all
 - **Global hotkey** — customizable (default `F9`); show/hide the manager even while the game is running
 - **Runs as administrator** — UAC prompt on launch, so the hotkey works while the game has focus
-- **Never deletes anything** — "disable" only adds a `DISABLED_` prefix; fully undoable
+- **Nothing is destroyed silently** — "disable" only adds a `DISABLED_` prefix, and deletes land in
+  the recycle bin; both are fully undoable
 - **Fully local** — listens on `127.0.0.1` with a one-time token; no network, no telemetry
+- **Custom save locations** — the download folder and the burst-capture photo folder can each be
+  pointed at any drive/folder
 
 ## Download
 
-Go to **[Releases](../../releases)** and grab either:
+Go to **[Releases](../../releases)** and grab the installer:
 
 - `ZZMI-Mod-Manager-Setup-<ver>.exe` — installer (installs without UAC; elevates at runtime)
-- `ZZMI-Mod-Manager.exe` — portable (copy anywhere and run)
 
 No Python required. **Run as administrator** (click *Yes* on the UAC prompt).
 If you use the installer, launch it from the **desktop shortcut**, not the "Run now" checkbox.
+
+> Since v1.5.10 only the installer is published — it bundles the program itself, so there is one
+> file to download and one UAC prompt instead of two.
 
 ## Quick start
 
@@ -73,14 +88,18 @@ Mods\...\Anby
 Mods\...\DISABLED_Anby     <- disabled
 ```
 
-Not a single byte is deleted. Every action is journaled (`~/.zzmi-manager/journal.jsonl`),
-so Undo always works.
+Disabling never deletes a byte. Deleting a mod (or a photo) goes through the **native Windows
+recycle bin** after two confirmations — there is no physical-delete code path in the program at all.
+Every action is journaled (`~/.zzmi-manager/journal.jsonl`), so Undo always works.
 
 ## Keys / data
 
-- Hotkey: configurable, default **F9**
-- Data folder: `%USERPROFILE%\.zzmi-manager\` (config, journal, thumbnail cache)
-- Env vars: `ZZMI_MANAGER_DATA`, `ZZMI_NO_BROWSER=1`
+- Hotkey: configurable, default **F9**; burst-capture trigger defaults to `Ctrl+Shift+C`
+  (plus the mouse side button)
+- Data folder: `%USERPROFILE%\.zzmi-manager\` — `config.json`, `presets.json`, `journal.jsonl`,
+  `thumbs\`, `照片\` (kept burst frames), `downloads\`, `browser-profile\`, `zzmi.log`.
+  The photo folder and the download folder can each be pointed elsewhere in Settings
+- Env vars: `ZZMI_MANAGER_DATA`, `ZZMI_NO_BROWSER=1`, `ZZMI_KEEP_CONSOLE=1`
 
 ## Development
 
@@ -116,28 +135,44 @@ Tests run against sandbox folders only (never your real mods):
 - **变体提示（只读）**：解析 ini 里 `$menu = 0,1` + `type = cycle` 这类游戏内按键循环的变体，
   显示**有几个变体、游戏内按哪个组合键切换**（如 `Ctrl+Alt+Y+6`，空格即 +），并给出中文名
   （上装 / 下装 / 菜单…）。**只读，绝不修改你的 ini**
-- **全局快捷键**：可自定义（默认 `F9`），绝区零运行时按下即可呼出 / 隐藏管理器窗口
+- **批量操作 + 方案**：多选一键启用/禁用/只留这些、批量搬运到仓库，还能把整套配置存成"方案"一点还原
+- **⬇ 下载区**：粘贴香蕉网（GameBanana）链接，选角色、选文件，直接下到自己的下载目录；
+  mod 名会自动翻成中文（可关）
+- **📸 连拍抓拍（拍照模式）**：游戏运行时后台把最近几秒的画面**只留在内存里**（不落盘、不占硬盘）。
+  打斗中按一下**鼠标侧键**就抓拍，回到管家给你一条五档"挑帧胶片"，挑中哪张才存哪张。
+  挑帧页有「🧹 清除缓存」和「🩺 侧键自检」（按了没反应时一键查出卡在哪）。
+  全程只读屏幕，不碰游戏进程
+- **🗑 删除 = 移入回收站**：删 mod / 删照片都走 Windows 原生回收站（删之前有两道确认），
+  **物理删除的代码路径根本不存在**，后悔了去回收站右键→还原就能回来
+- **全局快捷键**：可自定义（默认 `F9`），绝区零运行时按下即可呼出 / 最小化管理器窗口
 - **管理员权限运行**：启动时弹 UAC，提权后游戏在前台也能正常收快捷键
-- **不删文件**：所有"禁用"只是给文件夹名加 `DISABLED_` 前缀，随时可撤销
+- **不会悄悄弄丢东西**："禁用"只是给文件夹名加 `DISABLED_` 前缀，删除也只是进回收站，两样都能撤销
 - **纯本地**：只监听 `127.0.0.1`，带一次性令牌，不联网不上传
+- **保存位置都能改**：下载目录、连拍成品的照片目录，都可以指到任意盘任意文件夹
 
 ## 下载
 
-到 [Releases](../../releases) 页面下载 `ZZMI-Mod-Manager-Setup-<版本>.exe`（安装版）
-或 `ZZMI-Mod-Manager.exe`（免安装版），无需 Python 环境。
+到 [Releases](../../releases) 页面下载 `ZZMI-Mod-Manager-Setup-<版本>.exe`（安装版），无需 Python 环境。
 
 装完请**从桌面快捷方式启动**（安装完成页的「立即运行」已移除），弹 UAC 点「是」以管理员运行。
 
+> 从 v1.5.10 起**只发安装包，不再单独发免安装版 exe** —— 安装包自带程序，少一份文件、少一次 UAC。
+
 ## 一、怎么启动
 
-**双击 `启动ZZMI管家.bat`**（需要 Python 3.8+，安装时勾选 "Add python.exe to PATH"）
-或 **双击 `ZZMI-Mod-Manager.exe`**（免安装版，推荐，不需要 Python）。
+**普通用户**：装 `ZZMI-Mod-Manager-Setup-<版本>.exe`，然后从**桌面快捷方式**启动。
+程序已打包好，**不需要装 Python**。
+
+**想从源码跑**：**双击 `启动ZZMI管家.bat`**（需要 Python 3.8+，安装时勾选
+"Add python.exe to PATH"），或自己用 `pyinstaller ZZMI-Mod-Manager.spec` 打一个 exe。
 
 启动后：
 
 1. 会弹出一个**独立窗口**（不是浏览器标签页），那就是管理界面
-2. 屏幕上会有一个**黑色控制台窗口**——那是服务本体，**关掉它 = 退出程序**
-   （也可以在界面「⚙ 设置」最下面点「⏻ 退出」）
+2. 启动时闪过的**黑色控制台窗口会自动隐藏**（不用管它）——
+   它是服务本体，想看日志可以在「⚙ 设置 → 日志/排错」里点「▣ 显示命令窗口」把它调回来
+3. **关掉界面窗口 = 退出程序**（几秒后自动退出，不用再去任务管理器杀进程）
+   —— 想手动退也可以点「⚙ 设置 → ⏻ 退出 ZZMI 管家」
 
 > 首次运行会用几秒钟生成预览缩略图，左上角会显示还剩多少张，生成完就是秒开。
 
@@ -169,8 +204,15 @@ D:\Mods                          <- 填这一层
 | 顶栏「↶ 撤销」 | 撤销上一步改名／搬运 |
 | 顶栏「⟳ 重新扫描」 | 外部改动过 mod 目录后刷新 |
 | 顶栏「🗄 仓库」 | 管理 Mods 外面那些不加载的 mod（见下） |
+| 顶栏「⬇ 下载区」 | 从香蕉网（GameBanana）抓 mod，选角色/选文件直接下（见下） |
+| 顶栏「📸 连拍」 | 把游戏最近几秒摊成五档挑帧条（战斗中按**鼠标侧键**抓拍更方便） |
+| 顶栏「🖼 照片」 | 照片墙：只存你亲手留下过的成品，可放大/删除（进回收站） |
 | 左侧「角色」 | **按角色分组**，`×2` 表示这个角色有多套 mod |
 | 卡片「只留这套」 | **同角色只留这一套**，其它自动禁用（换皮肤最常用） |
+| 卡片「🗑 删除」 | 走两道确认后**移到回收站**（不是彻底抹掉，可还原） |
+| 卡片「✎ 重命名」 | 直接改名；名字被占用会自动加 `(2) (3)` |
+| 多选模式 | 勾一批后可以批量启用/禁用/只留这些，或批量搬到仓库 |
+| 方案（保存/套用） | 把当前整套启用状态存成名字，下次一键还原 |
 | 详情抽屉 | 改角色名、看 ini、**看变体提示**、逐个子目录单独开关 |
 | 卡片开关 | 启用/禁用 |
 | 搜索框 | 按 mod 名／角色／路径搜，按 `/` 聚焦 |
@@ -180,6 +222,49 @@ D:\Mods                          <- 填这一层
 
 程序会自动从 mod 名字里把角色名剥出来，例如 `角色A-服装` → 角色A、`角色B 泳装` / `角色B皮肤` → 角色B（×2）。（示例为虚构，工具不会上传你的任何 mod 列表。）
 识别错了没关系：打开该 mod 的「详情」，第一行就是「角色」，改完点「保存角色」即可（会记在配置里）。
+
+### 下载区
+
+点顶栏「⬇ 下载区」，粘贴一个香蕉网（GameBanana）链接——分类页、游戏 mod 列表、单个 mod 页面都行。
+它会把这个链接下能看到的 mod 列出来（名字、预览图、作者），你可以：
+
+- 先按**角色**过滤（Character Skins 下面有 62 个角色，选谁只列谁的 mod）
+- 展开每个 mod 的**文件列表**（文件名 + 大小 + 杀毒结果），勾哪个下哪个；也可以「全选 / 全不选」
+- 下过的文件会标「已下载」，避免重复下
+- mod 名会自动翻成中文（可在设置里关掉），翻译结果本地缓存
+- 下载目录默认在 `数据目录\downloads`，也能改成任意盘任意文件夹
+
+> 蓝飞机（Telegram）导入入口目前是**关闭**状态——那个功能还没实测通过，测通后会在后续版本恢复。
+
+### 连拍抓拍（拍照模式）
+
+解决"精彩瞬间手速跟不上帧率"。游戏运行时后台悄悄抓屏，**只在内存里滚动保留最近几秒**
+（默认 3 秒，设置里可改 1~10），**不落盘、不占硬盘**。
+
+看到漂亮瞬间按一下**鼠标侧键**（就是平时网页后退那个键，也可以改成前进键或关掉），
+回到管家就会**自动弹出挑帧页**——就算管家当时最小化着、或者开着设置/照片墙，
+也会先收掉那些页面再把挑帧页顶上来。挑帧页里：
+
+- **五档金字塔**：1 档最粗（几帧，差异最大）→ 逐层往下把相似的再细分 → 5 档 = 全部帧。
+  上下方向键换档，左右方向键换帧
+- 点大图可以**全屏**看原图
+- 「留这张」存当前这张；「☑ 选择留下」进勾选模式，点胶片条上的 ✓ 徽标一张张勾
+  （**可以跨档勾**），最后点「✅ 留下选中的 N 张」一次性落盘
+- 「🧹 清除缓存」清掉内存里缓存的帧，下次侧键从零开始录（**只清内存，成品一张不动**）
+- 没留的关掉即弃，**不落盘**
+
+**按了侧键没反应？** 点挑帧页左下的「**🩺 侧键自检**」（设置页里也有一个），
+它会逐环查一遍并告诉你卡在哪：后台录屏 → 侧键监听（钩子装没装上）→ 抓拍侧键 →
+游戏进程 → 缓冲帧数 → 管家窗口 → 管家是否在前台，**每环都带修法**。
+
+即使缓冲里一帧都没有，按侧键也**一定会弹出挑帧页**，并把原因写在里面
+（后台录屏关着 / 游戏没跑 / 管家在前台冻结 / 帧还没攒够）—— 不会"按了没反应"。
+
+成品存在**照片目录**里（默认 `数据目录\照片`，设置里能改成任意盘任意文件夹，
+照片墙左下角也有个「📁 保存位置」能直接改）。点顶栏「🖼 照片」进照片墙看/放大/删除
+（删除也是进回收站，可还原）。
+
+> 全程只读屏幕画面，**不碰游戏进程一根手指**，零风险；游戏没开时自动休眠不费电。
 
 ## 四、它是怎么"启用/禁用"的
 
@@ -212,18 +297,22 @@ exclude_recursive = DISABLED*
 
 1. **用本程序打开的独立窗口**——它强制绕过代理（`--proxy-server=direct://`）
 2. 在代理软件里把 `127.0.0.1` 和 `localhost` 加入「直连 / 绕过」列表
-3. 确认那个黑色控制台窗口还开着（关掉它程序就退出了）
+3. 确认程序本体还活着（设置 → 「▣ 显示命令窗口」能把它的窗口调出来；窗口没了就是程序退了）
 
 ## 七、数据存在哪
 
 `%USERPROFILE%\.zzmi-manager\`：
 
-| 文件 | 内容 |
+| 文件 / 目录 | 内容 |
 | --- | --- |
-| `config.json` | 你填的 ZZMI 路径、主题、手动指定的角色、呼出键 |
+| `config.json` | 你填的 ZZMI 路径、主题、手动指定的角色、呼出键、下载目录、照片目录… |
 | `presets.json` | 「方案」 |
 | `journal.jsonl` | 操作日志（撤销靠它） |
 | `thumbs\` | 预览缩略图缓存（可整个删掉，会自动重建） |
+| `照片\` | 连拍挑中留下的成品（**可在设置里改到别的盘**） |
+| `downloads\` | 下载区下来的 mod（**可改到别的盘**） |
+| `browser-profile\` | 界面窗口专用的浏览器数据目录，**你自己的 Edge 历史不会被写脏** |
+| `zzmi.log` | 运行日志（超 512KB 自动轮转成 `.old`） |
 
 想彻底重置就把 `.zzmi-manager` 删掉（**不影响你的 mod**）。
 

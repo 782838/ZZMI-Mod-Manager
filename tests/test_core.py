@@ -381,6 +381,127 @@ else:
 _clean(_out)
 _clean(_d)
 
+# ---------- v1.5.31 连拍缓冲 ----------
+w()
+w("=== 4.8 连拍缓冲(BurstBuffer, v1.5.31) ===")
+class _FakeApp:
+    cfg = {"photo_seconds": 3, "photo_on": True}
+bb = Z.BurstBuffer(_FakeApp())
+# 注入假帧: 每 4 帧换一次画面(模拟动作变化), 相同画面帧的 hash 一致
+def _mk(n):
+    grp = n // 4
+    hb = bytes([grp * 40 % 256] * 256)
+    return (1000.0 + n, b"JPEGDATA-FAKE-%03d" % n, hb)
+_seq = [0]
+def _grab():
+    _seq[0] += 1
+    return _mk(_seq[0])
+bb.grab = _grab
+for _ in range(30):
+    bb._grab_one()
+r = bb.trigger()
+assert r["ok"] and r["count"] == 30, r
+meta = bb.meta()
+assert meta["burst_id"] == r["burst_id"]
+tiers = meta["tiers"]
+assert len(tiers) == 5, "要五层金字塔"
+assert tiers[-1] == list(range(30)), "第 5 层 = 全部帧"
+# v1.5.37: 第 1 档从 4 张提到 8 张(各档数量翻倍: 8/16/32/64)。
+# _thin() 为了"最新一帧任何层都保留"会在目标数上多带 1 张, 所以上限是 8+1。
+assert len(tiers[0]) <= 9, "第 1 层最粗: %s" % tiers[0]
+for a, b in zip(tiers, tiers[1:]):
+    assert set(a) <= set(b), "上层必须是下层的子集(逐层细分)"
+assert 29 in tiers[0], "最新一帧任何层都必须保留"
+w("30 帧五层金字塔: %s OK" % [len(t) for t in tiers])
+
+# ---------- v1.5.37: 「按下之后录 N 秒」 ----------
+class _RecApp:
+    def __init__(self, secs=1.0):
+        self.cfg = {"photo_seconds": secs, "photo_on": True}
+        self.httpd = None
+_rb = Z.BurstBuffer(_RecApp(1.0))
+_rcnt = [0]
+def _rgrab():
+    _rcnt[0] += 1
+    return (2000.0 + _rcnt[0] * 0.01, b"R%03d" % _rcnt[0],
+            bytes([(_rcnt[0] * 7) % 256] * 256))
+_rb.grab = _rgrab
+_r0 = _rb.press("mouse")
+assert _r0.get("recording") is True, _r0
+assert _rb.press_seq == 1, _rb.press_seq
+assert _rb.last_press is None, "还没录完, last_press 必须还是空的(前端据此不弹空状态)"
+assert _rb.recording().get("recording") is True
+assert _rb.press("mouse").get("ok") is False, "录制中连击要被忽略"
+_rb.start()
+_t0 = time.time()
+while _rb.last_press is None and time.time() - _t0 < 8:
+    time.sleep(0.05)
+_rb.stop()
+assert _rb.last_press is not None, "录满之后必须有 last_press"
+assert _rb.last_press["ok"] is True, _rb.last_press
+assert _rb.last_press["pending"] is True, "刚录完的那批必须是 pending(等界面 ack)"
+_m2 = _rb.meta()
+assert _m2["burst_id"] >= 1 and _m2["pending"] is True, _m2
+_n2 = len(_m2["frames"])
+assert _n2 >= 5, "1 秒至少要录到几帧: %d" % _n2
+assert len(_m2["tiers"]) == 5 and len(_m2["tiers"][-1]) == _n2, _m2["tiers"]
+_ts = [f["t"] for f in _m2["frames"]]
+assert max(_ts) - min(_ts) <= 2.0, "帧的时间跨度不能超过录制时长太多: %s" % (max(_ts) - min(_ts))
+w("按下后录 1 秒: 录到 %d 帧, 跨度 %.2fs, 五层 %s OK"
+  % (_n2, max(_ts) - min(_ts), [len(t) for t in _m2["tiers"]]))
+_a = _rb.ack(_m2["burst_id"])
+assert _a["acked"] == _m2["burst_id"], _a
+assert _rb.meta()["pending"] is False, "ack 之后必须清 pending"
+assert _rb.last_press["pending"] is False
+assert _rb.ack(_m2["burst_id"] + 999)["acked"] == 0, "ack 别的 id 不能乱清"
+w("pending / ack 机制 OK")
+assert _rb.clear_cache()["ok"] is True
+assert _rb.burst is None and _rb.last_press is None and _rb.rec is None
+w("清除缓存把 rec/burst/last_press 一起清掉 OK")
+
+# 关掉后台录屏时按下 -> 直接失败且给得出人话, 且不占序号
+_off = Z.BurstBuffer(_RecApp(1.0))
+_off.app.cfg["photo_on"] = False
+_ro = _off.press("mouse")
+assert _ro.get("ok") is False and "连拍缓冲是关着的" in (_ro.get("msg") or ""), _ro
+assert _off.rec is None and _off.press_seq == 0, (_off.rec, _off.press_seq)
+w("关掉后台录屏时 press 直接失败(不占序号) OK")
+
+# 常量: 帧率/档位翻倍
+assert Z.BurstBuffer.TARGET_FPS == 24, Z.BurstBuffer.TARGET_FPS
+assert Z.BurstBuffer.TIERS == (8, 16, 32, 64), Z.BurstBuffer.TIERS
+w("帧率 24fps + 档位 (8,16,32,64) OK")
+
+# 空缓冲触发要拒绝(而不是弹空挑帧条)
+bb2 = Z.BurstBuffer(_FakeApp())
+r2 = bb2.trigger()
+assert not r2["ok"], r2
+w("空缓冲触发被拒并给出指引 OK")
+# keep 落盘 + 路径安全闸
+_ph = os.path.join(HERE, "_photos")
+_clean(_ph)
+os.makedirs(_ph, exist_ok=True)
+_old_dir = Z.PHOTO_DIR
+Z.PHOTO_DIR = _ph
+try:
+    ok, msg, name = bb.keep(0)
+    assert ok and name and os.path.isfile(os.path.join(_ph, name)), (ok, msg)
+    w("留帧落盘 OK -> %s" % name)
+    assert bb.keep(99999)[0] is False, "不存在的帧号要拒绝"
+    assert Z.photo_file_path("../config.json") is None  # basename 兜底, 越不了界
+    assert Z.photo_file_path("nope.jpg") is None
+    w("越界/不存在路径被拒 OK")
+    ph = Z.list_photos()
+    assert len(ph) == 1 and ph[0]["name"] == name, ph
+    ok, msg = Z.recycle_path(os.path.join(_ph, name)) if Z._WIN else (False, "")
+    if Z._WIN:
+        assert ok and not os.path.exists(os.path.join(_ph, name))
+        w("删照片走回收站 OK")
+finally:
+    Z.PHOTO_DIR = _old_dir
+_clean(_ph)
+bb.burst = None
+
 w()
 w("ALL TESTS PASSED")
 open(OUT, "w", encoding="utf-8").write("\n".join(L))
