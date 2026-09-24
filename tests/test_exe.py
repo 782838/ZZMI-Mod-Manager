@@ -25,6 +25,10 @@ json.dump({"zzmi_root": SB, "launcher_exe": "", "importer": "ZZMI", "game_exe": 
 env = dict(os.environ)
 env["ZZMI_MANAGER_DATA"] = DATA
 env["ZZMI_NO_BROWSER"] = "1"
+# v1.5.43: 必须加这个 —— 否则测试实例会真的注册全局热键(F9)。而 onefile 是
+# "引导父进程 + 真身子进程" 两个进程, 收尾只 p.terminate() 掉父进程的话,
+# 子进程会活下来变成**占着 F9 的孤儿**, 之后真管家就注册不上热键了(踩过)。
+env["ZZMI_TEST_MODE"] = "1"
 env["PYTHONIOENCODING"] = "utf-8"
 
 p = subprocess.Popen([EXE], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,

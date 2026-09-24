@@ -480,6 +480,363 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
 #dead h2{margin:0 0 12px;font-size:18px}
 #dead ol{padding-left:22px;line-height:1.9;font-size:13.5px;color:var(--txt2)}
 #dead code{background:var(--panel3);padding:1px 6px;border-radius:5px;font-size:12px}
+
+/* ============================================================
+   玻璃皮肤 / 视觉优化层
+   只改「色 / 光 / 边 / 影 / 字 / 动效」, 完全不动布局与结构。
+   做法: 整层追加在 <style> 末尾 —— 同优先级下后写覆盖前写,
+        上面原有规则一行都没删改, 想回滚直接删掉本段即可。
+   ============================================================ */
+:root{
+  --glass:rgba(24,28,36,.58);
+  --glass2:rgba(18,21,27,.86);
+  --gline:rgba(255,255,255,.10);
+  --gline2:rgba(255,255,255,.20);
+  --gfill:rgba(255,255,255,.055);
+  --gfill2:rgba(255,255,255,.10);
+  --sh2:inset 0 1px 0 rgba(255,255,255,.10),0 2px 6px rgba(8,12,20,.30),0 16px 40px rgba(8,12,20,.32);
+  --sh3:inset 0 1px 0 rgba(255,255,255,.12),0 6px 16px rgba(8,12,20,.36),0 24px 60px rgba(8,12,20,.44);
+  --pri:linear-gradient(180deg,#ffb64d,#ff9f1c);
+  --pri-glow:0 6px 18px rgba(255,159,28,.34);
+  --pri-hi:inset 0 1px 0 rgba(255,255,255,.42);
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+html[data-theme="light"]{
+  --glass:rgba(255,255,255,.74);
+  --glass2:rgba(255,255,255,.93);
+  --gline:rgba(20,30,50,.10);
+  --gline2:rgba(20,30,50,.18);
+  --gfill:rgba(20,30,50,.045);
+  --gfill2:rgba(20,30,50,.09);
+  --sh2:inset 0 1px 0 rgba(255,255,255,.95),0 2px 6px rgba(20,30,50,.08),0 16px 40px rgba(20,30,50,.10);
+  --sh3:inset 0 1px 0 rgba(255,255,255,.98),0 6px 16px rgba(20,30,50,.10),0 24px 60px rgba(20,30,50,.14);
+}
+/* 字体: MiSans 系(更现代) + 数字等宽 */
+body{font-family:"MiSans","HarmonyOS Sans SC","PingFang SC","Microsoft YaHei UI","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-variant-numeric:tabular-nums}
+/* 底图提亮 + 暗角, 让内容聚焦 */
+body::before{opacity:.55}
+html[data-theme="light"] body::before{opacity:.30}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(125% 95% at 50% 6%,rgba(10,12,18,.16),rgba(7,9,13,.78))}
+html[data-theme="light"] body::after{background:radial-gradient(125% 95% at 50% 6%,rgba(248,250,252,.36),rgba(232,236,242,.72))}
+/* 玻璃: 大块面板(顶部栏/侧栏/工具栏/抽屉/模态) */
+header,aside,.toolbar,.selbar,.scopebar,.dp,.drawer,.modal,#dead .box{
+  background:var(--glass);border-color:var(--gline);
+  backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);
+  box-shadow:var(--sh2)}
+/* 玻璃: 卡片类(数量多, 用更轻的模糊保性能) */
+.card,.gbcard,.pw-cell,.tree,.tgtut{
+  background:var(--glass);border-color:var(--gline);
+  backdrop-filter:blur(12px) saturate(150%);-webkit-backdrop-filter:blur(12px) saturate(150%);
+  box-shadow:var(--sh2)}
+.dp,.drawer,.modal,#dead .box{background:var(--glass2)}
+.card:hover{box-shadow:var(--sh3);border-color:var(--gline2)}
+/* 按钮 */
+.btn,.mini{background:var(--gfill);border-color:var(--gline);color:var(--txt2);
+  transition:background .16s var(--ease),border-color .16s var(--ease),color .16s var(--ease),transform .16s var(--ease)}
+.btn:hover,.mini:hover{background:var(--gfill2);border-color:var(--gline2);color:var(--txt)}
+.btn:active,.mini:active{transform:scale(.97)}
+.btn.ghost{background:var(--gfill);border-color:var(--gline)}
+.btn.primary,.btn.on,.btn.selbtn{background:var(--pri);color:var(--ink);border-color:transparent;
+  box-shadow:var(--pri-glow),var(--pri-hi)}
+.btn.danger,.mini.del{background:rgba(229,72,77,.14);color:#ff9ea1;border-color:rgba(229,72,77,.42)}
+.btn.danger:hover,.mini.del:hover{background:rgba(229,72,77,.20);color:#ffb0b3;border-color:rgba(229,72,77,.6)}
+/* 筛选 chip / 分档 / 连拍批切换 */
+.chip,.pb-tiers button{background:var(--gfill);border-color:var(--gline);color:var(--txt2)}
+.chip:hover,.pb-tiers button:hover{background:var(--gfill2);border-color:var(--gline2);color:var(--txt)}
+.chip.on,.pb-tiers button.on,.pb-bursts .btn.on{background:var(--pri);color:var(--ink);border-color:transparent;box-shadow:var(--pri-glow)}
+/* 侧栏当前项: 左侧橙条 + 橙色渐变底 */
+.navi.on{background:linear-gradient(90deg,rgba(255,159,28,.20),rgba(255,159,28,.05));color:#ffc46a;box-shadow:inset 2px 0 0 var(--accent)}
+.navi:hover{background:var(--gfill);color:var(--txt)}
+/* 状态徽章: 淡底 + 同色描边 + 亮字(原来是实心色块, 太抢) */
+.state{background:rgba(52,211,153,.16)!important;color:#7ff0c4!important;border:1px solid rgba(52,211,153,.40)!important}
+.state.no{background:rgba(229,72,77,.14)!important;color:#ff9ea1!important;border-color:rgba(229,72,77,.42)!important}
+/* 标签 */
+.tag{background:var(--gfill);border:1px solid var(--gline)}
+.tag.char{background:rgba(255,159,28,.15)!important;color:#ffc46a!important;border-color:rgba(255,159,28,.24)!important}
+/* 开关: 拟物内阴影 + 圆点投影 */
+.sw{background:rgba(255,255,255,.14);box-shadow:inset 0 1px 2px rgba(0,0,0,.45)}
+.sw.on{background:var(--pri);box-shadow:var(--pri-glow),inset 0 1px 0 rgba(255,255,255,.35)}
+.sw::after{box-shadow:0 1px 3px rgba(0,0,0,.5)}
+/* 路径 chip / 搜索框 / 输入框 */
+.pathchip{background:var(--gfill);border-color:var(--gline)}
+.search{background:var(--gfill);border-color:var(--gline);transition:border-color .18s var(--ease),box-shadow .18s var(--ease)}
+.search:focus-within{border-color:rgba(255,159,28,.6);box-shadow:0 0 0 3px rgba(255,159,28,.16)}
+.inp,.ask-input,select.sel{background:var(--gfill);border-color:var(--gline)}
+.inp:focus,.ask-input:focus{border-color:rgba(255,159,28,.6);box-shadow:0 0 0 3px rgba(255,159,28,.16)}
+/* 缩略图 hover 轻放大(纯视觉, 不占位) */
+.thumbwrap img{transition:opacity .25s,transform .4s var(--ease)}
+.card:hover .thumbwrap img.ld{transform:scale(1.05)}
+/* 抽屉/模态里的暗底行 + 自检框 */
+.trow:nth-child(odd),.gbdlrow:nth-child(odd){background:var(--gfill)}
+.diagbox,.tgtut{background:var(--gfill)}
+/* toast */
+.toast{background:var(--glass);border:1px solid var(--gline2);
+  backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);box-shadow:var(--sh3)}
+/* 滚动条 */
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:8px;border:2px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.30);background-clip:content-box}
+/* 键盘焦点环(原来只有 hover, 键盘用户没反馈) */
+:focus-visible{outline:2px solid rgba(255,159,28,.7);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ============================================================
+   视觉优化层 · 第二批 (v1.5.41)
+   图标系统 / 微交互动效 / 封面处理 / 骨架屏 / 空状态插画 /
+   滚动体验 / 侧栏数据条 / 背景系统 / 粉色主题
+   同样只改「色·光·边·影·动」, 不动布局。回滚 = 删掉本段。
+   ============================================================ */
+
+/* ---------- 0. 主题色三元组(下面所有规则复用它, 换主题只改这里) ---------- */
+:root{--glow:255,159,28;--okrgb:52,211,153;--bgop:.55;
+  --charfg:#ffc46a;--navifg:#ffc46a;--carddur:.4s;--stagger:20ms}
+html[data-theme="light"]{--glow:232,137,11;--okrgb:15,166,120;--bgop:.30;
+  --charfg:#b8690a;--navifg:#b8690a}
+
+/* ---------- 1. 背景系统: 浓度可调 + 沉浸/简洁切换 ---------- */
+html[data-theme] body::before{opacity:var(--bgop)}
+html[data-bg="plain"] body::before{opacity:0}
+html[data-bg="plain"] body::after{background:var(--bg)!important}
+html[data-bg="soft"] body::after{opacity:.55}
+
+/* ---------- 2. 图标系统: 统一 1.8px 线性图标, 跟随字号与颜色 ---------- */
+.ic{width:1.06em;height:1.06em;display:inline-block;vertical-align:-.16em;
+  flex:0 0 auto;margin-right:.42em;pointer-events:none}
+.ic:only-child{margin-right:0}
+.k .ic,.tag .ic,.state .ic,.chip .ic,.mini .ic{margin-right:.36em;vertical-align:-.18em}
+
+/* ---------- 3. 卡片入场错峰 + 鼠标追光 + 悬停抬升 ---------- */
+@keyframes cin{from{opacity:0;transform:translateY(14px) scale(.982)}}
+.card{animation:cin var(--carddur) var(--ease) backwards;
+  animation-delay:calc(var(--i,0) * var(--stagger));
+  transition:transform .18s var(--ease),box-shadow .24s var(--ease),
+    border-color .18s var(--ease),background .18s var(--ease)}
+.card::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  opacity:0;transition:opacity .3s var(--ease);z-index:3;
+  background:radial-gradient(280px circle at var(--mx,50%) var(--my,0%),
+    rgba(var(--glow),.15),transparent 62%)}
+.card:hover::after{opacity:1}
+.card:hover{transform:translateY(-3px)}
+.card.sel{box-shadow:0 0 0 2px rgba(var(--glow),.55),var(--sh2)}
+
+/* ---------- 4. 封面图: 底部渐隐, 让状态徽章/文字压得住 ---------- */
+.thumbwrap::after{content:"";position:absolute;left:0;right:0;bottom:0;height:44%;
+  pointer-events:none;z-index:2;
+  background:linear-gradient(180deg,transparent,rgba(6,8,12,.60))}
+.grid.list .thumbwrap::after{display:none}
+.card:hover .thumbwrap img.ld{transform:scale(1.06)}
+
+/* ---------- 5. 状态徽章: 圆点 + 已启用呼吸灯 ---------- */
+.state{display:inline-flex;align-items:center;gap:.4em;box-shadow:0 2px 8px rgba(6,8,12,.28)}
+.state::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;
+  flex:0 0 auto}
+.state.on::before{animation:pulse 2.4s var(--ease) infinite}
+@keyframes pulse{
+  0%{box-shadow:0 0 0 0 rgba(var(--okrgb),.55)}
+  70%{box-shadow:0 0 0 7px rgba(var(--okrgb),0)}
+  100%{box-shadow:0 0 0 0 rgba(var(--okrgb),0)}}
+
+/* ---------- 6. 骨架屏(扫描/首屏占位) ---------- */
+.sk{border-radius:var(--r);border:1px solid var(--gline);background:var(--glass);
+  overflow:hidden;box-shadow:var(--sh2);
+  backdrop-filter:blur(12px) saturate(150%);-webkit-backdrop-filter:blur(12px) saturate(150%)}
+.skb{background:linear-gradient(100deg,rgba(255,255,255,.035) 20%,rgba(255,255,255,.115) 50%,rgba(255,255,255,.035) 80%);
+  background-size:220% 100%;animation:skm 1.25s linear infinite;border-radius:6px}
+html[data-theme="light"] .skb{background:linear-gradient(100deg,rgba(20,30,50,.05) 20%,rgba(20,30,50,.13) 50%,rgba(20,30,50,.05) 80%);
+  background-size:220% 100%}
+@keyframes skm{from{background-position:180% 0}to{background-position:-180% 0}}
+.sk-thumb{aspect-ratio:4/3;border-radius:0}
+.sk-body{padding:12px;display:flex;flex-direction:column;gap:9px}
+.sk-line{height:11px}
+
+/* ---------- 7. 空状态: 插画 + 说明 + 引导按钮 ---------- */
+/* 注意 #cards 是 grid, .empty 不声明 grid-column 会被挤成 216px 一列 —— 必须跨列 */
+.empty{grid-column:1/-1;padding:46px 20px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.grid>.empty{background:var(--glass);border:1px solid var(--gline);border-radius:var(--r);
+  box-shadow:var(--sh2);padding:52px 20px;
+  backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%)}
+.empty .art{width:128px;height:128px;margin-bottom:4px;opacity:.95;color:var(--txt2);
+  filter:drop-shadow(0 12px 30px rgba(var(--glow),.22))}
+.empty .et{font-size:14.5px;color:var(--txt);font-weight:600}
+.empty .es{font-size:12.5px;color:var(--txt2);line-height:1.75;max-width:420px}
+.empty .eb{margin-top:13px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+
+/* ---------- 8. 滚动体验: 底部边缘渐隐 + 回到顶部 ---------- */
+section.content{position:relative}
+.contentfade{position:absolute;left:0;right:0;bottom:0;height:56px;z-index:6;
+  pointer-events:none;opacity:0;transition:opacity .28s var(--ease);
+  background:linear-gradient(180deg,transparent,rgba(6,8,13,.78))}
+html[data-theme="light"] .contentfade{background:linear-gradient(180deg,transparent,rgba(226,231,239,.88))}
+section.content.more .contentfade{opacity:1}
+.totop{position:absolute;right:22px;bottom:22px;z-index:7;width:42px;height:42px;
+  border-radius:50%;display:grid;place-items:center;color:var(--txt2);
+  background:var(--glass2);border:1px solid var(--gline2);box-shadow:var(--sh3);
+  backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);
+  opacity:0;transform:translateY(10px) scale(.9);pointer-events:none;
+  transition:opacity .26s var(--ease),transform .26s var(--ease),color .18s,background .18s}
+.totop .ic{margin:0;width:19px;height:19px}
+section.content.more .totop{opacity:1;transform:none;pointer-events:auto}
+.totop:hover{color:var(--accent);border-color:rgba(var(--glow),.55);background:var(--gfill2)}
+
+/* ---------- 9. 侧栏数据条: 计数按比例铺底 ---------- */
+.navi[data-scope]{background-image:linear-gradient(90deg,rgba(var(--glow),.13),rgba(var(--glow),.13));
+  background-repeat:no-repeat;background-position:0 0;
+  background-size:calc(var(--p,0) * 1%) 100%}
+.navi[data-scope]:not(.on):hover{background-color:var(--gfill)}
+.navi .cnt{background:var(--gfill);border-radius:999px;padding:1px 8px;min-width:22px;text-align:center}
+.navi.on .cnt{background:rgba(var(--glow),.22)}
+.sidecnt{background:var(--gfill);border-radius:999px;padding:1px 8px}
+
+/* ---------- 10. 橙色写死处统一改用 --glow(换主题自动跟随) ---------- */
+.navi.on{background:linear-gradient(90deg,rgba(var(--glow),.20),rgba(var(--glow),.04));
+  color:var(--navifg);box-shadow:inset 2px 0 0 var(--accent)}
+.search:focus-within,.inp:focus,.ask-input:focus{border-color:rgba(var(--glow),.62);
+  box-shadow:0 0 0 3px rgba(var(--glow),.16)}
+:focus-visible{outline:2px solid rgba(var(--glow),.72);outline-offset:2px}
+.tag.char{background:rgba(var(--glow),.15)!important;color:var(--charfg)!important;
+  border-color:rgba(var(--glow),.26)!important}
+.tag.pin{background:rgba(245,197,24,.16)!important;color:var(--warn)!important}
+::-webkit-scrollbar-thumb{background:rgba(var(--glow),.22)}
+::-webkit-scrollbar-thumb:hover{background:rgba(var(--glow),.40);background-clip:content-box}
+.logo{box-shadow:0 0 0 3px rgba(var(--glow),.20)}
+
+/* ---------- 11. 樱花粉主题 (v1.5.43: 底色 棕紫#1d1218 -> 中性近黑#16161c, 主色改用公认的
+   Cherry Blossom Pink #FFB7C5。上一版的问题是"底脏"—— 低饱和粉压在棕紫底上会发闷发灰,
+   换成不偏棕不偏紫的中性近黑后, 同一个粉立刻干净透亮) ---------- */
+html[data-theme="pink"]{
+  --bg:#16161c; --bg2:#1d1d25; --panel:#232330; --panel2:#2e2e3c; --panel3:#3a3a4a;
+  --line:#37374a; --line2:#4c4c62;
+  --txt:#f8f4f7; --txt2:#cbc0cb; --dim:#928796;
+  --accent:#ffb7c5; --accent2:#f194aa; --ink:#3d1522;
+  --acs:rgba(255,183,197,.16); --acring:rgba(255,183,197,.24);
+  --ok:#5fd6b0; --off:#ff97a5; --warn:#ffc978; --info:#a8c2ff;
+  --shadow:0 10px 30px rgba(10,10,16,.55);
+  --glass:rgba(35,35,48,.60);
+  --glass2:rgba(29,29,37,.90);
+  --gline:rgba(255,210,224,.14);
+  --gline2:rgba(255,210,224,.26);
+  --gfill:rgba(255,210,224,.07);
+  --gfill2:rgba(255,210,224,.13);
+  --sh2:inset 0 1px 0 rgba(255,255,255,.10),0 2px 6px rgba(10,10,16,.34),0 16px 40px rgba(10,10,16,.36);
+  --sh3:inset 0 1px 0 rgba(255,255,255,.14),0 6px 16px rgba(10,10,16,.40),0 24px 60px rgba(10,10,16,.48);
+  --pri:linear-gradient(180deg,#ffd9e3,#ffadc0);
+  --pri-glow:0 6px 18px rgba(255,173,192,.34);
+  --pri-hi:inset 0 1px 0 rgba(255,255,255,.55);
+  --glow:255,183,197; --okrgb:95,214,176; --bgop:.55;
+  --charfg:#ffcdd8; --navifg:#ffcdd8;
+}
+/* 底图本身是暖色(橙红), 只靠叠加色是"粉"不起来的 —— 得把色相推到玫瑰粉(≈340°)。
+   注意: 原来用的 288° 会落到 ≈328° 的**品红**, 那就是用户嫌"太艳"的那个粉;
+   樱花粉要更暖(偏红)、饱和度更低。v1.5.43 配合中性黑底把亮度从 .86 压到 .80,
+   让背景更暗更中性, 粉色高光才跳得出来。 */
+html[data-theme="pink"] body::before{filter:sepia(1) hue-rotate(303deg) saturate(1.40) brightness(.80) contrast(.98)}
+html[data-theme="pink"] body::after{background:
+  radial-gradient(125% 95% at 50% 6%,rgba(104,48,68,.32),rgba(17,16,22,.86)),
+  linear-gradient(0deg,rgba(255,183,197,.08),rgba(255,183,197,.08))}
+html[data-theme="pink"] .state{background:rgba(95,214,176,.16)!important;color:#96efd7!important;
+  border:1px solid rgba(95,214,176,.40)!important}
+html[data-theme="pink"] .state.no{background:rgba(255,151,165,.14)!important;color:#ffbcc5!important;
+  border-color:rgba(255,151,165,.42)!important}
+html[data-theme="pink"] .btn.danger,html[data-theme="pink"] .mini.del{
+  background:rgba(255,151,165,.14);color:#ffbcc5;border-color:rgba(255,151,165,.42)}
+html[data-theme="pink"] .contentfade{background:linear-gradient(180deg,transparent,rgba(13,12,17,.80))}
+
+/* ---------- 12. 设置页: 选中态按钮 / 浓度滑块 / 空状态插画配色 ---------- */
+.mini.on,.btn.on{background:var(--pri);color:var(--ink);border-color:transparent;
+  box-shadow:var(--pri-glow),var(--pri-hi);font-weight:600}
+.mini.on:hover{background:var(--pri);color:var(--ink)}
+.rng{-webkit-appearance:none;appearance:none;width:170px;height:6px;border-radius:999px;
+  background:var(--gfill2);outline:none;vertical-align:middle;cursor:pointer;
+  border:1px solid var(--gline)}
+.rng::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;
+  border-radius:50%;background:var(--pri);border:0;cursor:pointer;
+  box-shadow:var(--pri-glow),0 0 0 3px rgba(var(--glow),.14)}
+.rng::-moz-range-thumb{width:16px;height:16px;border:0;border-radius:50%;
+  background:var(--accent);cursor:pointer;box-shadow:0 0 0 3px rgba(var(--glow),.14)}
+
+/* ---------- 13. 浅色主题: 危险按钮/徽章改用深字浅底(原来沿用深色主题的亮字, 对比度不够) ---------- */
+html[data-theme="light"] .mini.del,
+html[data-theme="light"] .btn.danger{background:rgba(220,74,74,.09);color:#b3312f;
+  border-color:rgba(220,74,74,.34)}
+html[data-theme="light"] .mini.del:hover,
+html[data-theme="light"] .btn.danger:hover{background:rgba(220,74,74,.16);color:#8c2321;
+  border-color:rgba(220,74,74,.55)}
+html[data-theme="light"] .state{background:rgba(15,166,120,.14)!important;color:#0b7a57!important;
+  border:1px solid rgba(15,166,120,.34)!important}
+html[data-theme="light"] .state.no{background:rgba(220,74,74,.12)!important;color:#a82f2d!important;
+  border-color:rgba(220,74,74,.34)!important}
+html[data-theme="light"] .toast.err{color:#a82f2d}
+html[data-theme="light"] .navi .cnt{background:rgba(20,30,50,.055)}
+html[data-theme="light"] .sidecnt{background:rgba(20,30,50,.055)}
+
+/* ============ v1.5.42 追加层(3): 全屏放大可缩放 / 确认框置顶 / 照片墙多选 ============ */
+
+/* ---------- 14. 全屏放大: 滚轮缩放 + 拖动平移 + 底部缩放条 ---------- */
+.lightbox{overflow:hidden}
+.lightbox img{transform-origin:center center;transform:translate(0,0) scale(1);
+  transition:transform .13s var(--ease);cursor:zoom-in;touch-action:none;
+  will-change:transform;user-select:none;-webkit-user-drag:none;z-index:1}
+.lightbox.zoomed img{cursor:grab}
+.lightbox.dragging img{cursor:grabbing;transition:none}
+/* 放大后图会盖住说明文字 -> 直接淡出, 关掉再回来 */
+.lightbox.zoomed .lbcap{opacity:0}
+.lbcap{user-select:none;position:relative;z-index:3;transition:opacity .18s var(--ease)}
+.lbhint{position:fixed;left:50%;top:14px;transform:translateX(-50%);font-size:11.5px;
+  color:rgba(255,255,255,.66);background:rgba(12,12,16,.55);border:1px solid rgba(255,255,255,.12);
+  border-radius:999px;padding:4px 13px;backdrop-filter:blur(10px);pointer-events:none;
+  white-space:nowrap;z-index:2}
+.lbzbar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);display:flex;
+  align-items:center;gap:3px;padding:6px 8px;border-radius:999px;
+  background:rgba(12,12,16,.62);border:1px solid rgba(255,255,255,.16);
+  backdrop-filter:blur(12px);box-shadow:0 8px 28px rgba(0,0,0,.48);z-index:2}
+.lbzbar button{background:transparent;border:0;color:#f2f2f6;font:inherit;font-size:12.5px;
+  min-width:30px;height:28px;padding:0 9px;border-radius:999px;cursor:pointer;
+  transition:background .16s var(--ease),color .16s var(--ease)}
+.lbzbar button:hover{background:rgba(255,255,255,.16)}
+.lbzbar button:disabled{opacity:.32;cursor:default}
+.lbzbar button:disabled:hover{background:transparent}
+.lbzbar .lbzp{min-width:54px;text-align:center;font-size:12px;color:#d7d7de;
+  font-variant-numeric:tabular-nums}
+.lbzbar .lbzsep{width:1px;height:18px;background:rgba(255,255,255,.18);margin:0 4px}
+.lbzbar .lbzx{color:#ffb0b8}
+.lbzbar .lbzx:hover{background:rgba(229,72,77,.32)}
+.lightbox .lbx{z-index:4}
+@media (max-width:600px){.lbhint{display:none}}
+
+/* ---------- 15. 确认框/输入弹窗永远压在最上层 ----------
+   v1.5.42 修复: #mAsk 原来没有自己的 z-index, 沿用 .modal 的 60, 而照片墙也是 .modal(60)
+   且 DOM 在它后面 -> 从照片墙点删除时确认框被压在下面, 不关掉照片墙根本看不见。 */
+#mAskMask{z-index:240}
+#mAsk{z-index:241}
+
+/* ---------- 16. 照片墙: 多选 + 批量删除 ---------- */
+.pw-cell .pwsel{position:absolute;top:8px;left:8px;width:20px;height:20px;cursor:pointer;
+  z-index:4;accent-color:var(--accent);filter:drop-shadow(0 1px 3px rgba(0,0,0,.65))}
+.pw-cell.picked{outline:2px solid var(--accent);outline-offset:-2px}
+.pw-cell.picked::after{content:"";position:absolute;inset:0;border-radius:inherit;
+  background:rgba(var(--glow),.15);pointer-events:none}
+.pw-grid.picking .pw-cell img{cursor:pointer}
+.pw-grid.picking .pwdel{display:none}
+#pwSel.on{background:var(--pri);color:var(--ink);border-color:transparent;font-weight:600}
+
+/* ============ v1.5.44 追加层(4): 侧栏标题行防折行 / 浓度恢复默认 ============ */
+
+/* ---------- 17. 侧栏「角色」标题行不再折成两行 ----------
+   用户反馈: 这一行"排版不好看, 变成两排了"。
+   根因是宽度: 侧栏固定 250px, aside 左右各 11px + .side-h 左右各 11px 内边距
+   -> 这一行可用宽度只有 **206px**, 而真实数据下内容是
+   `▾ 角色  [45 角色]  26 个角色有多套` —— 约 215px, 挤爆后**每个 flex 子项各自折行**
+   (文字节点 "角色" 也折成两行, 看起来像排版散了)。
+   修法: 禁止折行; 主计数 chip 固定不缩; 次要提示允许缩略(极端数据下省略号, 不会撑破)。
+   注意: 只加约束, 不动 DOM 顺序和排列。 */
+.side-h.fold{white-space:nowrap}
+.side-h.fold .sidecnt{flex:0 0 auto}
+#multiHint{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;
+  font-size:10.5px;letter-spacing:0;opacity:.9;margin-left:2px}
+
+/* ---------- 18. 恢复默认浓度的按钮: 已经是默认时置灰 ---------- */
+.btn:disabled,.mini:disabled{opacity:.38;cursor:default;pointer-events:none}
 </style>
 </head>
 <body>
@@ -578,6 +935,8 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
       <div id="selbar" class="selbar" style="display:none"></div>
       <div id="banners" style="padding-top:10px"></div>
       <div class="scroll"><div id="cards" class="grid"></div></div>
+      <div class="contentfade"></div>
+      <button class="totop" id="toTop" title="回到顶部"></button>
     </section>
   </main>
 </div>
@@ -648,9 +1007,22 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
 
 <div class="mask" id="mask"></div>
 
+<!-- v1.5.42: 全屏放大 —— 支持鼠标滚轮缩放(1x~8x)、按住拖动平移、双击切换 1x/2.5x;
+     Esc 只退出放大, 不再连坐关掉底下的挑帧页/照片墙 -->
 <div class="lightbox" id="lightbox">
   <img id="lbImg" alt="">
+  <div class="lbhint" id="lbHint">滚轮缩放 · 按住拖动平移 · 双击复位 · Esc 退出放大</div>
   <div class="lbcap" id="lbCap"></div>
+  <div class="lbzbar" id="lbBar">
+    <button id="lbOut" title="缩小 (滚轮向下)">−</button>
+    <span class="lbzp" id="lbPct">100%</span>
+    <button id="lbIn" title="放大 (滚轮向上)">+</button>
+    <span class="lbzsep"></span>
+    <button id="lbFit" title="缩放回适应窗口">适应</button>
+    <button id="lb100" title="原始大小 100%">1:1</button>
+    <span class="lbzsep"></span>
+    <button id="lbClose2" title="关闭 (Esc)">✕</button>
+  </div>
   <button class="lbx" onclick="closeZoom()" title="关闭 (Esc)">✕</button>
 </div>
 
@@ -714,7 +1086,7 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
       </div>
       <div class="pb-tiers" id="pbTiers"></div>
       <div class="pb-strip" id="pbStrip"></div>
-      <p class="hint" id="pbTip" style="margin:8px 0 0">档越往下越细(1 档差异最大, 5 档=全部帧) · 左右方向键换帧 · 按 <b>回车</b>或「留这张」把当前帧存进照片墙 · 点大图可全屏 · 没留的关掉即弃, 不落盘</p>
+      <p class="hint" id="pbTip" style="margin:8px 0 0">档越往下越细(1 档差异最大, 5 档=全部帧) · 左右方向键换帧 · 按 <b>回车</b>或「留这张」把当前帧存进照片墙 · 点大图<b>全屏</b>(全屏后滚轮缩放、按住拖动平移、<b>Esc 只退出放大</b>不关本页) · 没留的关掉即弃, 不落盘</p>
     </div>
   </div>
   <div class="dfoot">
@@ -750,6 +1122,12 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
     <button class="btn" id="pwOpen">📂 打开文件夹</button>
     <button class="btn" id="pwDir" title="连拍留下的成品存到哪个文件夹(可自定义)">📁 保存位置</button>
     <button class="btn" id="pwBurst" title="回到刚才那次连拍继续挑">📸 连拍挑帧</button>
+    <span class="sp"></span>
+    <!-- v1.5.42: 批量删除 -->
+    <button class="btn" id="pwSel" title="进入多选: 一张张勾出想删的, 再一次性移入回收站">☑ 批量选择</button>
+    <button class="btn" id="pwSelAll" style="display:none" title="全选 / 取消全选">全选</button>
+    <button class="btn danger" id="pwDelSel" style="display:none"
+      title="把勾上的照片全部移入回收站(可还原, 会问两遍)">🗑 删除选中 (<span id="pwSelN">0</span>)</button>
     <button class="btn primary" id="pwClose">关闭</button>
   </div>
 </div>
@@ -902,6 +1280,305 @@ const BOOT = __BOOT__;
 const T = BOOT.token;
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
+
+/* ============================================================
+   图标库 (v1.5.41)
+   统一 1.8px 线性 SVG 取代 emoji。
+   emoji 在不同机器/字体下大小、基线、颜色都不一致(还会被系统上色),
+   是界面显得"廉价、花"的主要原因之一。全部换成 currentColor 描边图标后
+   就能跟着主题色走, 深色/浅色/粉色三套主题都能自动适配。
+   用法: 模板里写 ${ICON.xxx}; 静态 HTML 里的 emoji 由 iconize() 自动替换。
+   ============================================================ */
+const _ic = p => '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
+  + ' stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>';
+const ICON = {
+  play:    _ic('<path d="M7.6 5.1 18.9 12 7.6 18.9z"/>'),
+  undo:    _ic('<path d="M4.2 9.3h9.5a4.9 4.9 0 0 1 0 9.8H8.5"/><path d="M7.8 5.7 4.2 9.3l3.6 3.6"/>'),
+  rescan:  _ic('<path d="M19.7 12a7.7 7.7 0 1 1-2.6-5.8"/><path d="M20.1 3.9v5.3h-5.3"/>'),
+  lib:     _ic('<rect x="3.6" y="4.2" width="16.8" height="4.6" rx="1.5"/><path d="M5.4 8.8v9.6a1.6 1.6 0 0 0 1.6 1.6h10a1.6 1.6 0 0 0 1.6-1.6V8.8"/><path d="M9.9 12.9h4.2"/>'),
+  dl:      _ic('<path d="M12 3.9v10.4"/><path d="M7.7 10.1 12 14.4l4.3-4.3"/><path d="M4.9 19.5h14.2"/>'),
+  burst:   _ic('<path d="M3.7 8.6a2 2 0 0 1 2-2h1.8l1.3-2.1h6.4l1.3 2.1h1.8a2 2 0 0 1 2 2v8.8a2 2 0 0 1-2 2H5.7a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.3"/>'),
+  photo:   _ic('<rect x="3.5" y="4.9" width="17" height="14.2" rx="2.4"/><circle cx="8.9" cy="9.9" r="1.55"/><path d="M4.5 16.7 9.3 12.5l3.2 2.8 2.9-2.3 4.1 3.7"/>'),
+  upd:     _ic('<circle cx="12" cy="12" r="8.4"/><path d="M12 16.2V8.4"/><path d="M8.9 11.5 12 8.4l3.1 3.1"/>'),
+  gear:    _ic('<circle cx="12" cy="12" r="3.1"/><path d="M12 3.1v2.2M12 18.7v2.2M4.9 12H2.7M21.3 12h-2.2M7 7 5.4 5.4M18.6 18.6 17 17M17 7l1.6-1.6M5.4 18.6 7 17"/>'),
+  check:   _ic('<path d="M5 12.6 9.4 17 19 7.4"/>'),
+  ban:     _ic('<circle cx="12" cy="12" r="8.4"/><path d="M6.1 6.1 17.9 17.9"/>'),
+  star:    _ic('<path d="m12 3.8 2.6 5.28 5.83.85-4.22 4.11.99 5.81L12 17.11l-5.21 2.74.99-5.81L3.57 9.93l5.83-.85z"/>'),
+  starOn:  _ic('<path d="m12 3.8 2.6 5.28 5.83.85-4.22 4.11.99 5.81L12 17.11l-5.21 2.74.99-5.81L3.57 9.93l5.83-.85z" fill="currentColor"/>'),
+  fold:    _ic('<path d="M8.3 4.7 12 8.4l3.7-3.7"/><path d="m8.3 19.3 3.7-3.7 3.7 3.7"/><path d="M12 8.4v7.2"/>'),
+  search:  _ic('<circle cx="11" cy="11" r="6.4"/><path d="m15.9 15.9 4.3 4.3"/>'),
+  x:       _ic('<path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5"/>'),
+  multi:   _ic('<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="m8.3 12.2 2.8 2.8 5.2-5.5"/>'),
+  box:     _ic('<rect x="3.6" y="3.6" width="16.8" height="16.8" rx="2.8"/>'),
+  info:    _ic('<circle cx="12" cy="12" r="8.4"/><path d="M12 11.2v5"/><circle cx="12" cy="7.9" r="1" fill="currentColor" stroke="none"/>'),
+  folder:  _ic('<path d="M3.5 7.6a1.7 1.7 0 0 1 1.7-1.7h3.5l2.1 2.5h8.1a1.7 1.7 0 0 1 1.7 1.7v7.2a1.7 1.7 0 0 1-1.7 1.7H5.2a1.7 1.7 0 0 1-1.7-1.7z"/>'),
+  folderOn:_ic('<path d="M3.5 8.1V6.6a1.7 1.7 0 0 1 1.7-1.7h3.4l2 2.4h6.4a1.7 1.7 0 0 1 1.7 1.7v1.1"/><path d="M3.2 10.1h16.6l-1.6 7.4a1.7 1.7 0 0 1-1.7 1.3H5.9a1.7 1.7 0 0 1-1.6-1.3z"/>'),
+  pin:     _ic('<path d="M9.5 3.5h5l-.6 4 2.9 3.2H7.2l2.9-3.2z"/><path d="M12 10.7v9.8"/>'),
+  user:    _ic('<circle cx="12" cy="8.4" r="3.5"/><path d="M5.3 20a6.7 6.7 0 0 1 13.4 0"/>'),
+  users:   _ic('<circle cx="9.3" cy="8.6" r="3.2"/><path d="M3.2 19.6a6.1 6.1 0 0 1 12.2 0"/><path d="M16.2 6.1a3.2 3.2 0 0 1 0 6.2"/><path d="M17.4 14.2a6.1 6.1 0 0 1 3.4 5.4"/>'),
+  warn:    _ic('<path d="M12 4.5 20.5 19.5H3.5z"/><path d="M12 10.2v4.2"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/>'),
+  half:    _ic('<circle cx="12" cy="12" r="8.4"/><path d="M12 3.6v16.8"/><path d="M12 3.6a8.4 8.4 0 0 1 0 16.8z" fill="currentColor" stroke="none"/>'),
+  pencil:  _ic('<path d="M16.4 4.4 19.6 7.6 8.3 18.9l-4.2 1.1 1.1-4.2z"/>'),
+  trash:   _ic('<path d="M4.3 7.1h15.4"/><path d="M9.7 7.1V5.5h4.6v1.6"/><path d="m6.7 7.1.9 11.3A1.7 1.7 0 0 0 9.3 20h5.4a1.7 1.7 0 0 0 1.7-1.6l.9-11.3"/>'),
+  package: _ic('<path d="M12 3.2 20.4 7.6v8.8L12 20.8 3.6 16.4V7.6z"/><path d="M3.6 7.6 12 12l8.4-4.4"/><path d="M12 12v8.8"/>'),
+  lock:    _ic('<rect x="4.8" y="10.4" width="14.4" height="9.6" rx="2.2"/><path d="M8.2 10.4V7.9a3.8 3.8 0 0 1 7.6 0v2.5"/>'),
+  broom:   _ic('<path d="M14 4.5 19.5 10"/><path d="M12.6 5.9 7.4 11.1l5.5 5.5 5.2-5.2z"/><path d="M7.4 11.1 4.2 19.8l8.7-3.2"/>'),
+  bulb:    _ic('<path d="M9.2 16.6a5.6 5.6 0 1 1 5.6 0v1.6H9.2z"/><path d="M10.2 20.4h3.6"/><path d="M10.4 18.2h3.2"/>'),
+  clipboard:_ic('<rect x="5.4" y="4.6" width="13.2" height="15.4" rx="2.2"/><path d="M9.2 4.6V3.4h5.6v1.2"/><path d="M9.2 10h5.6M9.2 13.6h5.6"/>'),
+  steth:   _ic('<path d="M6 3.6v4.2a4.2 4.2 0 0 0 8.4 0V3.6"/><path d="M6 3.6H4.6M14.4 3.6H16"/><path d="M10.2 12v2.6a4 4 0 0 0 8 0V12"/><circle cx="18.2" cy="9.9" r="2"/>'),
+  gamepad: _ic('<rect x="2.8" y="7.6" width="18.4" height="9.4" rx="4.4"/><path d="M7.4 10.6v3.4M5.7 12.3h3.4"/><circle cx="15.8" cy="11.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="17.9" cy="13.4" r="1.05" fill="currentColor" stroke="none"/>'),
+  keyboard:_ic('<rect x="2.6" y="6.6" width="18.8" height="10.8" rx="2.2"/><path d="M5.8 10.2h12.4M5.8 13.6h7.4"/>'),
+  clapper: _ic('<path d="M3.6 9.4h16.8v9.2a1.8 1.8 0 0 1-1.8 1.8H5.4a1.8 1.8 0 0 1-1.8-1.8z"/><path d="m3.6 9.4 1.2-4.6 16.4 3.4-.8 1.2z"/><path d="M8.6 6.1 10 8.6M13.4 7.1l1.4 2.5"/>'),
+  book:    _ic('<path d="M12 6.6C10.6 5.2 8.6 4.6 4.6 4.6v12.2c4 0 6 .6 7.4 2 1.4-1.4 3.4-2 7.4-2V4.6c-4 0-6 .6-7.4 2z"/><path d="M12 6.6v12.2"/>'),
+  fresh:   _ic('<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M9 15.5V8.5l6 7v-7"/>'),
+  shuffle: _ic('<path d="M4 7.4h3.4l9 9.2h3.2"/><path d="M4 16.6h3.4l3-3.1"/><path d="M17.6 4.6 20.4 7.4l-2.8 2.8"/><path d="M17.6 13.8l2.8 2.8-2.8 2.8"/>'),
+  bolt:    _ic('<path d="M13.4 3.2 5.8 13.4h5l-1.2 7.4 7.6-10.2h-5z"/>'),
+  heart:   _ic('<path d="M12 20.2 4.9 13.4a4.3 4.3 0 0 1 6.1-6.1l1 1 1-1a4.3 4.3 0 0 1 6.1 6.1z"/>'),
+  eye:     _ic('<path d="M2.6 12S6 6.6 12 6.6 21.4 12 21.4 12 18 17.4 12 17.4 2.6 12 2.6 12z"/><circle cx="12" cy="12" r="2.9"/>'),
+  out:     _ic('<path d="M7.4 16.6 16.6 7.4"/><path d="M9.4 7.4h7.2v7.2"/>'),
+  power:   _ic('<path d="M12 3.6v7.6"/><path d="M7.1 6.4a7.2 7.2 0 1 0 9.8 0"/>'),
+  party:   _ic('<path d="M4.2 19.8 9 9.4l5.6 5.6z"/><path d="M13.6 4.2v2M17.4 6.2l-1.4 1.4M19.8 10h-2M16 13.4l1.4 1.4"/>'),
+  dizzy:   _ic('<circle cx="12" cy="12" r="8.4"/><path d="M8.4 14.6c1.1 1 2.3 1.5 3.6 1.5s2.5-.5 3.6-1.5"/><path d="M8.6 9.4l1.4 1.4M10 9.4 8.6 10.8M14 9.4l1.4 1.4M15.4 9.4l-1.4 1.4"/>'),
+  send:    _ic('<path d="M20.6 3.4 3.6 10.2l6.6 2.6 2.6 6.6z"/><path d="m10.2 12.8 4.6-4.6"/>'),
+  sparkle: _ic('<path d="m12 3.6 1.85 4.55L18.4 10l-4.55 1.85L12 16.4l-1.85-4.55L5.6 10l4.55-1.85z"/><path d="m18.6 15.9.75 1.85 1.85.75-1.85.75-.75 1.85-.75-1.85-1.85-.75 1.85-.75z"/>'),
+  ghost:   _ic('<path d="M5.2 20V10.6a6.8 6.8 0 0 1 13.6 0V20l-2.2-1.8-2.3 1.8-2.3-1.8-2.3 1.8z"/><circle cx="9.5" cy="10.7" r="1.05" fill="currentColor" stroke="none"/><circle cx="14.5" cy="10.7" r="1.05" fill="currentColor" stroke="none"/>'),
+  dot:     _ic('<circle cx="12" cy="12" r="4.4" fill="currentColor" stroke="none"/>'),
+  dotOn:   _ic('<circle cx="12" cy="12" r="4.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8.2"/>'),
+  back:    _ic('<path d="M9.4 5.4 4.8 10l4.6 4.6"/><path d="M4.8 10h9.4a4.4 4.4 0 0 1 0 8.8H11"/>'),
+  chev:    _ic('<path d="m7.5 10 4.5 4.5L16.5 10"/>'),
+};
+/* emoji -> 图标名 (值为 "" = 纯装饰符号, 直接丢弃) */
+const EMOJI_MAP = new Map([
+  ["\u25B6","play"],["\u21B6","undo"],["\u27F3","rescan"],["\u21BB","rescan"],["\u21BA","undo"],
+  ["\uD83D\uDDC4","lib"],["\uD83D\uDDC2","lib"],["\u2B07","dl"],["\u2B06","upd"],
+  ["\uD83D\uDCF8","burst"],["\uD83D\uDCF7","burst"],["\uD83D\uDDBC","photo"],["\u2699","gear"],
+  ["\u2705","check"],["\u2714","check"],["\u2713","check"],["\u26D4","ban"],
+  ["\u274C","x"],["\u2717","x"],["\u2715","x"],["\u2139","info"],["\u24D8","info"],
+  ["\u2B50","starOn"],["\u2605","starOn"],["\u2606","star"],["\u21D5","fold"],
+  ["\uD83D\uDD0D","search"],["\u2611","multi"],["\u2610","box"],["\u25A3","box"],
+  ["\uD83D\uDCCC","pin"],["\uD83D\uDC64","user"],["\uD83D\uDC65","users"],["\u26A0","warn"],
+  ["\u25D1","half"],["\u270E","pencil"],["\uD83D\uDDD1","trash"],
+  ["\uD83D\uDCC1","folder"],["\uD83D\uDCC2","folderOn"],["\uD83D\uDCE6","package"],
+  ["\uD83D\uDD12","lock"],["\uD83E\uDDF9","broom"],["\uD83D\uDCA1","bulb"],
+  ["\uD83D\uDCCB","clipboard"],["\uD83E\uDE7A","steth"],["\uD83C\uDFAE","gamepad"],
+  ["\u2328","keyboard"],["\uD83C\uDFAC","clapper"],["\uD83D\uDCD6","book"],
+  ["\uD83C\uDD95","fresh"],["\uD83D\uDD00","shuffle"],["\u26A1","bolt"],["\u2665","heart"],
+  ["\uD83D\uDC41","eye"],["\u23FB","power"],["\uD83C\uDF89","party"],["\uD83D\uDE35","dizzy"],
+  ["\u2708","send"],["\u25C8","sparkle"],["\u25C7","ghost"],["\u26AA","dot"],
+  ["\uD83D\uDFE2","dotOn"],["\u21A9","back"],["\uD83D\uDD04","rescan"],["\u2197","out"],
+  ["\u25BE","chev"],
+]);
+const _EMOJI_RE = new RegExp("([" + Array.from(EMOJI_MAP.keys()).join("") + "])\\uFE0F?", "u");
+const _tplEl = document.createElement("template");
+function _svgEl(name){
+  const src = ICON[name];
+  if (!src) return null;
+  _tplEl.innerHTML = src;
+  return _tplEl.content.firstElementChild;
+}
+function _iconizeText(n){
+  const v = n.nodeValue;
+  if (!v || !_EMOJI_RE.test(v)) return false;
+  const frag = document.createDocumentFragment();
+  let prevIcon = false;
+  for (const part of v.replace(/\uFE0F/g, "").split(_EMOJI_RE)){
+    if (!part) continue;
+    const key = EMOJI_MAP.get(part);
+    if (key !== undefined){
+      if (key){ const el = _svgEl(key); if (el) frag.appendChild(el); }
+      prevIcon = true;
+      continue;
+    }
+    const txt = prevIcon ? part.replace(/^[ \t\u00A0]+/, "") : part;
+    prevIcon = false;
+    if (txt) frag.appendChild(document.createTextNode(txt));
+  }
+  if (n.parentNode) n.parentNode.replaceChild(frag, n);
+  return true;
+}
+/* 把一棵子树里的 emoji 文本节点换成 SVG 图标 */
+function iconize(root){
+  root = root || document.body;
+  if (!root) return;
+  if (root.nodeType === 3){ _iconizeText(root); return; }
+  if (root.nodeType !== 1) return;
+  if (root.namespaceURI === "http://www.w3.org/2000/svg") return;
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {acceptNode(n){
+    const p = n.parentNode;
+    if (!p || p.nodeType !== 1) return NodeFilter.FILTER_REJECT;
+    const t = p.nodeName;
+    if (t === "SCRIPT" || t === "STYLE" || t === "TEXTAREA" || t === "OPTION" || t === "TITLE") return NodeFilter.FILTER_REJECT;
+    if (p.namespaceURI === "http://www.w3.org/2000/svg") return NodeFilter.FILTER_REJECT;
+    return _EMOJI_RE.test(n.nodeValue || "") ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+  }});
+  const hits = [];
+  while (w.nextNode()) hits.push(w.currentNode);
+  for (const n of hits) _iconizeText(n);
+}
+/* 动态渲染(卡片/侧栏/弹窗)出来的内容也要走一遍 —— 用 rAF 合并, 开销可忽略 */
+function startIconObserver(){
+  if (!("MutationObserver" in window)) return;
+  const queued = new Set();
+  let raf = 0;
+  const flush = () => {
+    raf = 0;
+    const nodes = Array.from(queued); queued.clear();
+    for (const n of nodes){
+      if (!n.isConnected) continue;
+      if (n.nodeType === 1 && n.namespaceURI === "http://www.w3.org/2000/svg") continue;
+      iconize(n);
+    }
+  };
+  new MutationObserver(muts => {
+    for (const m of muts){
+      for (const n of m.addedNodes){
+        if (n.nodeType === 1 || n.nodeType === 3) queued.add(n);
+      }
+    }
+    if (queued.size && !raf) raf = requestAnimationFrame(flush);
+  }).observe(document.body, {childList:true, subtree:true});
+}
+
+/* ============================================================
+   界面扩展 (v1.5.41)
+   背景系统 / 滚动体验 / 卡片追光 / 骨架屏 / 空状态插画
+   全部只作用于"视觉", 不改任何既有 DOM 结构与排列。
+   背景偏好存 localStorage(纯前端, 后端 /api/config 不必改)。
+   ============================================================ */
+const UIKEY = "zzmi.uiext";
+const UIEXT = Object.assign({bg:"immersive", bgop:null}, (() => {
+  try { return JSON.parse(localStorage.getItem(UIKEY) || "{}") || {}; } catch(e){ return {}; }
+})());
+function saveUIExt(){ try { localStorage.setItem(UIKEY, JSON.stringify(UIEXT)); } catch(e){} }
+function applyUIExt(){
+  const de = document.documentElement;
+  de.setAttribute("data-bg", UIEXT.bg || "immersive");
+  if (UIEXT.bgop === null || UIEXT.bgop === undefined) de.style.removeProperty("--bgop");
+  else de.style.setProperty("--bgop", String(UIEXT.bgop));
+}
+function setBg(mode){
+  UIEXT.bg = mode; saveUIExt(); applyUIExt();
+  if (S) renderSetup();
+  iconize(document.body);
+}
+function setBgOp(v){
+  v = Math.max(0, Math.min(100, parseInt(v, 10) || 0));
+  UIEXT.bgop = Math.round(v / 100 * 100) / 100;
+  saveUIExt(); applyUIExt();
+  const el = $("#bgOpV"); if (el) el.textContent = v + "%";
+  _syncBgOpReset();   // v1.5.44: 放在函数里而不是只挂 oninput —— 程序化调用时状态也不会脱节
+}
+window.setBg = setBg; window.setBgOp = setBgOp;
+/* 背景浓度滑块的当前百分比(没手动设过就直接读当前主题算出来的 --bgop) */
+function _bgopPct(){
+  if (UIEXT.bgop !== null && UIEXT.bgop !== undefined) return Math.round(UIEXT.bgop * 100);
+  const v = getComputedStyle(document.documentElement).getPropertyValue("--bgop").trim();
+  const f = parseFloat(v);
+  return isFinite(f) ? Math.round(f * 100) : 55;
+}
+/* v1.5.44: 当前浓度是不是"手动调过" —— 没调过就是跟着主题走(深色/粉色 .55, 浅色 .30) */
+function _bgopIsCustom(){
+  return UIEXT.bgop !== null && UIEXT.bgop !== undefined;
+}
+/* v1.5.44: 「恢复默认浓度」—— 清掉手动覆盖, 回到当前主题自带的 --bgop。
+   注意是**按主题**算默认值, 所以换主题后点它得到的是那个主题的默认, 不是固定 55%。 */
+function resetBgOp(){
+  UIEXT.bgop = null; saveUIExt(); applyUIExt();
+  if (S) renderSetup();
+  toast("已恢复默认浓度 · 跟随主题");
+}
+/* 滑杆拖动时同步一下按钮的置灰状态(没手动调过 -> 按钮不可点) */
+function _syncBgOpReset(){
+  const b = $("#btnBgOpReset");
+  if (b) b.disabled = !_bgopIsCustom();
+}
+window.resetBgOp = resetBgOp;
+window._bgopIsCustom = _bgopIsCustom;
+
+/* 空状态插画: 纯内联 SVG, 用 currentColor + 主题色, 不额外加图片资源 */
+const EMPTY_ART = '<svg class="art" viewBox="0 0 120 120" fill="none" aria-hidden="true">'
+  + '<ellipse cx="60" cy="101" rx="37" ry="6.5" fill="currentColor" opacity=".09"/>'
+  + '<path d="M25 47h70v42a9 9 0 0 1-9 9H34a9 9 0 0 1-9-9z" fill="currentColor" fill-opacity=".07"'
+  + ' stroke="currentColor" stroke-opacity=".45" stroke-width="2.2" stroke-linejoin="round"/>'
+  + '<path d="M18 30h84a4.5 4.5 0 0 1 4.5 4.5v10a2 2 0 0 1-2 2h-89a2 2 0 0 1-2-2v-10A4.5 4.5 0 0 1 18 30z"'
+  + ' fill="currentColor" fill-opacity=".09" stroke="currentColor" stroke-opacity=".5" stroke-width="2.2"/>'
+  + '<path d="M48 62h24" stroke="currentColor" stroke-opacity=".45" stroke-width="2.6" stroke-linecap="round"/>'
+  + '<path d="M60 13v15M51 20.5 60 29.5l9-9" stroke="var(--accent)" stroke-opacity=".8"'
+  + ' stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'
+  + '</svg>';
+const EMPTY_ART_FILTER = '<svg class="art" viewBox="0 0 120 120" fill="none" aria-hidden="true">'
+  + '<ellipse cx="60" cy="102" rx="28" ry="6" fill="currentColor" opacity=".09"/>'
+  + '<circle cx="55" cy="52" r="29" fill="currentColor" fill-opacity=".06"'
+  + ' stroke="currentColor" stroke-opacity=".45" stroke-width="2.4"/>'
+  + '<path d="M76 73.5 95 92.5" stroke="currentColor" stroke-opacity=".5" stroke-width="4.4" stroke-linecap="round"/>'
+  + '<path d="M46 43.5 64 61.5M64 43.5 46 61.5" stroke="var(--accent)" stroke-opacity=".8"'
+  + ' stroke-width="3" stroke-linecap="round"/>'
+  + '</svg>';
+
+/* 骨架屏: 扫描/首屏时先铺一层占位, 避免"白一下再跳出来" */
+function renderSkeleton(n){
+  const box = $("#cards");
+  if (!box) return;
+  box.className = "grid" + (viewMode === "list" ? " list" : "");
+  const cnt = Math.max(3, Math.min(n || 12, 24));
+  let h = "";
+  for (let i = 0; i < cnt; i++){
+    h += '<div class="sk">'
+      + '<div class="skb sk-thumb"></div>'
+      + '<div class="sk-body">'
+      + '<div class="skb sk-line" style="width:78%"></div>'
+      + '<div class="skb sk-line" style="width:54%;height:9px"></div>'
+      + '<div class="skb sk-line" style="width:62%;height:23px;border-radius:11px;margin-top:5px"></div>'
+      + '</div></div>';
+  }
+  box.innerHTML = h;
+  const sec = $("section.content"); if (sec) sec.classList.remove("more");
+}
+
+/* 卡片追光: 鼠标位置写进 --mx/--my, CSS 里用径向渐变画一层柔光 */
+function initCardGlow(){
+  const box = $("#cards");
+  if (!box) return;
+  let raf = 0, last = null;
+  box.addEventListener("pointermove", ev => {
+    const c = ev.target && ev.target.closest ? ev.target.closest(".card") : null;
+    if (!c) return;
+    last = {c, x:ev.clientX, y:ev.clientY};
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      const d = last; if (!d) return;
+      const r = d.c.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      d.c.style.setProperty("--mx", ((d.x - r.left) / r.width * 100).toFixed(1) + "%");
+      d.c.style.setProperty("--my", ((d.y - r.top) / r.height * 100).toFixed(1) + "%");
+    });
+  }, {passive:true});
+}
+
+/* 滚动体验: 还有内容在下面时显示底部渐隐 + 回到顶部 */
+function initScrollExt(){
+  const sc = $(".scroll"), sec = $("section.content"), top = $("#toTop");
+  if (!sc || !sec) return;
+  const upd = () => {
+    const more = (sc.scrollHeight - sc.clientHeight - sc.scrollTop) > 64;
+    sec.classList.toggle("more", more);
+  };
+  sc.addEventListener("scroll", upd, {passive:true});
+  if ("ResizeObserver" in window){ try { new ResizeObserver(upd).observe($("#cards")); } catch(e){} }
+  if (top) top.onclick = () => { try { sc.scrollTo({top:0, behavior:"smooth"}); } catch(e){ sc.scrollTop = 0; } };
+  window.__scrollExtUpd = upd;
+  upd();
+}
+/* 静态 HTML 里的 emoji 也统一换掉(在首帧后跑一次即可) */
+function initUIExt(){
+  applyUIExt();
+  iconize(document.body);
+  initCardGlow();
+  initScrollExt();
+  startIconObserver();
+}
+
 let S = null;
 let filter = "all";
 let scope = {type:"all", value:"", label:""};
@@ -961,7 +1638,9 @@ async function load(){
     $("#dead").classList.remove("on");
     $("#app").style.display = "";
     document.documentElement.setAttribute("data-theme", st.theme || "dark");
+    initUIExt();                       // v1.5.41: 背景系统 + emoji→SVG 图标 + 追光 + 滚动
     renderAll();
+    iconize(document.body);            // 首帧后再补一遍(渲染函数里新插的节点)
     if (!st.configured) openSetup();   // 首次启动: 自动弹出设置页并显示检测进度
     checkUpdate();                     // 启动时后台查一次 GitHub 有没有新版本
     api("/api/hello").catch(()=>{});   // v1.5.10: 界面已打开 -> 取消还没执行的自动退出
@@ -977,6 +1656,14 @@ function renderAll(){
   $("#cOn").textContent = S.stats.enabled || 0;
   $("#cOff").textContent = S.stats.disabled || 0;
   $("#cPinned").textContent = S.stats.pinned || 0;
+  // v1.5.41: 侧栏计数按占比铺一条底色, 一眼看出"启用/禁用"的比例
+  (() => {
+    const tot = Math.max(1, S.stats.total || 1);
+    const pct = v => Math.max(0, Math.min(100, Math.round((v || 0) / tot * 100)));
+    const put = (id, v) => { const el = $(id); if (el && el.parentNode) el.parentNode.style.setProperty("--p", pct(v)); };
+    put("#cAll", S.stats.total); put("#cOn", S.stats.enabled);
+    put("#cOff", S.stats.disabled); put("#cPinned", S.stats.pinned);
+  })();
   $("#cChars").textContent = (S.stats.chars || 0) + " 角色";
   $("#cCats").textContent = (S.categories || []).length + " 个";
   $("#verline").textContent = "v" + S.version + " · " + S.stats.total + " 个 mod · "
@@ -1183,14 +1870,29 @@ function renderCards(){
   const box = $("#cards");
   box.className = "grid" + (viewMode === "list" ? " list" : "");
   if (!S.entries || !S.entries.length){
-    box.innerHTML = `<div class="empty">这个 Mods 目录里还没有 mod。<br>把下载好的 mod 文件夹丢进 Mods 就行。</div>`;
-    renderSelBar(); return;
+    box.innerHTML = `<div class="empty">${EMPTY_ART}
+      <div class="et">这个 Mods 目录里还没有 mod</div>
+      <div class="es">把下载好的 mod 文件夹丢进 Mods 目录就行, 回来点一下「重新扫描」。</div>
+      <div class="eb">
+        <button class="btn primary" id="emRescan">${ICON.rescan}重新扫描</button>
+        <button class="btn ghost" id="emLib">${ICON.lib}打开仓库</button>
+      </div></div>`;
+    const a = $("#emRescan"); if (a) a.onclick = () => $("#btnRescan").click();
+    const b = $("#emLib"); if (b) b.onclick = () => $("#btnLib").click();
+    renderSelBar(); if (window.__scrollExtUpd) window.__scrollExtUpd(); return;
   }
-  if (!list.length){ box.innerHTML = '<div class="empty">没有符合条件的 mod</div>'; renderSelBar(); return; }
+  if (!list.length){
+    box.innerHTML = `<div class="empty">${EMPTY_ART_FILTER}
+      <div class="et">没有符合条件的 mod</div>
+      <div class="es">换个关键词试试, 或者把筛选条件放宽一点。</div>
+      <div class="eb"><button class="btn" id="emClear">${ICON.x}清空筛选</button></div></div>`;
+    const c = $("#emClear"); if (c) c.onclick = () => clearScope();
+    renderSelBar(); if (window.__scrollExtUpd) window.__scrollExtUpd(); return;
+  }
   const conflictIds = new Set();
   (S.conflicts||[]).forEach(c => { conflictIds.add(c.a); conflictIds.add(c.b); });
 
-  box.innerHTML = list.map(e => {
+  box.innerHTML = list.map((e, ci) => {
     const showImg = !S.hide_preview && e.thumb;
     const tbl = showImg
       ? `<img data-src="/thumb?t=${encodeURIComponent(T)}&p=${encodeURIComponent(e.thumb)}" alt="">`
@@ -1233,12 +1935,14 @@ function renderCards(){
             data-on="${e.enabled?1:0}" title="点击切换"></button>
         </div>
       </div>`;
-    return `<div class="card ${e.enabled?"":"off"} ${sel.has(e.id)?"sel":""}" data-card="${esc(e.id)}">
+    return `<div class="card ${e.enabled?"":"off"} ${sel.has(e.id)?"sel":""}" data-card="${esc(e.id)}" style="--i:${Math.min(ci,14)}">
       ${viewMode==="list" ? `<div class="cardinner">${inner}${body}</div>` : inner + body}
     </div>`;
   }).join("");
+  iconize(box);
   observeThumbs();
   renderSelBar();
+  if (window.__scrollExtUpd) window.__scrollExtUpd();
 }
 function observeThumbs(){
   if (io) io.disconnect();
@@ -1262,8 +1966,55 @@ function observeThumbs(){
 // ---------- 预览图放大 ----------
 // v1.5.34: 抽出 zoomFull —— 连拍挑帧条 / 照片墙 手里已经是一个现成的图片 URL,
 // 不必再绕 /thumb 那套(那是按 mod 相对路径取图的)。
+// v1.5.42: 放大后可**滚轮缩放**(1x~8x) / 按住拖动平移 / 双击复位; Esc 分层(只退放大)。
+const LB_MIN = 1, LB_MAX = 8, LB_STEP = 1.18;
+let LB = { z: 1, tx: 0, ty: 0 };
+let _lbDrag = null;
+
+function lbApply(){
+  const im = $("#lbImg"); if (!im) return;
+  // 缩回 100% 时把平移量钳掉, 免得"已经适应窗口了却还歪着"
+  if (LB.z <= LB_MIN + 1e-4){ LB.z = 1; LB.tx = 0; LB.ty = 0; }
+  im.style.transform = "translate(" + LB.tx.toFixed(1) + "px," + LB.ty.toFixed(1) + "px) scale(" + LB.z.toFixed(3) + ")";
+  const box = $("#lightbox");
+  if (box) box.classList.toggle("zoomed", LB.z > LB_MIN + 1e-4);
+  const pct = $("#lbPct"); if (pct) pct.textContent = Math.round(LB.z * 100) + "%";
+  const fitted = (Math.abs(LB.z - 1) < 1e-4) && !LB.tx && !LB.ty;
+  const out = $("#lbOut"), fit = $("#lbFit"), one = $("#lb100");
+  if (out) out.disabled = LB.z <= LB_MIN + 1e-4;
+  if (fit) fit.disabled = fitted;
+  if (one) one.disabled = fitted;
+}
+function lbReset(){ LB.z = 1; LB.tx = 0; LB.ty = 0; lbApply(); }
+// 以某个屏幕点为锚缩放(滚轮用鼠标位置, 按钮用画面中心), 这样缩放时"手指按住的那一点"不动。
+// 变换是 translate(t) 再 scale(z)(origin=元素中心), 于是:
+//   屏幕中心 = C0 + t,  锚点 A 对应的本地偏移 d = (A - C0 - t)/z
+//   要 A 不动:  t' = t*k + u*(1-k),  其中 k = z'/z,  u = A - C0
+// 而 C0 = 变换后的 rect 中心 - t, 所以 u = A - rect中心 + t。
+function lbZoomTo(z, cx, cy){
+  const im = $("#lbImg"); if (!im) return;
+  z = Math.min(LB_MAX, Math.max(LB_MIN, z));
+  const r = im.getBoundingClientRect();
+  const rcX = r.left + r.width / 2, rcY = r.top + r.height / 2;
+  const ax = (cx == null) ? rcX : cx, ay = (cy == null) ? rcY : cy;
+  const ux = ax - rcX + LB.tx, uy = ay - rcY + LB.ty;
+  const k = z / LB.z;
+  LB.tx = LB.tx * k + ux * (1 - k);
+  LB.ty = LB.ty * k + uy * (1 - k);
+  LB.z = z;
+  lbApply();
+}
+// 「1:1」= 一个图片像素对一个屏幕像素。z=1 时显示宽度是 r.width, 反推出原始比例再放大。
+function lbNatural(){
+  const im = $("#lbImg"); if (!im || !im.naturalWidth) return;
+  const r = im.getBoundingClientRect();
+  const w1 = r.width / LB.z;
+  if (!w1) return;
+  lbZoomTo(im.naturalWidth / w1, null, null);
+}
 function zoomFull(src, caption){
   if (!src) return;
+  lbReset();                       // 每次开新图都回到「适应窗口」
   $("#lbImg").src = src;
   $("#lbCap").textContent = caption || "";
   $("#lightbox").classList.add("on");
@@ -1272,9 +2023,58 @@ function zoomImage(rel, caption){
   if (!rel) return;
   zoomFull("/thumb?t=" + encodeURIComponent(T) + "&full=1&p=" + encodeURIComponent(rel), caption);
 }
-function closeZoom(){ $("#lightbox").classList.remove("on"); }
+// 返回 true = 这一层把 Esc 吃掉了(调用方不要再往下一层关)
+function closeZoom(){
+  const box = $("#lightbox");
+  if (!box.classList.contains("on")) return false;
+  box.classList.remove("on");
+  box.classList.remove("dragging", "zoomed");
+  LB = { z: 1, tx: 0, ty: 0 }; _lbDrag = null;
+  const im = $("#lbImg"); if (im) im.style.transform = "";
+  const pct = $("#lbPct"); if (pct) pct.textContent = "100%";
+  return true;
+}
 $("#lightbox").onclick = e => { if (e.target === e.currentTarget) closeZoom(); };
-document.addEventListener("keydown", e => { if (e.key === "Escape") closeZoom(); });
+// --- 滚轮缩放 ---
+$("#lightbox").addEventListener("wheel", e => {
+  if (!$("#lightbox").classList.contains("on")) return;
+  if (e.target && e.target.closest && e.target.closest("#lbBar")) return;  // 别在工具条上缩放
+  e.preventDefault();
+  lbZoomTo(LB.z * (e.deltaY < 0 ? LB_STEP : 1 / LB_STEP), e.clientX, e.clientY);
+}, { passive: false });
+// --- 按住拖动平移 ---
+$("#lbImg").addEventListener("pointerdown", e => {
+  if (LB.z <= LB_MIN + 1e-4) return;      // 没放大就不用拖
+  e.preventDefault();
+  _lbDrag = { x: e.clientX, y: e.clientY, tx: LB.tx, ty: LB.ty, id: e.pointerId };
+  try{ $("#lbImg").setPointerCapture(e.pointerId); }catch(_){}
+  $("#lightbox").classList.add("dragging");
+});
+$("#lbImg").addEventListener("pointermove", e => {
+  if (!_lbDrag || e.pointerId !== _lbDrag.id) return;
+  LB.tx = _lbDrag.tx + (e.clientX - _lbDrag.x);
+  LB.ty = _lbDrag.ty + (e.clientY - _lbDrag.y);
+  $("#lbImg").style.transform = "translate(" + LB.tx.toFixed(1) + "px," + LB.ty.toFixed(1) +
+    "px) scale(" + LB.z.toFixed(3) + ")";
+});
+function lbEndDrag(e){
+  if (!_lbDrag || (e && e.pointerId !== _lbDrag.id)) return;
+  try{ $("#lbImg").releasePointerCapture(_lbDrag.id); }catch(_){}
+  _lbDrag = null;
+  $("#lightbox").classList.remove("dragging");
+  lbApply();
+}
+$("#lbImg").addEventListener("pointerup", lbEndDrag);
+$("#lbImg").addEventListener("pointercancel", lbEndDrag);
+$("#lbImg").addEventListener("dblclick", e => {
+  e.preventDefault();
+  if (LB.z > LB_MIN + 1e-4) lbReset(); else lbZoomTo(2.5, e.clientX, e.clientY);
+});
+if ($("#lbIn"))     $("#lbIn").onclick     = () => lbZoomTo(LB.z * LB_STEP);
+if ($("#lbOut"))    $("#lbOut").onclick    = () => lbZoomTo(LB.z / LB_STEP);
+if ($("#lbFit"))    $("#lbFit").onclick    = lbReset;
+if ($("#lb100"))    $("#lb100").onclick    = lbNatural;
+if ($("#lbClose2")) $("#lbClose2").onclick = closeZoom;
 
 $("#cards").addEventListener("click", async ev => {
   const el = ev.target.closest("[data-act]");
@@ -1802,11 +2602,12 @@ $("#btnPresetDel").onclick = async () => {
 
 $("#btnRescan").onclick = async () => {
   const b = $("#btnRescan"); b.disabled = true; b.innerHTML = '<span class="spin"></span> 扫描中';
+  renderSkeleton(viewMode === "list" ? 5 : 12);   // v1.5.41: 先铺骨架屏, 避免"白一下再跳出来"
   try{
     const r = await api("/api/rescan", {});
     S = r.state; renderAll(); toast("已重新扫描 ("+S.scan_seconds+"s)", "ok");
-  }catch(e){ toast("扫描失败: "+e.message, "err"); }
-  b.disabled = false; b.innerHTML = "⟳ 重新扫描";
+  }catch(e){ toast("扫描失败: "+e.message, "err"); renderCards(); }
+  b.disabled = false; b.innerHTML = ICON.rescan + "重新扫描";
 };
 $("#btnUndo").onclick = async () => {
   const r = await api("/api/undo", {});
@@ -2175,8 +2976,21 @@ function renderSetup(){
       ${S.thumb_pending?`<span class="hint">· 还有 ${S.thumb_pending} 张在后台生成</span>`:""}</span></div>
     <h4 style="margin:18px 0 6px;font-size:13px">界面</h4>
     <div class="kv"><span class="k">主题</span><span class="v">
-      <button class="mini" onclick="setTheme('dark')">深色</button>
-      <button class="mini" onclick="setTheme('light')">浅色</button></span></div>
+      <button class="mini ${S.theme==="dark"?"on":""}" onclick="setTheme('dark')">深色</button>
+      <button class="mini ${S.theme==="light"?"on":""}" onclick="setTheme('light')">浅色</button>
+      <button class="mini ${S.theme==="pink"?"on":""}" onclick="setTheme('pink')">粉色</button></span></div>
+    <div class="kv"><span class="k">背景</span><span class="v">
+      <button class="mini ${UIEXT.bg==="immersive"?"on":""}" onclick="setBg('immersive')">沉浸</button>
+      <button class="mini ${UIEXT.bg==="soft"?"on":""}" onclick="setBg('soft')">柔和</button>
+      <button class="mini ${UIEXT.bg==="plain"?"on":""}" onclick="setBg('plain')">纯色</button>
+      <span class="hint">沉浸=原图 · 柔和=压暗 · 纯色=不显示</span></span></div>
+    <div class="kv"><span class="k">背景浓度</span><span class="v">
+      <input type="range" class="rng" id="bgOp" min="0" max="100"
+        value="${_bgopPct()}" oninput="setBgOp(this.value)">
+      <span class="hint" id="bgOpV">${_bgopPct()}%</span>
+      <button class="mini" id="btnBgOpReset" onclick="resetBgOp()"
+        title="恢复成当前主题的默认浓度(深色/粉色 55%, 浅色 30%)"
+        ${_bgopIsCustom()?"":"disabled"}>恢复默认</button></span></div>
     <div class="kv"><span class="k">预览图</span><span class="v">
       <button class="mini" onclick="setHide(true)">隐藏</button>
       <button class="mini" onclick="setHide(false)">显示</button>
@@ -2210,6 +3024,15 @@ function renderSetup(){
         return '<b style="color:var(--warn,#e8b339)">⚠ '+esc(bad.join(" / "))+" 注册失败。"+why+"</b>";
       })()}</span></span></div>
     <h4 style="margin:18px 0 6px;font-size:13px">📸 连拍缓冲</h4>
+    <!-- v1.5.42: 触发条件 —— 默认只在「绝区零」处于前台时才响应侧键/触发键 -->
+    <div class="kv"><span class="k">触发条件</span><span class="v">
+      <button class="mini ${S.photo_only_in_game===false?"":"on"}" id="btnPOG1" data-v="1"
+        title="只在「绝区零」窗口处于最前面时才响应侧键/触发键">只在绝区零在前台时</button>
+      <button class="mini ${S.photo_only_in_game===false?"on":""}" id="btnPOG0" data-v="0"
+        title="退回老行为: 只要管家自己不在最前就录(切到浏览器/聊天/文件夹也会录)">管家不在前台就录</button>
+      <br><span class="hint">默认<b>只认「绝区零」在最前面</b> —— 切出去看网页、聊天、翻文件夹都不会误录，
+      也不会因为管家窗口被游戏盖住就录不到。识别依据是进程名 <code>${esc(S.game_exe||"ZenlessZoneZero.exe")}</code>；
+      取状态那一刻的前台进程是 <code>${esc(S.fg_exe||"（没抓到）")}</code>${S.game_fg?' · <b style="color:var(--ok,#3fd8b0)">正是绝区零 ✅</b>':""}。</span></span></div>
     <div class="kv"><span class="k">后台录屏</span><span class="v">
       <button class="mini" id="btnPhotoOn">${S.photo_on?"关闭":"开启"}</button>
       <span class="hint">(当前: ${S.photo_on?"开 · 只在游戏运行时录屏":"关"})</span></span></div>
@@ -2276,6 +3099,14 @@ function renderSetup(){
     toast(r.msg || "完成", r.ok?"ok":"err");
   };
   // v1.5.31 连拍缓冲设置
+  // v1.5.42: 触发条件(只在绝区零前台 / 退回老行为)
+  $$("#btnPOG1,#btnPOG0").forEach(b => b.onclick = async () => {
+    const v = b.dataset.v === "1";
+    const r = await api("/api/config", {photo_only_in_game: v});
+    if (r.state) S = r.state;
+    toast(r.msg || (v ? "已改为: 只在绝区零在前台时触发" : "已退回: 管家不在前台就录"), r.ok?"ok":"err");
+    renderSetup();
+  });
   const bpon = $("#btnPhotoOn");
   if (bpon) bpon.onclick = async () => {
     const r = await api("/api/config", {photo_on: !S.photo_on});
@@ -2583,8 +3414,20 @@ window.addEventListener("beforeunload", () => {
 });
 $("#mask").onclick = closeAll;
 $$("[data-close]").forEach(b => b.onclick = closeAll);
+// v1.5.42: Esc 分层 —— 一层一层往回退, 不再"一键全关":
+//   ① 确认框/输入框开着     -> 只关它(= 取消)
+//   ② 全屏放大开着          -> 只退出放大, 底下的挑帧页/照片墙留着
+//   ③ 照片墙在多选模式      -> 只退出多选
+//   ④ 其它                  -> 关掉所有浮层(老行为)
+function escLayer(){
+  if (_askResolve){ closeAsk(null); return true; }
+  if ($("#lightbox").classList.contains("on")){ closeZoom(); return true; }
+  if (typeof PW !== "undefined" && PW && PW.pick){ pwPickExit(); return true; }
+  return false;
+}
+window.escLayer = escLayer;   // 暴露给 jsdom 行为测试
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape") closeAll();
+  if (e.key === "Escape"){ if (!escLayer()) closeAll(); return; }
   if (e.key === "/" && document.activeElement !== $("#q")){ e.preventDefault(); $("#q").focus(); }
 });
 window.openSetup = openSetup; window.autoDetect = autoDetect;
@@ -3514,49 +4357,144 @@ document.addEventListener("keydown", e => {
   else if (e.key === "Enter"){ if (e.target && e.target.tagName === "BUTTON") return; pbKeep(); e.preventDefault(); }
 });
 
-let PW = {photos: [], dir: ""};
+let PW = {photos: [], dir: "", pick: false, sel: {}};
 async function pwOpen(){
   const r = await api("/api/photo_list", {});
   PW.photos = r.photos || []; PW.dir = r.dir || "";
+  PW.pick = false; PW.sel = {};          // 每次打开都回到普通模式
   pwRender();
   $("#mWall").classList.add("on");
   $("#mask").classList.add("on");
 }
+// ---------- v1.5.42: 照片墙批量删除 ----------
+function pwSelNames(){ return Object.keys(PW.sel); }
+function pwPickExit(){
+  if (!PW.pick) return false;
+  PW.pick = false; PW.sel = {}; pwRender();
+  return true;
+}
+function pwPickToggle(){ if (PW.pick) pwPickExit(); else { PW.pick = true; PW.sel = {}; pwRender(); } }
+function pwSelAllToggle(){
+  const on = PW.photos.length && pwSelNames().length === PW.photos.length;
+  PW.sel = {};
+  if (!on) PW.photos.forEach(p => { PW.sel[p.name] = 1; });
+  pwSyncSel();
+}
+// 只更新勾选态(不重画整个网格), 免得列表长的时候一勾就跳回顶部
+function pwSyncSel(){
+  const n = pwSelNames().length;
+  $$("#pwGrid .pw-cell").forEach(cell => {
+    const im = cell.querySelector("img");
+    const nm = im ? im.dataset.z : "";
+    const on = !!PW.sel[nm];
+    cell.classList.toggle("picked", on);
+    const cb = cell.querySelector(".pwsel");
+    if (cb) cb.checked = on;
+  });
+  const sn = $("#pwSelN"); if (sn) sn.textContent = String(n);
+  const delBtn = $("#pwDelSel"); if (delBtn) delBtn.disabled = !n;
+  const allBtn = $("#pwSelAll");
+  if (allBtn) allBtn.textContent = (PW.photos.length && n === PW.photos.length) ? "取消全选" : "全选";
+  const hint = $("#pwHint");
+  if (hint && PW.photos.length)
+    hint.textContent = PW.photos.length + " 张 · 只存你点过「留这张」的成品 · 已选 " + n + " 张";
+}
+function pwToggleSel(name){
+  if (!PW.pick || !name) return;
+  if (PW.sel[name]) delete PW.sel[name]; else PW.sel[name] = 1;
+  pwSyncSel();
+}
+// 双确认: 第一遍问"要删吗", 第二遍再问一次"真的删吗"。两遍都点确定才动。
+async function pwAskTwice(n, oneName){
+  const what = oneName ? ("「" + oneName + "」") : (n + " 张照片");
+  const a = await confirmBox(
+    "把 " + what + " 移到回收站？\n" +
+    (oneName ? "" : "勾选的照片会一起处理。") +
+    "去回收站右键 →「还原」就能找回来, 不会真的丢。",
+    "🗑 移入回收站", true);
+  if (!a) return false;
+  const b = await confirmBox(
+    "再确认一次 —— 真的要把 " + what + " 移到回收站吗？\n" +
+    "这是第二道确认(防手滑)。点「确定删除」才会真的移。",
+    "确定删除", true);
+  return !!b;
+}
+async function pwDel(names, oneName){
+  const list = (names || []).filter(Boolean);
+  if (!list.length) return;
+  if (!(await pwAskTwice(list.length, oneName))){ toast("已取消, 一张都没删"); return; }
+  const r = await api("/api/photo_del", {names: list});
+  toast(r.msg || (r.ok ? "已移到回收站" : "删除失败"), r.ok ? "ok" : "err");
+  if (r.photos) PW.photos = r.photos;
+  (r.deleted || []).forEach(n => { delete PW.sel[n]; });
+  if (!PW.photos.length) PW.pick = false;
+  pwRender();
+}
 function pwRender(){
   const items = PW.photos;
+  if (PW.pick && !items.length) PW.pick = false;
+  const n = pwSelNames().length;
   $("#pwEmpty").style.display = items.length ? "none" : "";
   $("#pwGrid").style.display = items.length ? "" : "none";
-  $("#pwHint").textContent = items.length ? items.length + " 张 · 只存你点过「留这张」的成品" : "";
+  $("#pwGrid").classList.toggle("picking", PW.pick);
+  $("#pwHint").textContent = items.length
+    ? (items.length + " 张 · 只存你点过「留这张」的成品" + (PW.pick ? " · 已选 " + n + " 张" : ""))
+    : "";
+  const selBtn = $("#pwSel");
+  if (selBtn){ selBtn.classList.toggle("on", PW.pick);
+    selBtn.textContent = PW.pick ? "↩ 退出多选" : "☑ 批量选择"; }
+  const delBtn = $("#pwDelSel");
+  if (delBtn){ delBtn.style.display = (PW.pick && items.length) ? "" : "none"; delBtn.disabled = !n; }
+  const allBtn = $("#pwSelAll");
+  if (allBtn){ allBtn.style.display = (PW.pick && items.length) ? "" : "none";
+    allBtn.textContent = (items.length && n === items.length) ? "取消全选" : "全选"; }
+  const sn = $("#pwSelN"); if (sn) sn.textContent = String(n);
   const dl = $("#pwDirLine");
   if (dl) dl.innerHTML = "保存位置: <code>" + esc(PW.dir || "") + "</code>" +
     (S && S.photo_dir_custom ? " · 自定义" : " · 默认") +
-    " —— 点左下「📁 保存位置」可以换一个文件夹。";
+    " —— 点左下「📁 保存位置」可以换一个文件夹。" +
+    (PW.pick ? "　<b>多选模式</b>: 点缩略图勾选(或点左上角方框), 再点「🗑 删除选中」一次性移入回收站 —— 会问两遍。" : "");
   if (!items.length){
     $("#pwEmpty").innerHTML = "照片墙还空着 —— 看到漂亮瞬间按一下<b>鼠标侧键</b>（游戏里就能按），" +
       "回到这里挑一张「留这张」，成品就会出现在这里。";
     return;
   }
-  $("#pwGrid").innerHTML = items.map(p =>
-    `<div class="pw-cell"><img src="${pimg("f=" + encodeURIComponent(p.name), 520)}" data-z="${esc(p.name)}" title="点击放大">
+  $("#pwGrid").innerHTML = items.map(p => {
+    const on = !!PW.sel[p.name];
+    return `<div class="pw-cell${on ? " picked" : ""}">` +
+      (PW.pick ? `<input type="checkbox" class="pwsel" data-psel="${esc(p.name)}"${on ? " checked" : ""}>` : "") +
+      `<img src="${pimg("f=" + encodeURIComponent(p.name), 520)}" data-z="${esc(p.name)}"
+        title="${PW.pick ? "点击勾选 / 取消" : "点击放大(全屏后可滚轮缩放)"}">
       <div class="pwbar"><span class="pwname">${esc(p.name)}</span><span>${esc(p.size_h)}</span>
-      <button class="pwdel" data-pdel="${esc(p.name)}" title="移到回收站(可还原)">🗑</button></div></div>`).join("");
+      <button class="pwdel" data-pdel="${esc(p.name)}" title="移到回收站(可还原)">🗑</button></div></div>`;
+  }).join("");
   $$("#pwGrid img[data-z]").forEach(im => im.onclick = () => {
+    if (PW.pick) return pwToggleSel(im.dataset.z);
     // 不传 w -> 后端原图直出, 点开就是全尺寸
     zoomFull("/api/photoimg?t=" + encodeURIComponent(T) + "&f=" + encodeURIComponent(im.dataset.z),
              im.dataset.z);
   });
-  $$("#pwGrid [data-pdel]").forEach(b => b.onclick = async () => {
-    const nm = b.dataset.pdel;
-    if (!(await confirmBox("删除这张照片？\n「" + nm + "」会移到回收站，去回收站右键→还原就能回来。", "🗑 移入回收站", true))) return;
-    const r = await api("/api/photo_del", {name: nm});
-    toast(r.ok ? "已移到回收站" : (r.msg||"删除失败"), r.ok?"ok":"err");
-    if (r.ok){ PW.photos = r.photos || []; pwRender(); }
+  $$("#pwGrid [data-psel]").forEach(cb => {
+    cb.onclick = e => { e.stopPropagation(); pwToggleSel(cb.dataset.psel); };
+  });
+  $$("#pwGrid [data-pdel]").forEach(b => b.onclick = e => {
+    e.stopPropagation();
+    pwDel([b.dataset.pdel], b.dataset.pdel);
   });
 }
 function pwClose(){
+  PW.pick = false; PW.sel = {};
   $("#mWall").classList.remove("on");
   if (!$("#mBurst").classList.contains("on")) $("#mask").classList.remove("on");
 }
+// v1.5.42: 暴露给 jsdom 行为测试(必须放在 let PW 之后, 否则 TDZ 报错)
+window.PW = PW;
+window.pwOpen = pwOpen; window.pwRender = pwRender; window.pwPickToggle = pwPickToggle;
+window.pwPickExit = pwPickExit; window.pwToggleSel = pwToggleSel;
+window.pwSelAllToggle = pwSelAllToggle; window.pwDel = pwDel;
+window.pwAskTwice = pwAskTwice;
+window.lbState = () => ({ z: LB.z, tx: LB.tx, ty: LB.ty });
+window.lbZoomTo = lbZoomTo; window.lbReset = lbReset; window.lbNatural = lbNatural;
 
 if ($("#btnPhoto")) $("#btnPhoto").onclick = pbOpenOrTrigger;
 if ($("#btnWall")) $("#btnWall").onclick = pwOpen;
@@ -3609,6 +4547,10 @@ if ($("#pbBig")) $("#pbBig").onclick = () => {
 };
 if ($("#pwX")) $("#pwX").onclick = pwClose;
 if ($("#pwClose")) $("#pwClose").onclick = pwClose;
+// v1.5.42: 批量选择 / 全选 / 删除选中
+if ($("#pwSel")) $("#pwSel").onclick = pwPickToggle;
+if ($("#pwSelAll")) $("#pwSelAll").onclick = pwSelAllToggle;
+if ($("#pwDelSel")) $("#pwDelSel").onclick = () => pwDel(pwSelNames(), null);
 if ($("#pwOpen")) $("#pwOpen").onclick = async () => {
   const r = await api("/api/openroot", {path: PW.dir});
   if (!r.ok) toast("打不开这个文件夹", "err");

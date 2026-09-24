@@ -456,7 +456,12 @@ static_checks19 = [
     # 这件事仍然成立 —— 常量 TIERS 与 _tiers 由下面 2.20 覆盖, 不重复。
     ("代表帧按差异去重(_thin)", "def _thin" in zsrc and "def _hdiff" in zsrc),
     ("留这张才落盘", "def keep(self, idx)" in zsrc and "PHOTO_DIR" in zsrc),
-    ("照片删除也走回收站", 'act == "photo_del"' in zsrc and "recycle_path(p)" in zsrc),
+    # v1.5.42: photo_del 升级成支持批量(body["names"] 数组), 循环变量名从 p 改成 _p,
+    # 老断言 "recycle_path(p)" 会误报。改成「在 photo_del 分支体内确实调了 recycle_path(」——
+    # 验的是行为(删照片走回收站), 不是变量叫什么。
+    ("照片删除也走回收站",
+     (lambda m: bool(m) and "recycle_path(" in m.group(0))(
+         re.search(r'if act == "photo_del":[\s\S]{0,2000}?if act == ', zsrc))),
     ("连拍热键注册(第二键)", "_HOTKEY_ID2" in zsrc and "photo_hotkey" in zsrc),
     ("顶栏有 📸 连拍 + 🖼 照片按钮", 'id="btnPhoto"' in html and 'id="btnWall"' in html),
     ("挑帧条 + 照片墙弹窗存在", 'id="mBurst"' in html and 'id="mWall"' in html),
@@ -486,8 +491,12 @@ static_checks20 = [
     # v1.5.37 把等待句柄从 `self._stop` 换成了 `self._rec_event`(为了让 press() 能
     # 立刻唤醒录制分支), 所以这里不能写死 `self._stop.wait(0.5)` —— 按"冻结 = 只等
     # 不 clear_ring"这个**行为**来断言, 不管句柄叫什么名字。
+    # v1.5.42: 判据从「前台是管家界面」收紧成「绝区零不在前台」(_burst_allowed_now),
+    # 断言跟着换成新写法, 并且额外要求这一段里**没有** _clear_ring() —— 冻结只等不清空,
+    # 否则切出去几秒回来缓冲就空了(用户看到的就是"按了没反应")。
     ("切前台时冻结不清空(只等不 clear)",
-     re.search(r"if _is_manager_foreground\(\):\s*\n\s*self\._\w+\.wait\(", zsrc) is not None),
+     (lambda m: bool(m) and "_clear_ring" not in m.group(0))(
+         re.search(r"if not _burst_allowed_now\(cfg\):[\s\S]{0,600}?self\._\w+\.wait\(", zsrc))),
     ("照片墙进页即建目录保证可打开", "os.makedirs(PHOTO_DIR, exist_ok=True)" in zsrc),
     ("挑帧条有档位按钮", 'data-tier=' in html and 'id="pbTiers"' in html),
     ("设置页有侧键下拉", 'id="inPhotoBtn"' in html),
@@ -505,8 +514,12 @@ assert not sbad20, "v1.5.32 静态检查失败: %s" % sbad20
 # ---------- 2.21 v1.5.34 静态检查(红按钮/勾选式选择留下/全屏预览/侧键立刻弹/照片目录可改) ----------
 static_checks21 = [
     # 红按钮 bug 根因: .btn.danger 被定义两次, 后一条只覆盖 color 不覆盖 background
-    # -> 红字压红底。这里断言"只定义一次", 防止以后再被人补一条回去。
-    ("红按钮只定义一次(不再红字压红底)", html.count(".btn.danger{") == 1),
+    # -> 红字压红底。这里断言"**无作用域前缀的**基础定义只有一次", 防止以后再被人补
+    # 一条回去。v1.5.41 起浅色主题允许有 `html[data-theme="light"] .btn.danger{…}`
+    # 这种带主题作用域的覆盖(它整体覆盖了 background+color, 不是只改一半), 不算重复,
+    # 所以用 (?<!\] ) 把带 `] ` 前缀的选择器排除掉。
+    ("红按钮只定义一次(不再红字压红底)",
+     len(re.findall(r"(?<!\] )\.btn\.danger\{", html)) == 1),
     ("红按钮是实心红底白字", ".btn.danger{background:#e5484d;color:#fff" in html),
     ("删掉了没用的「📷 补抓一张」", "pbShot" not in html),
     ("「全部留下」改成勾选式「☑ 选择留下」", 'id="pbPick"' in html and "选择留下" in html),
@@ -824,6 +837,216 @@ for name, ok in static_checks24:
     if not ok:
         sbad24.append(name)
 assert not sbad24, "v1.5.37 静态检查失败: %s" % sbad24
+
+# ---------- 2.25 v1.5.42 静态检查 ----------
+# 五件事: ① 连拍只在绝区零前台才触发 ② 全屏放大可滚轮缩放 + Esc 分层
+#         ③ 照片墙删除确认框置顶 + 双确认 + 批量删除 ④ 樱花粉主题
+static_checks25 = [
+    # --- ① 触发条件 ---
+    ("后端有前台 exe 判定(foreground_exe / _is_game_foreground)",
+     "def foreground_exe(" in zsrc and "def _is_game_foreground(" in zsrc
+     and "QueryFullProcessImageNameW" in zsrc),
+    ("后端有统一闸门 _burst_allowed_now", "def _burst_allowed_now(" in zsrc),
+    ("滚动录制走 _burst_allowed_now",
+     "if not _burst_allowed_now(cfg):" in zsrc),
+    ("鼠标钩子回调走 _burst_allowed_now",
+     "if _burst_allowed_now(self.app.cfg):" in zsrc),
+    # 热键分支: _HOTKEY_ID2 后 600 字内出现闸门
+    ("热键分支走 _burst_allowed_now",
+     (lambda m: bool(m) and "_burst_allowed_now" in m.group(0))(
+         re.search(r"_HOTKEY_ID2[\s\S]{0,900}?burst\.press", zsrc))),
+    ("配置项 photo_only_in_game 默认 True", '"photo_only_in_game": True,' in zsrc),
+    ("/api/config 支持 photo_only_in_game", '"photo_only_in_game" in body' in zsrc),
+    ("_why_empty 会解释「只在绝区零前台才录」",
+     "连拍只在**绝区零窗口在最前面**" in zsrc),
+    ("自检里有「绝区零在前台?」这一步", "绝区零在前台?" in zsrc),
+    ("设置页有「触发条件」两个按钮",
+     'id="btnPOG1"' in html and 'id="btnPOG0"' in html and 'photo_only_in_game' in html),
+    # 回调链安全: 闸门函数里不许有子进程/文件 I/O
+    ("闸门函数保持 0 子进程/0 I/O(钩子回调 300ms 超时红线)",
+     (lambda m: bool(m) and "subprocess" not in m.group(0) and "open(" not in m.group(0))(
+         re.search(r"def _burst_allowed_now\(cfg\):[\s\S]{0,700}?\ndef ", zsrc))),
+    # --- ② 全屏放大 ---
+    ("全屏放大支持滚轮缩放", 'addEventListener("wheel"' in html and "LB_MAX" in html),
+    ("全屏放大支持拖动平移", '"pointerdown"' in html and '"pointermove"' in html),
+    ("放大倍数有上下限钳制", "LB_MIN = 1, LB_MAX = 8" in html),
+    ("全屏有缩放工具条(百分比/适应/1:1)",
+     'id="lbPct"' in html and 'id="lbFit"' in html and 'id="lb100"' in html),
+    ("Esc 分层: 全局 handler 不再无条件 closeAll",
+     'if (e.key === "Escape") closeAll();' not in html and "escLayer" in html),
+    ("Esc 分层顺序: 确认框 -> 放大 -> 多选 -> 全关",
+     html.find("if (_askResolve){ closeAsk(null); return true; }") > 0
+     and html.find("if (_askResolve){ closeAsk(null); return true; }")
+     < html.find('if ($("#lightbox").classList.contains("on")){ closeZoom(); return true; }')
+     < html.find('if (typeof PW !== "undefined" && PW && PW.pick){ pwPickExit(); return true; }')),
+    ("closeZoom 返回布尔(告诉上层 Esc 被吃掉)",
+     "function closeZoom(){" in html and "return true;" in html
+     and (lambda m: bool(m) and "return false;" in m.group(0))(
+         re.search(r"function closeZoom\(\)\{[\s\S]{0,600}?\n\}", html))),
+    # --- ③ 照片墙删除 ---
+    ("#mAsk/#mAskMask 有独立且最高的 z-index",
+     (lambda a, b, c, d: bool(a) and bool(b) and bool(c) and bool(d)
+      and int(a.group(1)) > int(c.group(1)) and int(a.group(1)) > int(d.group(1))
+      and int(b.group(1)) > int(c.group(1)))(
+         re.search(r"#mAsk\{z-index:(\d+)\}", html),
+         re.search(r"#mAskMask\{z-index:(\d+)\}", html),
+         re.search(r"\.modal\{[^}]*z-index:(\d+)", html),
+         re.search(r"\.lightbox\{[^}]*z-index:(\d+)", html))),
+    ("照片删除是双确认(两遍 confirmBox)",
+     (lambda m: bool(m) and m.group(0).count("confirmBox(") >= 2)(
+         re.search(r"async function pwAskTwice[\s\S]{0,1200}?\n\}", html))),
+    ("照片墙有多选模式按钮", 'id="pwSel"' in html and 'id="pwSelAll"' in html),
+    ("照片墙有批量删除按钮", 'id="pwDelSel"' in html and 'id="pwSelN"' in html),
+    ("批量删除走 names 数组接口", "names: list" in html),
+    ("后端 photo_del 支持 names 批量",
+     (lambda m: bool(m) and 'body.get("names")' in m.group(0))(
+         re.search(r'if act == "photo_del":[\s\S]{0,2000}?if act == ', zsrc))),
+    ("多选模式隐藏单张删除按钮(靠 .picking)",
+     ".pw-grid.picking .pwdel{display:none}" in html),
+    # --- ④ 樱花粉 ---
+    ("旧的艳粉 token 已清除", "--accent:#ff6fa5" not in html
+     and "--glow:255,111,165" not in html),
+    ("粉色主题主色是公认樱花粉 #FFB7C5",
+     (lambda m: bool(m) and m.group(1).lower() == "#ffb7c5")(
+         re.search(r'html\[data-theme="pink"\]\{[\s\S]*?--accent:(#[0-9a-fA-F]{6})', html))),
+    ("底图色相不再推到品红(288deg -> 303deg)",
+     "hue-rotate(303deg)" in html and "hue-rotate(288deg)" not in html),
+    ("底图饱和度压下来(2.1 -> 1.40)", "saturate(1.40)" in html
+     and "saturate(2.1)" not in html),
+]
+w()
+w("=== v1.5.42 静态检查 ===")
+sbad25 = []
+for name, ok in static_checks25:
+    w(("  [OK]   " if ok else "  [FAIL] ") + name)
+    if not ok:
+        sbad25.append(name)
+assert not sbad25, "v1.5.42 静态检查失败: %s" % sbad25
+
+
+# ============ v1.5.43 静态检查: 樱花粉主题重做(把"脏底"换成中性近黑) ============
+# 背景: 用户否了 v1.5.42 的粉(原话"你这个粉色太难看了")。根因是低饱和粉压在偏棕紫的底
+# #1d1218 上会发闷发灰。v1.5.43 把底换成中性近黑 #16161c + 主色改用公认的 #FFB7C5。
+static_checks26 = [
+    # --- ① 底色中性化 ---
+    ("粉底不再是棕紫(--bg:#1d1218 已清除)", "--bg:#1d1218" not in html),
+    ("粉底是中性近黑 #16161c",
+     (lambda m: bool(m) and m.group(1).lower() == "#16161c")(
+         re.search(r'html\[data-theme="pink"\]\{[\s\S]*?--bg:(#[0-9a-fA-F]{6})', html))),
+    ("粉底确实「中性」(RGB 三通道极差 <= 8, 棕紫底差 11)",
+     (lambda m: bool(m) and (lambda v: max(v) - min(v) <= 8)(
+         [int(m.group(1)[i:i + 2], 16) for i in (1, 3, 5)]))(
+         re.search(r'html\[data-theme="pink"\]\{[\s\S]*?--bg:(#[0-9a-fA-F]{6})', html))),
+    ("粉面板/边框也是中性灰紫(#232330 / #37374a)",
+     "--panel:#232330" in html and "--line:#37374a" in html
+     and "--panel:#2e1e28" not in html),
+    ("粉文字色同步中性(#f8f4f7 / #cbc0cb / #928796)",
+     "--txt:#f8f4f7" in html and "--txt2:#cbc0cb" in html and "--dim:#928796" in html),
+    # --- ② 主色/渐变/光晕全套同步(只改 --accent 会"主色换了但整体还是旧味道") ---
+    ("粉主色 = Cherry Blossom Pink #FFB7C5", "--accent:#ffb7c5" in html
+     and "--accent:#ffb3c7" not in html),
+    ("粉次色 #f194aa / 按下色 #3d1522",
+     "--accent2:#f194aa" in html and "--ink:#3d1522" in html),
+    ("粉主按钮渐变 #ffd9e3 -> #ffadc0",
+     "--pri:linear-gradient(180deg,#ffd9e3,#ffadc0)" in html),
+    ("粉光晕 RGB 三元组同步 255,183,197",
+     "--glow:255,183,197" in html and "--glow:255,179,199" not in html),
+    ("粉选中底/描边同步", "rgba(255,183,197,.16)" in html and "rgba(255,183,197,.24)" in html),
+    ("粉玻璃描边用粉白(255,210,224)",
+     "rgba(255,210,224,.07)" in html and "rgba(255,206,218,.075)" not in html),
+    ("粉阴影换中性黑(棕黑 28,12,18 已清除)",
+     "rgba(10,10,16,.55)" in html and "rgba(28,12,18," not in html
+     and "rgba(26,12,18," not in html),
+    ("粉底图亮度压到 .80(原 .86)", "brightness(.80)" in html),
+    ("粉 contentfade 换中性黑",
+     "rgba(13,12,17,.80)" in html and "rgba(16,8,12,.80)" not in html),
+    # --- ③ 不许波及深色/浅色主题 ---
+    ("深色主题主色未被波及(#ff9f1c)", "--accent:#ff9f1c" in html),
+    ("浅色主题主色未被波及(#e8890b)", "--accent:#e8890b" in html),
+    ("粉色 token 块仍只有一处",
+     len(re.findall(r'html\[data-theme="pink"\]\{', html)) == 1),
+    # --- ④ 版本号 (写成"版本无关": 只要求 >= 1.5.43 且与 changelog 头一致,
+    #        免得下次升版本又要回来改这条断言) ---
+    ("版本号与 changelog 头一致且 >= 1.5.43",
+     (lambda m1, m2: m1 and m2 and m1.group(1) == m2.group(1)
+      and tuple(int(x) for x in m1.group(1).split(".")) >= (1, 5, 43))(
+         re.search(r'^VERSION = "([\d.]+)"', zsrc, re.M),
+         re.search(r'^v([\d.]+) 更新', zsrc, re.M))),
+]
+w()
+w("=== v1.5.43 静态检查 ===")
+sbad26 = []
+for name, ok in static_checks26:
+    w(("  [OK]   " if ok else "  [FAIL] ") + name)
+    if not ok:
+        sbad26.append(name)
+assert not sbad26, "v1.5.43 静态检查失败: %s" % sbad26
+
+
+# ============ v1.5.44 静态检查: 侧栏标题行防折行 + 浓度恢复默认 ============
+# 背景: 用户反馈"排版不好看, 变成两排了"。侧栏固定 250px, aside 左右各 11px + .side-h
+# 左右各 11px -> 那一行可用宽度只有 206px, 而 `▾ 角色 [45 角色] 26 个角色有多套` 约 215px,
+# 挤爆后每个 flex 子项各自折行。修法是加约束(nowrap + 次要提示可省略), 不动 DOM 排列。
+static_checks27 = [
+    # --- ① 侧栏「角色」标题行不再折行 ---
+    ("侧栏标题行禁止折行(.side-h.fold nowrap)",
+     re.search(r"\.side-h\.fold\{[^}]*white-space:nowrap", html) is not None),
+    ("侧栏计数 chip 固定不缩(.sidecnt flex:0 0 auto)",
+     re.search(r"\.side-h\.fold \.sidecnt\{[^}]*flex:0 0 auto", html) is not None),
+    ("次要提示可缩略(#multiHint min-width:0 + ellipsis)",
+     (lambda m: bool(m) and "min-width:0" in m.group(0)
+      and "text-overflow:ellipsis" in m.group(0) and "overflow:hidden" in m.group(0))(
+         re.search(r"#multiHint\{[^}]*\}", html))),
+    ("次要提示字号收小到 10.5px(挤出约 14px 余量)",
+     re.search(r"#multiHint\{[^}]*font-size:10\.5px", html) is not None),
+    ("次要提示去掉字距(标题的 letter-spacing 不该继承给它)",
+     re.search(r"#multiHint\{[^}]*letter-spacing:0", html) is not None),
+    ("只加约束, 没动 DOM 排列(标题行仍是 ftri + 角色 + chip + hint 三个 span)",
+     (lambda m: bool(m) and m.group(0).count("<span") == 3
+      and 'class="ftri"' in m.group(0) and "角色" in m.group(0)
+      and 'id="cChars"' in m.group(0) and 'id="multiHint"' in m.group(0))(
+         re.search(r'data-fold="chars">[\s\S]{0,300}?</div>', html))),
+    # --- ② 背景浓度「恢复默认」 ---
+    ("设置页有「恢复默认」按钮", 'id="btnBgOpReset"' in html
+     and ">恢复默认</button>" in html),
+    ("恢复默认走 resetBgOp()", 'onclick="resetBgOp()"' in html),
+    ("resetBgOp 把手动覆盖清成 null",
+     (lambda m: bool(m) and "UIEXT.bgop = null" in m.group(0))(
+         re.search(r"function resetBgOp\(\)\{[\s\S]{0,400}?\n\}", html))),
+    ("resetBgOp 会 save+apply+重渲染",
+     (lambda m: bool(m) and "saveUIExt()" in m.group(0)
+      and "applyUIExt()" in m.group(0) and "renderSetup()" in m.group(0))(
+         re.search(r"function resetBgOp\(\)\{[\s\S]{0,400}?\n\}", html))),
+    ("有 _bgopIsCustom 判定(决定按钮置灰)",
+     "function _bgopIsCustom()" in html),
+    ("滑杆拖动会同步按钮置灰状态(同步写在 setBgOp 里, 程序化调用也不脱节)",
+     (lambda m: bool(m) and "_syncBgOpReset()" in m.group(0))(
+         re.search(r"function setBgOp\(v\)\{[\s\S]{0,500}?\n\}", html))
+     and "function _syncBgOpReset()" in html),
+    ("已是默认时按钮 disabled",
+     (lambda m: bool(m) and "disabled" in m.group(0))(
+         re.search(r'id="btnBgOpReset"[\s\S]{0,300}?>恢复默认', html))),
+    ("置灰有对应样式(.mini:disabled)", re.search(
+        r"\.btn:disabled,\.mini:disabled\{", html) is not None),
+    # --- ③ 三套主题 token 不许被这轮改动波及 ---
+    ("深色主题主色未被波及(#ff9f1c)", "--accent:#ff9f1c" in html),
+    ("浅色主题主色未被波及(#e8890b)", "--accent:#e8890b" in html),
+    ("粉色主题主色未被波及(#ffb7c5)", "--accent:#ffb7c5" in html),
+    # --- ④ 版本号 (同样写成"版本无关": >= 1.5.44 且与 changelog 头一致) ---
+    ("版本号与 changelog 头一致且 >= 1.5.44",
+     (lambda m1, m2: m1 and m2 and m1.group(1) == m2.group(1)
+      and tuple(int(x) for x in m1.group(1).split(".")) >= (1, 5, 44))(
+         re.search(r'^VERSION = "([\d.]+)"', zsrc, re.M),
+         re.search(r'^v([\d.]+) 更新', zsrc, re.M))),
+]
+w()
+w("=== v1.5.44 静态检查 ===")
+sbad27 = []
+for name, ok in static_checks27:
+    w(("  [OK]   " if ok else "  [FAIL] ") + name)
+    if not ok:
+        sbad27.append(name)
+assert not sbad27, "v1.5.44 静态检查失败: %s" % sbad27
 
 
 # 先确认服务真的还活着 —— last_url.txt 记的是"上一次启动"的端口, 进程一关就是死链,

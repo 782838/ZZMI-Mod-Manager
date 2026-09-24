@@ -4,6 +4,9 @@ __pycache__/
 *.spec
 build/
 dist/
+# 带版本后缀的打包工作目录(打包时为了绕开被拦的 --clean 会另建目录)
+build_*/
+dist_*/
 
 # 测试夹具与临时产物
 tests/_sandbox/

@@ -4,7 +4,7 @@
 
 #define MyAppName "ZZMI Mod 管家"
 #define MyAppNameEn "ZZMI Mod Manager"
-#define MyAppVersion "1.5.40"
+#define MyAppVersion "1.5.44"
 #define MyAppExeName "ZZMI-Mod-Manager.exe"
 #define MyAppId "{{8F3D6C21-9A47-4E5B-B0D2-77A1C3E9F504}"
 

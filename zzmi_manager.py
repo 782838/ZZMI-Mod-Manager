@@ -5,6 +5,124 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.44 更新
+-----------
+* **修侧栏「角色」标题行折成两行**(用户反馈"排版不好看, 变成两排了") —— 侧栏固定 250px,
+  `aside` 左右各 11px + `.side-h` 左右各 11px 内边距, 这一行**可用宽度只有 206px**;
+  而真实数据下内容是 `▾ 角色  [45 角色]  26 个角色有多套`(约 215px), 挤爆后**每个 flex
+  子项各自折行**(连文字节点"角色"也折成"角/色"两行), 看着就像排版散了。
+  修法(只加约束, 不动 DOM 顺序和排列): `.side-h.fold{white-space:nowrap}` +
+  `.sidecnt{flex:0 0 auto}` + `#multiHint{flex:0 1 auto;min-width:0;overflow:hidden;
+  text-overflow:ellipsis;font-size:10.5px;letter-spacing:0}` —— 次要提示极端数据下走省略号,
+  不会再把标题行撑破。
+* **背景浓度新增「恢复默认」**(用户要求) —— 原来拖过滑杆后 `localStorage` 里就留下了一个
+  永久的手动覆盖, 没有回到默认的路。现在 `背景浓度` 右边多一个按钮:
+  清掉覆盖(`UIEXT.bgop = null`)回到**当前主题**自带的 `--bgop`(深色/粉色 55%, 浅色 30%),
+  已经是默认时按钮置灰。⚠️ 默认值是**按主题**算的, 不是固定 55%。
+* 两处都只加约束/加元素, **深色/浅色/粉色三套主题的 token 一行未改**。
+
+v1.5.43 更新
+-----------
+* **樱花粉主题重做**(配色由用户自己挑的) —— v1.5.42 那版粉被用户否了(原话"你这个粉色太难看了")。
+  根因不是粉色本身, 是**底色脏**: `#FFB3C7` 是低饱和粉(HSV S≈30%), 压在偏棕紫的底
+  `#1d1218` 上会发闷发灰, 看着像"脏粉"。改法:
+  - 底色 `#1d1218` → **中性近黑 `#16161c`**(不偏棕、不偏紫), 面板/边框/文字/阴影全套跟着
+    换成中性灰紫(`#232330`/`#37374a`/`#f8f4f7`/`rgba(10,10,16,…)`)。
+  - 主色 → **`#FFB7C5`**(Cherry Blossom Pink, 最公认的樱花粉色号; 次色 `#f194aa`,
+    按下色 `#3d1522`), 主按钮渐变 `#ffd9e3 → #ffadc0`。
+  - 底图滤镜 `brightness(.86)` → `.80` 并把色相从 304° 微调到 303° —— 背景更暗更中性,
+    粉色高光才跳得出来; `body::after` 遮罩的暖棕换成中性黑底。
+  - **只动 `html[data-theme="pink"]` 那一段(第 11 区)**, 深色/浅色主题一行未改。
+  - 挑色过程: 出了 8 个候选(3 个深色 + 3 个浅色 + 现版 + 原始深色对照)的真实界面截图 +
+    精确色卡, 用户选的这一版。对比图留在工作空间 `_ui_pink_choice/`。
+
+v1.5.42 更新
+-----------
+* **连拍只在「绝区零」处于前台时才触发**(用户明确要求) —— 以前只要管家自己不在最前面就
+  24fps 一直抓屏, 于是"开着游戏、切出去逛网页/聊天/翻文件夹"时按到鼠标侧键(浏览器里侧键
+  就是后退/前进, 很容易误按)也会录一段。现在新增闸门 `_burst_allowed_now(cfg)`, 三处
+  触发点(**滚动录制 `BurstBuffer._loop` / 鼠标低级钩子 `MouseBtnWatcher._cb` / 热键
+  `_HOTKEY_ID2` 分支**)全部改走它。默认**只认游戏窗口在前台**; 设置页 → 📸 连拍缓冲 →
+  「触发条件」可以切回老行为(`config.photo_only_in_game = false`)。
+  - 判据用 **前台窗口的 exe 名** 而不是 PID 比对: `foreground_exe()` 走
+    `GetForegroundWindow → GetWindowThreadProcessId → OpenProcess(QUERY_LIMITED_INFORMATION)
+    → QueryFullProcessImageNameW → CloseHandle`, **全是内核调用, 0 子进程 / 0 文件 I/O**,
+    所以能在 `WH_MOUSE_LL` 回调里安全调用(`LowLevelHooksTimeout`=300ms 超时会被静默摘钩,
+    那里绝不能起 tasklist 子进程 —— 也就是绝不能用 `proc_probe()`)。老版本(≤v1.5.35)试过
+    PID 比对, 全屏覆盖层/别的启动方式会让两者对不上, 判据一错连拍就彻底哑掉。
+  - 被挡下时不再静默: `_log_reject_throttled`(60s 限流)写一条人话日志,
+    `_why_empty()` 与「🩺 侧键自检」新增 **触发条件** / **绝区零在前台?** 两栏, 直接
+    把"现在前台是谁、认的游戏是哪个"摆出来。
+* **挑帧页 / 照片墙的全屏放大重做**(用户要求) —— 全屏后支持 **鼠标滚轮缩放**(1x~8x,
+  以鼠标位置为锚, 手指按住那一点不动)、**按住拖动平移**、双击复位, 底部新增缩放工具条
+  (百分比 / − / + / 适应 / 1:1 / ✕)。原来只有一张 `object-fit:contain` 的死图。
+* **Esc 分层**(用户要求: "放大时 Esc 应该退出放大, 而不是直接退出连拍界面") —— 以前
+  两个 keydown 监听都无条件 `closeAll()`, 一按 Esc 连底下的挑帧页一起关。现在统一走
+  `escLayer()`, 从最上面一层往下退: ① 确认框/输入框 → 只关它 ② 全屏放大 → 只退放大
+  ③ 照片墙多选模式 → 只退多选 ④ 都没有才关掉所有浮层。`closeZoom()` 返回布尔, 表示
+  "这一层把 Esc 吃掉了"。
+* **照片墙删除三处修复**(用户实测反馈) ——
+  - **确认框被盖住**: `#mAsk` / `#mAskMask` 以前没有自己的 `z-index`, 沿用 `.modal` 的
+    60, 而照片墙也是 `.modal`(60) 且 DOM 在它后面 —— 于是从照片墙点删除时确认框被压在
+    照片墙底下, **不关掉照片墙根本看不见**。现在给到 241/240(高于 `.lightbox` 80、
+    `#dead` 200)。
+  - **双确认**: `pwAskTwice()` 连问两遍(第一遍「🗑 移入回收站」, 第二遍「确定删除」),
+    两遍都点确定才真的动; 中途取消一张都不删。
+  - **批量删除**: 照片墙新增「☑ 批量选择」→ 每张左上角出现勾选框(点缩略图也能勾)、
+    「全选/取消全选」、底栏「🗑 删除选中 (N)」。后端 `/api/photo_del` 扩展成同时接受
+    `names: [...]` 数组(老的单个 `name` 仍然兼容), 一次请求批量移入回收站并回报
+    `deleted` / `failed`。
+* **粉色主题改成「樱花粉」**(用户: "我要的是那种樱花粉, 不明白就去查") —— 原来的
+  `--accent:#ff6fa5` 是 H337.5° / S56.5% / L71.8% 的**艳粉(品红向)**, 太扎眼。樱花粉的
+  特征是**低饱和 + 高明度 + 偏暖的玫瑰色**, 换成 `--accent:#ffb3c7`
+  (H344.2° / S29.8% / L85.1%, 与公认樱花色 `#FFB7C5` 的曼哈顿距离只有 6), `--accent2`
+  同步降到 `#f28aa6`, 主按钮渐变改成 `#ffd9e2 → #ffa8c0`, `--glow` 三元组换成
+  `255,179,199`, 整套面板色也跟着从紫调往暖玫瑰调挪了一格。
+  底图色相偏移从 `hue-rotate(288deg) saturate(2.1)`(推到 ≈328° 的品红, 就是"太艳"的来源)
+  改成 `hue-rotate(304deg) saturate(1.45) brightness(.86)`(≈345° 的暖玫瑰, 且压了饱和度)。
+* 校验: jsdom 行为断言 **81 项全绿**(Esc 分层 / 滚轮缩放上下限与锚点 / 确认框 z-index
+  高于 modal+lightbox+dead / 双确认必须点两遍才发请求 / 批量勾选与全选 / 樱花粉用
+  HSV 指纹与公认色号比对); 后端隔离联调 5 组全绿(`tests/_v1542_backend.py`); 既有
+  `tests/ui_burst.js` 64/64、`tests/test_core.py` 全绿、`tests/ui_check.py` 渲染校验通过
+  (新增 2.25 段共 26 条静态断言)。
+* **修**: `tests/ui_check.py` 两条被前几个版本改动弄失效的断言 —— 「照片删除也走回收站」
+  绑死了变量名 `recycle_path(p)`(v1.5.42 改成批量后是 `_p`)、「红按钮只定义一次」用
+  `count(".btn.danger{")` 把浅色主题的**作用域覆盖**也算成重复(v1.5.41 加浅色主题时就
+  已经误报)。都改成按**行为**断言, 不再绑死实现细节。
+
+v1.5.41 更新
+-----------
+* **界面美化(纯视觉, 一行布局都没动)** —— 用户反馈"界面很糟糕", 但明确要求**只换皮肤、
+  不动排列**(现有排列是他一步步调出来的)。做法是**追加式覆盖层**: 所有新样式整段加在
+  `<style>` 末尾, 靠"同优先级后写覆盖前写"生效, 原有 CSS **一行未删改**, 想回滚直接删掉
+  那两段即可(两段都有醒目注释块标出边界)。
+  - **玻璃通透皮肤**: 顶部栏/侧栏/工具栏/卡片全部换成 `backdrop-filter` 毛玻璃 + 内高光
+    描边 + 双层柔影(原来是一块实心面板盖死底图, 阴影是纯黑一大坨)。
+  - **emoji → 统一线性 SVG 图标(全站 ~60 处)**: emoji 在不同机器/字体下大小、基线、
+    颜色都不一致(还会被系统上色), 是界面显"廉价、花"的主因。新增内置图标库 `ICON`
+    (1.8px 描边、`currentColor`) + `EMOJI_MAP`, 由 `iconize()` 把静态 HTML 与**动态渲染**
+    出来的内容(MutationObserver + rAF 合并)里的 emoji 换成 SVG, 自动跟随主题色。
+  - **新增粉色主题**(用户要求): 深色/浅色之外再加 `data-theme="pink"`, 全套 token 覆盖 +
+    底图色相偏移(原底图是暖橙, 只叠色是"粉"不起来的)。后端 `/api/config` 本来就不校验
+    theme 字符串, 所以**只改前端**。设置页主题行现在是 深色 / 浅色 / 粉色 三选一。
+  - **微交互动效**: 卡片入场错峰淡入(`--i` + `animation-delay`, 用 `backwards` 填充,
+    动画结束不残留 transform, 不影响 hover 抬升)、鼠标追光(`--mx/--my` 径向柔光)、
+    悬停抬升、封面 hover 轻放大、已启用状态呼吸灯、按钮按压回弹。
+  - **封面图处理**: 图片底部渐隐, 让状态徽章和文字压得住(列表视图自动关闭)。
+  - **骨架屏**: 重新扫描时先铺占位卡(shimmer), 不再"白一下再跳出来"。
+  - **空状态插画**: 纯内联 SVG(不额外加图片资源) + 说明 + 引导按钮("重新扫描"/"打开仓库"/
+    "清空筛选")。**修: 空状态被挤成一列** —— `#cards` 是 grid, `.empty` 没声明
+    `grid-column:1/-1` 就只占 216px 一格, 长文案被压成 3 行。
+  - **滚动体验**: 下面还有内容时显示底部渐隐 + 右下角"回到顶部"。
+  - **背景系统**: 沉浸 / 柔和 / 纯色 三档 + 浓度滑块(存 localStorage, 纯前端, 不动后端配置)。
+  - **侧栏数据条**: 计数按占比铺一条底色, 一眼看出启用/禁用比例。
+  - **对比度修补**: 浅色主题下"删除"按钮原来沿用深色主题的亮粉字, 几乎看不清 —— 改成
+    深红字浅红底; 状态徽章同理。
+* 校验: jsdom 跑真实 DOM 断言(header/aside/toolbar/cards/settings 五区**零 emoji 残留**、
+  172+ 个 `svg.ic`、`--i` 错峰、`--p` 数据条、粉色主题切换、背景系统读写); CSS 花括号
+  444/444 配平; 抽出 `<script>` 过 `node --check`。另用无头浏览器出 6 张真实截图
+  (深色/粉色/浅色/空状态/列表/设置页)逐张肉眼复核。
+
 v1.5.40 更新
 -----------
 * **修: 一个 mod 被拆成多张卡**(用户反馈: 主界面里同一个 mod 出现好几次) —— 根因定位到
@@ -485,7 +603,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.40"
+VERSION = "1.5.44"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -588,6 +706,9 @@ DEFAULT_CONFIG = {
     "photo_on": True,           # v1.5.31 连拍缓冲: 游戏运行时是否后台录屏
     "photo_hotkey": "Ctrl+Shift+C",   # v1.5.31 连拍触发键(可改)
     "photo_mouse_btn": 1,       # v1.5.32 鼠标侧键: 0=关 1=侧键1(后退) 2=侧键2(前进)
+    # v1.5.42 连拍触发条件: True=只有绝区零窗口在前台才触发/录制(默认);
+    # False=v1.5.35 老行为(只要管家自己不在最前就录)。
+    "photo_only_in_game": True,
     "photo_seconds": 3,         # v1.5.31 往前回溯几秒(1~10)
     "photo_dir": "",            # v1.5.34 照片成品存哪(空=数据目录\照片)
 }
@@ -3751,6 +3872,112 @@ def foreground_pid():
         return 0
 
 
+# v1.5.42: 连拍只在**绝区零真的在最前面**时才响应。
+# 前台窗口 exe 名的缓存 —— 滚动录制每秒要问十几次, 每次 5 个内核调用虽然也就
+# 几十微秒, 但没必要; 0.12s 的窗口对"按键那一刻"的判断完全够用。
+_fg_exe_cache = {"t": 0.0, "exe": ""}
+_FG_CACHE_TTL = 0.12
+
+
+def foreground_exe(ttl=None):
+    """当前前台窗口所属进程的可执行文件名(小写, 含 .exe); 拿不到返回 ""。
+
+    v1.5.42 —— 用来判断"绝区零在不在最前面"。
+    ⚠️ 全是最轻的内核调用(GetForegroundWindow -> GetWindowThreadProcessId ->
+    OpenProcess(QUERY_LIMITED_INFORMATION) -> QueryFullProcessImageNameW ->
+    CloseHandle), **0 子进程 / 0 文件 I/O**, 所以可以安全地在 WH_MOUSE_LL
+    回调(受 LowLevelHooksTimeout=300ms 约束)里调用 —— 绝不能用 proc_probe(),
+    那个会起 tasklist 子进程。
+
+    为什么不用 `foreground_pid() == game_pid`: 老版本(≤v1.5.35)试过 PID 比对,
+    但全屏覆盖层、别的启动方式、tasklist 输出解析失败都会让两者对不上, 判据一错
+    连拍就彻底哑掉。比 **exe 名**对启动方式不敏感, 稳得多。
+    """
+    if not _WIN:
+        return ""
+    now = time.time()
+    if ttl is None:
+        ttl = _FG_CACHE_TTL
+    if ttl > 0 and now - _fg_exe_cache.get("t", 0.0) < ttl:
+        return _fg_exe_cache.get("exe", "")
+    exe = ""
+    try:
+        import ctypes
+        from ctypes import wintypes
+        u, k = ctypes.windll.user32, ctypes.windll.kernel32
+        h = u.GetForegroundWindow()
+        if h:
+            pid = wintypes.DWORD(0)
+            u.GetWindowThreadProcessId(h, ctypes.byref(pid))
+            if pid.value:
+                PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+                hp = k.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False,
+                                   pid.value)
+                if hp:
+                    try:
+                        buf = ctypes.create_unicode_buffer(1024)
+                        size = wintypes.DWORD(1024)
+                        if k.QueryFullProcessImageNameW(hp, 0, buf,
+                                                        ctypes.byref(size)):
+                            exe = os.path.basename(buf.value or "").lower()
+                    finally:
+                        k.CloseHandle(hp)
+    except Exception:
+        exe = ""
+    _fg_exe_cache["t"] = now
+    _fg_exe_cache["exe"] = exe
+    return exe
+
+
+def _game_exe_name(cfg):
+    """游戏主程序名(小写)。跟 proc_probe 用同一个兜底默认值, 别两处不一致。"""
+    return os.path.basename(
+        (cfg or {}).get("game_exe") or "ZenlessZoneZero.exe").lower()
+
+
+def _is_game_foreground(cfg):
+    """前台窗口是不是**绝区零自己**。拿不到任何信息时返回 False(不录)。"""
+    want = _game_exe_name(cfg)
+    got = foreground_exe()
+    return bool(want) and bool(got) and got == want
+
+
+def _not_game_msg(cfg=None):
+    """被"游戏不在前台"挡掉时的说明文字。"""
+    exe = (cfg or {}).get("game_exe") or "ZenlessZoneZero.exe"
+    return ("绝区零不在最前面, 这次按键不算 —— v1.5.42 起连拍只在游戏窗口"
+            "处于前台时才会触发(以前只要管家不在最前就录, 逛网页时也在后台"
+            "一直抓屏)。如果认错了游戏程序, 去 设置 → 游戏 改「游戏主程序」"
+            "(当前认的是 %s)。" % os.path.basename(exe))
+
+
+def _burst_allowed_now(cfg):
+    """现在这一下按键/这一帧录制该不该做。
+
+    v1.5.42 默认: **只有绝区零在前台**才允许(用户明确要求)。
+    关掉 `photo_only_in_game` 就退回 v1.5.35 的老行为: 只要管家自己不在最前就录。
+    两个分支都是纯内核调用, 侧键钩子回调里可以安全调用。
+    """
+    cfg = cfg or {}
+    if not cfg.get("photo_only_in_game", True):
+        return not _is_manager_foreground()
+    return _is_game_foreground(cfg)
+
+
+# 侧键在浏览器里就是"后退/前进", 用户逛网页时会经常按到; 被挡掉的日志要限流,
+# 否则日志文件会被刷满。
+_reject_log = {"t": 0.0}
+
+
+def _log_reject_throttled(tag, msg, every=60.0):
+    """把"这次按键被挡了"记进日志, 但最多每 every 秒一条。"""
+    now = time.time()
+    if now - _reject_log.get("t", 0.0) < every:
+        return
+    _reject_log["t"] = now
+    log("%s: %s" % (tag, msg))
+
+
 def launch_game(cfg):
     """启动游戏。ZZMI 需要管理员权限注入(d3dx.ini: require_admin=true),
     所以必须用 ShellExecute 的 runas 走 UAC, 否则 CreateProcess 会报 WinError 740。"""
@@ -4260,7 +4487,10 @@ class BurstBuffer(object):
             # 别的启动方式、PID 解析失败…), 缓冲就永远是空的 —— 侧键按下去只会得到
             # 「缓冲里还没内容」, 用户看到的就是"按了没反应"。现在只在自己界面在前台
             # 时冻结, 其它情况照录, 宁可多录几帧, 也绝不让缓冲空着。
-            if _is_manager_foreground():
+            if not _burst_allowed_now(cfg):
+                # v1.5.42: 判据从「管家自己在前台就冻结」收紧成「**绝区零在前台才录**」
+                # (用户明确要求)。老写法只要管家不在最前就 24fps 一直抓屏 ——
+                # 逛网页、看视频、写文档时后台都在录, 既费电又白占 CPU。
                 self._rec_event.wait(0.5)
                 continue
             t0 = time.time()
@@ -4428,6 +4658,14 @@ class BurstBuffer(object):
         if not cfg.get("photo_on", True):
             return ("连拍缓冲是关着的 —— 去 设置 → 📸 连拍缓冲 → 后台录屏, "
                     "点一下「开启」再来。")
+        # v1.5.42: 新的默认触发条件 —— 先把"不是游戏在前台"这条原因说清楚,
+        # 否则用户看到的还是"按了没反应"。_is_game_foreground / foreground_exe
+        # 都是纯内核调用(0 子进程 / 0 文件 I/O), 在钩子回调里调也安全。
+        if cfg.get("photo_only_in_game", True) and not _is_game_foreground(cfg):
+            return ("连拍只在**绝区零窗口在最前面**的时候才会录(v1.5.42 起的默认行为), "
+                    "现在前台是「%s」。切回游戏再按; 或者去 设置 → 📸 连拍缓冲 → "
+                    "触发条件, 切回「只要管家不在最前就触发」。"
+                    % (foreground_exe() or "拿不到"))
         secs = cfg.get("photo_seconds") or 3
         return ("按下之后那 %s 秒里一帧都没抓到 —— 多半是屏幕捕获被拦住了。"
                 "可以试: ① 游戏别用「独占全屏」, 改「无边框窗口」; "
@@ -4692,15 +4930,28 @@ class MouseBtnWatcher(object):
                                        ctypes.POINTER(MSLLHOOKSTRUCT)).contents
                     btn = (info.mouseData >> 16) & 0xFFFF
                     if btn == want:
-                        r = self.app.burst.press("mouse")
-                        # v1.5.37: 这里**只负责"开始录"**。按下之后那 N 秒录完,
-                        # 由 BurstBuffer._finish_rec() 拿着最终结果再叫一次
-                        # _after_press_bg 去顶窗 —— 录制中间顶窗会把管家自己录进去。
-                        # ⚠️ 连失败日志都丢后台(它要 append 落盘): 回调链上
-                        # 不留任何文件 I/O —— 超 LowLevelHooksTimeout(300ms)
-                        # 会被 Windows 静默摘钩, 侧键从此彻底失效且无报错。
-                        threading.Thread(target=_after_press_bg,
-                                         args=("侧键连拍", r), daemon=True).start()
+                        # v1.5.42: 先问"绝区零在不在前台"。不在就**完全不碰 burst**
+                        # —— 不占 press_seq、不弹挑帧页, 玩家在浏览器里按侧键
+                        # (那本来就是"后退")不会被当成抓拍。
+                        # ⚠️ 这里必须是纯内核调用: _burst_allowed_now ->
+                        # foreground_exe, 0 子进程 / 0 文件 I/O。
+                        if _burst_allowed_now(self.app.cfg):
+                            r = self.app.burst.press("mouse")
+                            # v1.5.37: 这里**只负责"开始录"**。按下之后那 N 秒录完,
+                            # 由 BurstBuffer._finish_rec() 拿着最终结果再叫一次
+                            # _after_press_bg 去顶窗 —— 录制中间顶窗会把管家自己录进去。
+                            # ⚠️ 连失败日志都丢后台(它要 append 落盘): 回调链上
+                            # 不留任何文件 I/O —— 超 LowLevelHooksTimeout(300ms)
+                            # 会被 Windows 静默摘钩, 侧键从此彻底失效且无报错。
+                            threading.Thread(target=_after_press_bg,
+                                             args=("侧键连拍", r), daemon=True).start()
+                        else:
+                            # 被挡了。限流写日志(侧键在浏览器里是"后退", 会常按到),
+                            # 同样丢后台线程 —— 回调链上不做 I/O。
+                            threading.Thread(target=_log_reject_throttled,
+                                             args=("侧键连拍被跳过",
+                                                   _not_game_msg(self.app.cfg)),
+                                             daemon=True).start()
             except Exception:
                 # ⚠️ 连异常处理都不在回调里做: traceback.format_exc() 会经 linecache
                 # 读源码文件, log() 会 append 落盘 —— 都是 I/O。只把 exc_info
@@ -4801,6 +5052,11 @@ def photo_diag(app):
     except Exception:
         hwnd = 0
     mgr_fg = _is_manager_foreground()
+    # v1.5.42: 触发条件 / 谁在前台 —— 自检要能直接说清楚"为什么按了没反应"
+    only_in_game = bool(cfg.get("photo_only_in_game", True))
+    game_fg = _is_game_foreground(cfg)
+    fg_exe = foreground_exe(ttl=0)
+    game_exe_name = _game_exe_name(cfg)
     want = int(cfg.get("photo_mouse_btn", 1) or 0)
     hook_ok = getattr(mw, "ok", None)
     try:
@@ -4852,6 +5108,18 @@ def photo_diag(app):
         step("管家在前台?", not mgr_fg,
              "是(按下后那几秒会录到管家自己)" if mgr_fg else "不是(正常)",
              "按侧键之前先切回游戏画面, 否则录到的就是管家界面"),
+        # v1.5.42: 触发条件那两行 —— 用户要求"只有绝区零在前面才触发",
+        # 自检必须能把"到底谁在前台"直接摆出来, 否则按了没反应没法排查。
+        step("触发条件", True,
+             ("只在绝区零前台时触发" if only_in_game
+              else "只要管家不在最前就触发(v1.5.35 老行为)"),
+             "设置 → 📸 连拍缓冲 → 触发条件, 可以切回老行为"),
+        step("绝区零在前台?", (not only_in_game) or game_fg,
+             ("是" if game_fg else "不是")
+             + ("  ·  当前前台: %s" % (fg_exe or "拿不到"))
+             + ("  ·  认的游戏: %s" % game_exe_name),
+             "不是的时候按侧键**不会有任何反应**(这是 v1.5.42 的预期行为)。"
+             "如果这里认的游戏程序不对, 去 设置 → 游戏 改「游戏主程序」"),
     ]
     return {"ok": True, "steps": steps, "ring": ring, "game_pid": gpid,
             "fg_pid": fg, "manager_fg": mgr_fg, "hook_ok": hook_ok,
@@ -4859,7 +5127,9 @@ def photo_diag(app):
             "hwnd": hwnd, "game_running": bool(game),
             "launcher_running": bool(launcher),
             "seconds": secs, "recording": bool(rec.get("recording")),
-            "last_count": last_n}
+            "last_count": last_n,
+            "only_in_game": bool(only_in_game), "game_fg": bool(game_fg),
+            "fg_exe": fg_exe, "game_exe_name": game_exe_name}
 
 
 def list_photos():
@@ -5111,6 +5381,11 @@ class App(object):
             "photo_on": bool(self.cfg.get("photo_on", True)),
             "photo_hotkey": self.cfg.get("photo_hotkey", "Ctrl+Shift+C"),
             "photo_mouse_btn": int(self.cfg.get("photo_mouse_btn", 1) or 0),
+            # v1.5.42: 连拍是否"只在绝区零前台时才触发"; 顺带把当前前台 exe
+            # 报给界面, 侧键自检和设置页可以直接显示"现在前台是谁"。
+            "photo_only_in_game": bool(self.cfg.get("photo_only_in_game", True)),
+            "fg_exe": foreground_exe(ttl=0),
+            "game_fg": _is_game_foreground(self.cfg),
             "photo_seconds": self.cfg.get("photo_seconds", 3),
             "photo_dir": PHOTO_DIR,
             "photo_dir_custom": bool((self.cfg.get("photo_dir") or "").strip()),
@@ -6858,11 +7133,30 @@ class Handler(BaseHTTPRequestHandler):
 
             if act == "photo_del":
                 # 删照片也走回收站(和 mod 一个规矩, 没有物理删除)
-                p = photo_file_path(body.get("name"))
-                if not p:
-                    return self._json({"ok": False, "msg": "找不到这张照片"})
-                ok, msg = recycle_path(p)
-                return self._json({"ok": ok, "msg": msg,
+                # v1.5.42: 支持批量 —— body["names"] 是名字数组(照片墙「删除选中」用),
+                # 仍然兼容老的单个 body["name"]。
+                _names = body.get("names")
+                if not isinstance(_names, list):
+                    _names = [body.get("name")] if body.get("name") else []
+                _names = [str(x) for x in _names if x]
+                if not _names:
+                    return self._json({"ok": False, "msg": "没指定要删哪张照片"})
+                gone, failed = [], []
+                for _nm in _names:
+                    _p = photo_file_path(_nm)
+                    if not _p:
+                        failed.append(_nm)
+                        continue
+                    _ok, _ = recycle_path(_p)
+                    (gone if _ok else failed).append(_nm)
+                if len(_names) == 1:
+                    msg = "已移入回收站" if gone else "移入回收站失败(可能正被占用)"
+                else:
+                    msg = "已移入回收站 %d 张" % len(gone)
+                    if failed:
+                        msg += ", %d 张失败(可能正被占用)" % len(failed)
+                return self._json({"ok": bool(gone), "msg": msg,
+                                   "deleted": gone, "failed": failed,
                                    "photos": list_photos()})
 
             if act == "list_dirs":
@@ -7337,6 +7631,15 @@ class Handler(BaseHTTPRequestHandler):
             app.mwatch.restart()
             name = {0: "关闭", 1: "侧键1(后退)", 2: "侧键2(前进)"}[v]
             return {"ok": True, "msg": "抓拍侧键: " + name,
+                    "state": app.state()}
+        if "photo_only_in_game" in body:
+            # v1.5.42: 连拍触发条件开关
+            app.cfg["photo_only_in_game"] = bool(body["photo_only_in_game"])
+            app.save_config()
+            return {"ok": True,
+                    "msg": ("连拍: 只在绝区零前台时触发"
+                            if app.cfg["photo_only_in_game"]
+                            else "连拍: 只要管家不在最前就触发"),
                     "state": app.state()}
         if "photo_seconds" in body:
             try:
@@ -8017,12 +8320,19 @@ class HotkeyManager(object):
                     if msg.wParam == _HOTKEY_ID:
                         toggle_manager_window(self.app)
                     elif msg.wParam == _HOTKEY_ID2:
-                        r = self.app.burst.press("key")
-                        # v1.5.37: 同侧键 —— 这里只"开始录", 顶窗推迟到录满之后。
+                        # v1.5.42: 同侧键 —— 绝区零不在前台就整下不算。
                         # 这条走 WM_HOTKEY 消息循环(不是低级钩子, 没 300ms 硬约束),
                         # 但同样别在消息泵里落盘/枚举窗口, 会拖慢后续热键。
-                        threading.Thread(target=_after_press_bg,
-                                         args=("热键连拍", r), daemon=True).start()
+                        if _burst_allowed_now(self.app.cfg):
+                            r = self.app.burst.press("key")
+                            # v1.5.37: 同侧键 —— 这里只"开始录", 顶窗推迟到录满之后。
+                            threading.Thread(target=_after_press_bg,
+                                             args=("热键连拍", r), daemon=True).start()
+                        else:
+                            threading.Thread(target=_log_reject_throttled,
+                                             args=("热键连拍被跳过",
+                                                   _not_game_msg(self.app.cfg)),
+                                             daemon=True).start()
                 except Exception:
                     # v1.5.36: 和侧键回调一个待遇 —— 连 format_exc() 都不在消息泵里做
                     # (它会经 linecache 读源码文件 = I/O, 拖慢后续热键响应)。

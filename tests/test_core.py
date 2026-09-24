@@ -502,6 +502,70 @@ finally:
 _clean(_ph)
 bb.burst = None
 
+# ---------- 4.9 连拍触发闸门(v1.5.42: 只在绝区零前台才录) ----------
+# _burst_allowed_now 依赖真实前台窗口, 没法在测试里真的切窗口, 所以把
+# foreground_exe / _is_manager_foreground 换成可控的假实现, 验**真值表**。
+_old_fg_exe, _old_mgr_fg = Z.foreground_exe, Z._is_manager_foreground
+try:
+    GAME = "zenlesszonezero.exe"
+
+    def _set(fg, mgr=False):
+        Z.foreground_exe = lambda ttl=None, _f=fg: _f
+        Z._is_manager_foreground = lambda: mgr
+
+    cfg_game = {"game_exe": r"D:\ZZZ\ZenlessZoneZero.exe"}   # 大小写不同, 要能对上
+    cfg_old = dict(cfg_game, photo_only_in_game=False)
+
+    # 默认(只在游戏前台): 游戏在前台 -> 录; 别的前台 -> 不录; 管家自己在前台 -> 不录
+    _set(GAME)
+    assert Z._burst_allowed_now(cfg_game) is True, "游戏在前台却不让录"
+    _set("chrome.exe")
+    assert Z._burst_allowed_now(cfg_game) is False, "浏览器在前台却还在录"
+    _set("msedge.exe")
+    assert Z._burst_allowed_now(cfg_game) is False, "浏览器在前台却还在录"
+    _set("explorer.exe")
+    assert Z._burst_allowed_now(cfg_game) is False, "资源管理器在前台却还在录"
+    _set("zzmi-mod-manager.exe")
+    assert Z._burst_allowed_now(cfg_game) is False, "管家自己在前台却还在录"
+    _set("")                                     # 拿不到前台信息
+    assert Z._burst_allowed_now(cfg_game) is False, "前台拿不到时应当不录(宁可不录)"
+    _set(GAME, mgr=True)
+    assert Z._burst_allowed_now(cfg_game) is True, "游戏在前台(哪怕标记成管家)也该录"
+    w("默认闸门(只认游戏前台)真值表 OK")
+
+    # 老行为(photo_only_in_game=False): 只要管家自己不在最前就录
+    _set(GAME)
+    assert Z._burst_allowed_now(cfg_old) is True
+    _set("chrome.exe")
+    assert Z._burst_allowed_now(cfg_old) is True, "老行为下浏览器在前台应该照录"
+    _set("zzmi-mod-manager.exe", mgr=True)
+    assert Z._burst_allowed_now(cfg_old) is False, "老行为下管家自己在前台要冻结"
+    w("退回老行为(管家不在前台就录)真值表 OK")
+
+    # game_exe 没配 -> 兜底认 ZenlessZoneZero.exe
+    _set(GAME)
+    assert Z._game_exe_name({}) == "zenlesszonezero.exe", Z._game_exe_name({})
+    assert Z._game_exe_name({"game_exe": r"X:\a\B.exe"}) == "b.exe"
+    assert Z._is_game_foreground({}) is True
+    _set("zzz.exe")
+    assert Z._is_game_foreground({}) is False
+    w("game_exe 兜底与 basename 比对 OK")
+
+    # 闸门函数本身必须是"纯内核调用"—— 源码里不许出现子进程/文件 I/O
+    _src = open(os.path.join(HERE, "..", "zzmi_manager.py"), encoding="utf-8").read()
+    _m = __import__("re").search(
+        r"def _burst_allowed_now\(cfg\):[\s\S]{0,700}?\ndef ", _src)
+    assert _m, "找不到 _burst_allowed_now 函数体"
+    for _bad in ("subprocess", "proc_probe", "open(", "tasklist"):
+        assert _bad not in _m.group(0), "闸门里出现了 %r(钩子回调会超时)" % _bad
+    w("闸门保持 0 子进程 / 0 文件 I/O(WH_MOUSE_LL 300ms 红线) OK")
+
+    # 三处触发点都要走闸门
+    assert _src.count("_burst_allowed_now(") >= 4, "触发点没全部接上闸门"
+    w("三处触发点(滚动录制/侧键钩子/热键)全部接上闸门 OK")
+finally:
+    Z.foreground_exe, Z._is_manager_foreground = _old_fg_exe, _old_mgr_fg
+
 w()
 w("ALL TESTS PASSED")
 open(OUT, "w", encoding="utf-8").write("\n".join(L))
