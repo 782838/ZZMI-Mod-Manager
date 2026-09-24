@@ -1200,7 +1200,7 @@ w("侧栏 全部Mod 计数 = %s" % (m2.group(1) if m2 else "?"))
 
 # ---------- 5. 截图 ----------
 # ⚠️ 千万别写 screenshots/界面预览-深色.png —— 那个路径是**要提交/发布**的成品图,
-# 而这里的截图抓的是**真实 mod 库**(真实 mod 名 + 缩略图 + 本机路径 F:\...\Mods),
+# 而这里的截图抓的是**真实 mod 库**(真实 mod 名 + 缩略图 + 本机真实路径),
 # 一跑测试就会把打码成品覆盖成未打码的泄露图(踩过)。
 # 要出可发布的图, 请跑仓库根的 gen_censored_shots.py(演示库 + 注入打码 CSS + 硬闸)。
 shot = os.path.join(HERE, "_render_debug.png")   # tests/_* 已被 .gitignore 忽略

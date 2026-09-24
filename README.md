@@ -185,7 +185,7 @@ Tests run against sandbox folders only (never your real mods):
 **"ZZMI 路径"填哪一层？** 含有 `Resources\Bin\XXMI Launcher.exe` 和 `ZZMI` 子目录的那一层：
 
 ```
-D:\Mods                          <- 填这一层
+D:\Mods                         <- 填这一层
 ├── Resources\Bin\XXMI Launcher.exe
 ├── XXMI Launcher Config.json
 └── ZZMI\

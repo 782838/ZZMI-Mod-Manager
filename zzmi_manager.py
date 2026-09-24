@@ -3300,7 +3300,7 @@ def strip_path_quotes(p):
 
 
 def is_abs_path(p):
-    """判断用户给的是不是一个完整路径(F:\\xxx / \\\\nas\\share / abs:前缀)。"""
+    """判断用户给的是不是一个完整路径(D:\\xxx / \\\\nas\\share / abs:前缀)。"""
     s = strip_path_quotes(p)
     if s.startswith("abs:"):
         return True
@@ -6928,7 +6928,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not is_abs_path(clean):
                     return self._json({
                         "ok": False,
-                        "msg": "请填完整路径(例如 D:\\mod下载), 相对路径不知道该放哪"})
+                        "msg": "请填完整路径(例如 D:\\Mods), 相对路径不知道该放哪"})
                 p = os.path.abspath(clean)
                 if not p or os.path.dirname(p) == p:
                     return self._json({"ok": False, "msg": "路径不合法(不能直接用盘符根目录)"})
@@ -7665,7 +7665,7 @@ class Handler(BaseHTTPRequestHandler):
                 clean = clean + "\\"            # "D:" -> "D:\"
             if not is_abs_path(clean):
                 return {"ok": False, "msg":
-                        "请填完整路径(例如 D:\\ZZMI照片), 相对路径不知道该放哪"}
+                        "请填完整路径(例如 D:\\我的照片), 相对路径不知道该放哪"}
             p = os.path.abspath(clean)
             if not p or os.path.dirname(p) == p:
                 return {"ok": False, "msg": "路径不合法(不能直接用盘符根目录)"}

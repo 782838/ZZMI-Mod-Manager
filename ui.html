@@ -2953,7 +2953,7 @@ function renderSetup(){
     <div class="field">
       <label>ZZMI / XXMI Launcher 安装目录</label>
       <input class="inp" id="inRoot" value="${esc(S.zzmi_root||"")}"
-        placeholder="例如  F:\\MOD  或  C:\\Users\\你\\AppData\\Roaming\\XXMI Launcher">
+        placeholder="例如  D:\\Mods  或  C:\\Users\\你\\AppData\\Roaming\\XXMI Launcher">
       <div class="hint">填含有 <code>Resources\\Bin\\XXMI Launcher.exe</code> 和 <code>ZZMI</code>
       子目录的那一层。换电脑后在这里填一次自己的路径, 之后自动记住。</div>
     </div>
@@ -3060,7 +3060,7 @@ function renderSetup(){
       <button class="mini" id="btnPhotoDir">保存</button>
       <button class="mini" id="btnPhotoDirReset">恢复默认</button>
       <br><span class="hint">连拍留下的成品存到哪。当前: <code>${esc(S.photo_dir||"")}</code>${S.photo_dir_custom?" · 自定义":" · 默认"}
-      　也可以直接把完整路径粘进去(例如 <code>D:\\ZZMI照片</code>)。</span></span></div>
+      　也可以直接把完整路径粘进去(例如 <code>D:\\我的照片</code>)。</span></span></div>
     <div class="kv"><span class="k">录制时长</span><span class="v">
       <input class="inp" id="inPhotoSecs" type="number" min="1" max="10" value="${esc(String(S.photo_seconds||3))}"
         style="max-width:80px;padding:6px 9px;display:inline-block"> 秒

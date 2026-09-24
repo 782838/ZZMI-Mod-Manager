@@ -282,7 +282,7 @@ def main():
        Z.strip_path_quotes("\u201cD:\\xx\u201d"))
     ck("strip_path_quotes 不动正常路径", Z.strip_path_quotes("D:\\xx") == "D:\\xx")
     ck("带引号路径判为绝对路径", Z.is_abs_path('"D:\\xx"'), "带引号应识别")
-    ck("带引号盘符判为绝对路径", Z.is_abs_path('"F:\\"'))
+    ck("带引号盘符判为绝对路径", Z.is_abs_path('"D:\\"'))
     ck("光给盘符判为绝对路径", Z.is_abs_path("D:"))
     ck("相对路径仍判非绝对", not Z.is_abs_path("mydl"))
     ck("空串仍判非绝对", not Z.is_abs_path(""))
