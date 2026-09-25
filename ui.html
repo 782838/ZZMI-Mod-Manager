@@ -1782,7 +1782,7 @@ function renderCats(){
         <span class="nm">${esc(c.name)}</span>
         <span class="cnt">${c.enabled}/${c.count}</span>
         <span class="pinbtn ${c.pinned?"on":""}" data-pin-cat="${esc(c.name)}"
-          title="${c.pinned?"取消收藏":"收藏分类: 置顶到列表最前, 该分类下的 mod 也全部置顶"}">${c.pinned?"★":"☆"}</span>
+          title="${c.pinned?"取消收藏":"收藏分类: 把这个分类行置顶到左侧最前面(不影响它下面的 mod)"}">${c.pinned?"★":"☆"}</span>
       </div>
       <div class="subwrap" data-sub="${i}">
         ${(c.groups||[]).map(g => `
@@ -2796,7 +2796,7 @@ async function openDetail(id, silent){
   $("#dtBody").innerHTML = `
     <div class="kv"><span class="k">收藏置顶</span><span class="v">
       <button class="mini" id="dtPin" style="${e.pinned?"border-color:var(--warn);color:var(--warn)":""}">${e.pinned?"★ 已置顶 · 点击取消":"☆ 收藏置顶"}</button>
-      <span class="hint">收藏后这个 mod 永远排在列表最前面${e.char!==e.name?"；也可以在左侧把角色「"+esc(e.char)+"」或分类「"+esc(e.category)+"」整体收藏":""}。</span></span></div>
+      <span class="hint">收藏后这个 mod 永远排在列表最前面${e.char!==e.name?"；也可以单独收藏左侧的角色「"+esc(e.char)+"」或分类「"+esc(e.category)+"」——那只把那一行置顶到最前, 不会连带这个 mod":""}。</span></span></div>
     <div class="kv"><span class="k">状态</span><span class="v">
       ${e.enabled?'<b style="color:var(--ok)">已启用</b>':'<b style="color:var(--off)">已禁用</b>'}
       ${e.dir_disabled?" (目录带 DISABLED 前缀)":""}${e.partial?' <span class="tag warn">部分子目录被禁用</span>':""}</span></div>

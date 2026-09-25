@@ -5,6 +5,17 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.48 更新
+-----------
+* **修复「收藏角色后它下面的所有 mod 都被默认收藏」(用户判定为 bug)**:
+  根因是单个 mod 的 `pinned` 标志原来把「所属角色被收藏」和「所属分类被收藏」也算了进去,
+  导致收藏一个角色, 该角色下每个 mod 的卡片都显示成已置顶。现在 mod 的 `pinned` 只认
+  「这个 mod 自己被收藏」(`cid/rel in pinned_mods`)。角色收藏 / 分类收藏仍然有效, 但只把
+  左侧那一行置顶到最前, 不再连带下面的 mod —— 这样既能收藏角色、又能单独收藏喜欢的时装,
+  互不牵连。详情页与侧栏星标 tooltip 的误导文案同步改为「只收藏左侧那一行, 不影响下面的 mod」。
+  (回归测试 `tests/_v1548_fav.py`, 21 条断言全过)
+
+
 v1.5.47 更新
 -----------
 * **确认弹窗不再显示域名**(用户多次反馈「这里不要显示域名, 显示管理器的名称啊」):
@@ -672,7 +683,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.47"
+VERSION = "1.5.48"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -2046,9 +2057,9 @@ def scan_mods(mods_dir, char_overrides=None, thumb_overrides=None, meta=None):
             "category": cat,
             "depth": len(parts),
             "enabled": not info["disabled"],
-            # 收藏: mod 自身 / 所属分类 / 所属角色 任一被置顶, 这张卡就算置顶
-            "pinned": (cid in pm or norm_rel(info["rel"]) in pm
-                       or cat in pc or char in pch),
+            # 收藏: 只有这个 mod 自己被收藏才算置顶
+            # (角色/分类的收藏只影响左侧那一行, 不连带下面的 mod —— 见 sidebar 排序用的 pch/pc)
+            "pinned": (cid in pm or norm_rel(info["rel"]) in pm),
             # 使用时间: 每次启用/切变体记录一次, 没有记录回退用目录修改时间
             "usage": usage.get(cid) or usage.get(norm_rel(info["rel"])) or info["mtime"],
             "dir_disabled": info["disabled"],
