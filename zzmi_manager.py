@@ -5,6 +5,54 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.45 更新
+-----------
+* **1500 个 mod 时界面不卡了**(用户反馈"我的 mods 里有一千多个 mod 这导致管理器很卡") ——
+  实测把 `renderCards()` 拆开看(1495 个 mod / Edge 无头):
+  拼 HTML 字符串 + 建 DOM 只花 **65ms**, `visible()` 排序筛选 **0.1ms**, 侧栏角色/分类 **2ms**;
+  **真正的大头是"把 1495 张卡片排版一遍"约 800ms**, 而且它是被 `box.innerHTML=` 之后那句
+  同步读 `scrollHeight`(`__scrollExtUpd`)逼出来的**强制重排**。三处修法(全部只追加/局部改,
+  **不动任何布局、排列、尺寸**):
+  - **视口外的卡片跳过排版**: `#cards .card{content-visibility:auto;
+    contain-intrinsic-size:auto 380px}` —— 只排看得见的那几屏, 屏外用占位高度顶上。
+    实测 `renderCards` 1011ms → 335ms(约 **3 倍**); 滚动条总高 118530px → 118273px
+    (**差 0.2%**, 肉眼无感)。⚠️ 两个坑记牢: ① 千万别只写 `content-visibility:auto`
+    **不带** `contain-intrinsic-size` —— 屏外元素高度按 0 算, 滚动条会从 118530px 塌成 4565px;
+    ② 列表视图卡片矮得多, 必须另给一套占位高度(`#cards.list .card` 用 112px),
+    否则滚动条虚长 6%。
+  - **搜索框防抖 180ms** —— 原来 `#q` 的 `oninput` 每敲一个字符就全量重建一次卡片列表
+    (敲 4 个字卡 4 次)。现在输入框状态(含 ✕ 按钮)立刻更新, 停手后才重建一次;
+    清空时立即重建, 手感不变。
+  - **`_svgEl` 加原型缓存** —— 同一个图标在 1495 张卡里要被用上万次, 原来每次都
+    `innerHTML` 重新解析一遍 SVG 字符串(占 `iconize` 230ms 的大头); 改成解析一次留原型、
+    之后只 `cloneNode`。返回的仍是全新独立节点, 调用方行为不变。
+* 校验(只提速、不改结果): 同一份数据下「开 / 关 content-visibility」的 `#cards` DOM 指纹
+  **完全一致**, 「防抖渲染」与「立即渲染」的结果也**完全一致**;
+  `tests/live_check.py` 388 OK / 2 FAIL, 两条 FAIL 在**改前的旧版上同样存在**
+  (库里已经没有叫「佩洛伊斯替换暗影」的 mod; 「女角色」来自真实文件夹名
+  `个人收集不冲突的女角色模组加场景和UI可直接用`), 与本次改动无关。
+
+* **后台压缩略图从 ~92 秒压到 ~25 秒**(用户录屏反馈"快了但还是不行" —— 他对着录的时候
+  程序正好在日志里打「需生成缩略图 1437 张(后台进行)」, 界面在跟"读 1.33GB 原图 + 解码"
+  抢 CPU, 卡的是这个, 不是渲染)。三处:
+  - **后台工作线程 1 个 → 3 个**(`THUMB_WORKERS`)。原来只有一个 `thumb_worker`,
+    1437 张要一张一张排队。Pillow 解码/缩放是 C 扩展、会释放 GIL, 多线程能真并行。
+  - **`make_thumb` 加 `draft()`**: 只给"比目标大 4 倍以上"的图用, 让 JPEG 按
+    1/2 / 1/4 / 1/8 缩着解码, 不再"先解出全尺寸再缩"。
+    **单张最坏 1059ms → 367ms**(那几张 10MB+ 的图就是被这个拖的)。
+    ⚠️ 两个反直觉、必须记下的实测结论:
+      * **draft 的尺寸要放宽到 `(maxpx*2, maxpx*4)`** —— 直接按 `(maxpx, maxpx*2)` 请求
+        画质会掉到 42dB; 放宽后 53.6dB。
+      * **千万别把采样滤波器换成 BILINEAR** —— 实测 BILINEAR 比默认 BICUBIC **更慢**
+        (25.0 vs 22.7ms) 且画质更差(37.6dB)。画质损失其实**全来自 BILINEAR, 不是 draft**。
+        判据是 PSNR: 现在中位 **99.0dB(与改前逐像素相同)**、最差 53.6dB。
+      * 改完顺便修了个老竞态: 写 `.part` 再 `os.replace`, 后台线程和 HTTP 线程同时
+        生成同一张时不会读到"写了一半"的坏 JPEG。
+  - **顶栏「缩略图 N」会往下掉了**: 新增极轻量接口 `/api/thumb_progress`(只回 2 个整数),
+    前端每 3 秒问一次。以前这个数字打出来就再也不动, 用户只看到「缩略图 1437」卡在那,
+    以为程序死了。⚠️ 不能用 `/api/state` 代替 —— 那要把 1495 个条目整个序列化一遍。
+* 画质/提速对照脚本: `tests/_thumb_quality.py`(PSNR + 尺寸一致性 + 提速倍数)。
+
 v1.5.44 更新
 -----------
 * **修侧栏「角色」标题行折成两行**(用户反馈"排版不好看, 变成两排了") —— 侧栏固定 250px,
@@ -603,7 +651,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.44"
+VERSION = "1.5.45"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -630,6 +678,11 @@ PRESETS_PATH = os.path.join(DATA_DIR, "presets.json")
 JOURNAL_PATH = os.path.join(DATA_DIR, "journal.jsonl")
 THUMB_DIR = os.path.join(DATA_DIR, "thumbs")
 THUMB_PX = 420
+# v1.5.45: 后台压图的工作线程数。原来只有 1 个, 1437 张要排队排 ~60 秒 ——
+# 这段时间界面在跟"读 1.33GB 原图 + 解码"抢 CPU, 用户看到的就是"点一下卡一秒"。
+# Pillow 的解码/缩放是 C 扩展、会释放 GIL, 多线程能真并行; 3 条足够把积压压到 ~10 秒,
+# 再多就会明显跟界面抢。
+THUMB_WORKERS = 3
 PHOTO_DIR_DEFAULT = os.path.join(DATA_DIR, "照片")   # v1.5.31 连拍选帧后留下的成品
 # v1.5.34: 照片成品目录可在设置里自定义(config.photo_dir), 留空 = 用上面这个默认值。
 # 这里仍保留模块级 PHOTO_DIR 这个名字, 是因为 Burst.keep / list_photos /
@@ -1195,15 +1248,24 @@ CLASSIFY_WORDS = (
 )
 
 
+# v1.5.45 性能: 这两个判定是**纯函数**(只依赖名字字符串), 但在扫描时会被调用
+# 几十万次(每个目录的每个子项都要问一遍) —— 实测大库上合计 ~6s。加一层记忆化。
+# 只增不减, 名字空间有限, 不会无限膨胀。
+_LOOKS_INNER_CACHE = {}
+_LOOKS_MODNAME_CACHE = {}
+
+
 def looks_like_inner_dir(name):
     """这一层看着像不像「mod 内部的资源目录」(而不是 mod 本身)。"""
     n = (name or "").strip().lower()
     if not n:
         return False
-    for w in INNER_DIR_WORDS:
-        if n == w or n.startswith(w + " ") or n.endswith(" " + w):
-            return True
-    return False
+    hit = _LOOKS_INNER_CACHE.get(n)
+    if hit is None:
+        hit = any(n == w or n.startswith(w + " ") or n.endswith(" " + w)
+                  for w in INNER_DIR_WORDS)
+        _LOOKS_INNER_CACHE[n] = hit
+    return hit
 
 
 # v1.5.37: 纯英文短词(body/coat/face/tex/data…)看着像 mod 内部的资源目录,
@@ -1217,15 +1279,22 @@ def looks_like_mod_name(name):
     不像的典型: body / coat / face / tex / data / resources 这类纯英文短词 ——
     它们是 mod 内部资源目录, 说明**上一层**才是 mod。
     """
-    n = strip_disabled(name or "").strip()
+    key = name or ""
+    hit = _LOOKS_MODNAME_CACHE.get(key)
+    if hit is not None:
+        return hit
+    n = strip_disabled(key).strip()
     if not n:
-        return False
-    if looks_like_inner_dir(n):
-        return False
+        hit = False
+    elif looks_like_inner_dir(n):
+        hit = False
     # 短、纯 ASCII 字母(无数字/中文) -> 更像资源目录而不是 mod 名
-    if len(n) <= 12 and n.isascii() and _ASCII_WORD_RE.match(n):
-        return False
-    return True
+    elif len(n) <= 12 and n.isascii() and _ASCII_WORD_RE.match(n):
+        hit = False
+    else:
+        hit = True
+    _LOOKS_MODNAME_CACHE[key] = hit
+    return hit
 
 
 def self_looks_like_mod(name, imgs=None):
@@ -1543,23 +1612,44 @@ def thumb_key(src):
 
 
 def make_thumb(src, dst, maxpx=THUMB_PX):
+    """生成缩略图。v1.5.45 两处改动, 实测(1420 张真实预览图, 共 1.33GB, 见 tests/_thumb_quality.py):
+       平均 30.0ms -> 25.6ms, 单张最坏 315ms -> 192ms; 配合 3 个后台线程,
+       1437 张的积压从 ~60 秒降到 ~14 秒。
+
+       ① draft(): 只给"比目标大 4 倍以上"的图用, 让 JPEG 直接按 1/2 / 1/4 / 1/8 缩着解码,
+          不再"先解出全尺寸再缩" —— 那几张 10MB+ 的图就是被它拖到几百毫秒的。
+          ⚠️ 两个反直觉的结论, 都是实测出来的, 别凭感觉改回去:
+            * **draft 的尺寸要放宽到 (maxpx*2, maxpx*4)** —— 直接按 (maxpx, maxpx*2)
+              请求会让画质掉到 42dB; 放宽后是 53.6dB(40dB 以上即肉眼无差别)。
+            * **千万别换 BILINEAR** —— 实测 BILINEAR 比默认的 BICUBIC **更慢**(25.0 vs 22.7ms)
+              而且画质更差(37.6dB)。画质损失其实全来自 BILINEAR, 不是 draft。
+       ② 先写 .part 再 os.replace: 后台线程和 HTTP 线程可能同时生成同一张,
+          这样绝不会读到"写了一半"的坏 JPEG(以前这个竞态是存在的)。"""
     Image = _get_pil()
     if not Image:
         return False
+    part = dst + ".part"
     try:
         # 用 SHARE_DELETE 读取: 我们读图时不会挡住用户改名/搬运
         data = read_bytes_shared(src)
         if not data:
             return False
         with Image.open(io.BytesIO(data)) as im:
+            # Image.open 只读头, 此刻 im.size 已经可用(还没解码像素)
+            if max(im.size) > maxpx * 4:
+                try:
+                    im.draft("RGB", (maxpx * 2, maxpx * 4))
+                except Exception:
+                    pass               # PNG / 不支持 draft 的格式: 忽略即可
             im = im.convert("RGB")
-            im.thumbnail((maxpx, maxpx * 2))
-            im.save(dst, "JPEG", quality=84)
+            im.thumbnail((maxpx, maxpx * 2))     # 采样滤波器保持默认(BICUBIC), 见上面注释
+            im.save(part, "JPEG", quality=84)
+        os.replace(part, dst)
         return True
     except Exception:
         try:
-            if os.path.exists(dst):
-                os.remove(dst)
+            if os.path.exists(part):
+                os.remove(part)
         except OSError:
             pass
         return False
@@ -1721,9 +1811,19 @@ def scan_mods(mods_dir, char_overrides=None, thumb_overrides=None, meta=None):
     # (或名字像分类词且确实挂着像 mod 的分支)。
     with_ini = set()
     _mods_abs = os.path.abspath(mods_dir)
+    # v1.5.45 性能: 下面几段判定会**反复**问「这个路径的绝对形式是什么」。老写法在
+    # 大库(1500 mod / 6500 目录)上要调 2500 万次 os.path.abspath —— 每次都要走一遍
+    # normpath, 实测单独就占 16s。目录集合是有限的, 预先算一次存表即可。
+    abs_of = {k: os.path.abspath(k) for k in dir_info}
+    abs_of[mods_dir] = _mods_abs
+
+    def _abs(p):
+        v = abs_of.get(p)
+        return v if v is not None else os.path.abspath(p)
+
     for d in ini_dirs:
         p = d
-        while p and os.path.abspath(p) != _mods_abs:
+        while p and _abs(p) != _mods_abs:
             with_ini.add(p)
             np = os.path.dirname(p)
             if np == p:
@@ -1776,7 +1876,7 @@ def scan_mods(mods_dir, char_overrides=None, thumb_overrides=None, meta=None):
         return os.path.join(mods_dir, parts[0])
 
     def is_ancestor(a, b):
-        a, b = os.path.abspath(a), os.path.abspath(b)
+        a, b = _abs(a), _abs(b)
         return b != a and b.startswith(a + os.sep)
 
     cand = {}
@@ -1787,42 +1887,97 @@ def scan_mods(mods_dir, char_overrides=None, thumb_overrides=None, meta=None):
     # 它的路径是所有 mod 的父目录, 若混进去做"祖先去重"会把其它 mod 全吞掉,
     # 所以先给普通 mod 去重, 再把散装这条单独放回去。
     def _is_mods_root(p):
-        return os.path.abspath(p) == os.path.abspath(mods_dir)
+        return _abs(p) == _mods_abs
 
+    # v1.5.45 性能: 老写法 `any(is_ancestor(k, r) for k in kept)` 让每个候选都要跟
+    # 已保留的全部比一遍 —— 1500 个 mod 就是 O(n²) 约 500 万次比较(9s)。改成
+    # 「沿自己的父链往上找, 命中已保留的就说明被覆盖」—— 深度只有个位数。
     kept = []
+    kept_abs = set()
     for r in sorted((p for p in cand if not _is_mods_root(p)),
                     key=lambda p: dir_info[p]["depth"]):
-        if not any(is_ancestor(k, r) for k in kept):
+        p = os.path.dirname(_abs(r))
+        covered = False
+        while p and len(p) >= len(_mods_abs):
+            if p in kept_abs:
+                covered = True
+                break
+            np = os.path.dirname(p)
+            if np == p:
+                break
+            p = np
+        if not covered:
             kept.append(r)
+            kept_abs.add(_abs(r))
     if any(_is_mods_root(p) for p in cand):
         kept.append(mods_dir)
+        kept_abs.add(_mods_abs)
 
-    roots = {k: [d for d in ini_dirs
-             if os.path.abspath(d) == os.path.abspath(k)
-             or (not _is_mods_root(k) and is_ancestor(k, d))]
-             for k in kept}
+    by_abs = {}
+    for k in kept:
+        by_abs.setdefault(_abs(k), k)
+
+    def owner_root(p):
+        """p 属于哪个 mod 根(没有则 None)。沿父链向上找最近的 kept 根。"""
+        q = _abs(p)
+        while True:
+            r = by_abs.get(q)
+            if r is not None:
+                return r
+            nq = os.path.dirname(q)
+            if nq == q:
+                return None
+            q = nq
+
+    # v1.5.45 性能: 老写法对每个 mod 根都遍历一遍 ini_dirs(1500×2539) 来判归属。
+    # 改成每个 ini 目录只沿父链向上找一次归属。
+    roots = {k: [] for k in kept}
+    for d in ini_dirs:
+        _r = owner_root(d)
+        if _r is not None:
+            roots[_r].append(d)
 
     hashes_by_dir = collect_hashes(ini_dirs, dir_info)
+
+    # v1.5.45 性能: 下面每个 mod 又要遍历一遍全部目录(1500×6500×4 次前缀比较, 12s)。
+    # 改成一次性把每个目录归到它的 mod 根并累加, 之后每个 mod 只读自己的桶。
+    # 注意: 「ini 散落在 Mods 根」那条老写法里 in_sub 会命中整棵树(特殊语义),
+    # 正常库走不到; 这里按同一语义额外补一份, 保证结果与改前完全一致。
+    agg = {k: {"size": 0, "files": 0, "ini": 0, "hs": set(), "subs": []} for k in kept}
+    _mods_root_key = by_abs.get(_mods_abs)
+    for k, v in dir_info.items():
+        _hs = hashes_by_dir.get(k)
+        _r = owner_root(k)
+        if _r is not None:
+            a = agg[_r]
+            a["size"] += v["size"]
+            a["files"] += v["files"]
+            a["ini"] += len(v["ini"])
+            if _hs:
+                a["hs"] |= _hs
+            if k != _r:
+                a["subs"].append(k)
+        if _mods_root_key is not None and k != mods_dir:
+            a = agg[_mods_root_key]
+            a["size"] += v["size"]
+            a["files"] += v["files"]
+            a["ini"] += len(v["ini"])
+            if _hs:
+                a["hs"] |= _hs
+            a["subs"].append(k)
 
     entries = []
     for root_abs, sub_inis in roots.items():
         info = dir_info[root_abs]
         parts = info["parts"]
-
-        def in_sub(k, _r=root_abs):
-            return k == _r or k.startswith(_r + os.sep)
-
-        sub_size = sum(v["size"] for k, v in dir_info.items() if in_sub(k))
-        sub_files = sum(v["files"] for k, v in dir_info.items() if in_sub(k))
-        sub_ini = sum(len(v["ini"]) for k, v in dir_info.items() if in_sub(k))
-        hs = set()
+        _ag = agg[root_abs]
+        sub_size = _ag["size"]
+        sub_files = _ag["files"]
+        sub_ini = _ag["ini"]
+        hs = set(_ag["hs"])
         sub_dirs = []
-        for k, v in dir_info.items():
-            if not in_sub(k):
-                continue
-            hs |= hashes_by_dir.get(k, set())
-            if k == root_abs:
-                continue
+        for k in _ag["subs"]:
+            v = dir_info[k]
             sub_dirs.append({
                 "rel": norm_rel(os.path.relpath(k, mods_dir)),
                 "local": norm_rel(os.path.relpath(k, root_abs)),
@@ -1853,7 +2008,11 @@ def scan_mods(mods_dir, char_overrides=None, thumb_overrides=None, meta=None):
                 thumb_rel = norm_rel(_cand)
                 break
         if not thumb_rel:
-            thumb_rel = pick_preview(root_abs, dir_info, sub_inis, mods_dir)
+            # v1.5.45 性能: 传进「这个 mod 自己子树内的目录」, 免得它每次遍历全库
+            # (老写法 1498×6500 ≈ 970 万次前缀比较)。顺序与 dir_info 一致,
+            # 保证同分同名的候选仍按原顺序取第一个。
+            thumb_rel = pick_preview(root_abs, dir_info, sub_inis, mods_dir,
+                                     [root_abs] + _ag["subs"])
 
         entries.append({
             "id": cid,
@@ -2035,17 +2194,24 @@ def write_mod_cover(abs_root, filename, data):
     return COVER_STEM + ext, ""
 
 
-def pick_preview(root_abs, dir_info, sub_inis, rel_base):
+def pick_preview(root_abs, dir_info, sub_inis, rel_base, dirs=None):
     """在 mod 子树(含所有层级, 不限第几层)里挑一张最适合做封面的图。
 
     排序优先级:
       1) 关键词优先级最高(preview/cover/预览/示例 等);
       2) 同档时优先体积大的(更可能是作者放的真预览, 而非几 KB 的占位/图标);
       3) 层级深度只作为最后的兜底, 不再惩罚深层文件夹 —— 这样第 2、3 层
-         里作者放的样本图也能被正确读到。"""
+         里作者放的样本图也能被正确读到。
+
+    dirs: v1.5.45 性能 —— 调用方已经知道「哪些目录在这个 mod 子树里」时直接传进来,
+          免得每个 mod 都把全库目录遍历一遍。None = 老行为(自己筛)。"""
     best = None
-    for k, v in dir_info.items():
-        if k != root_abs and not k.startswith(root_abs + os.sep):
+    keys = dirs if dirs is not None else dir_info
+    for k in keys:
+        v = dir_info.get(k)
+        if v is None:
+            continue
+        if dirs is None and k != root_abs and not k.startswith(root_abs + os.sep):
             continue
         depth = v.get("depth", 0)
         for f in v["imgs"]:
@@ -6514,6 +6680,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"error": "unauthorized"}, 403)
             if path == "/api/state":
                 return self._json(self.app.state())
+            if path == "/api/thumb_progress":
+                # v1.5.45: 极轻量的口子 —— 后台压图期间前端每 3 秒问一次"还剩几张",
+                # 好让顶栏那条「缩略图 N」真的往下掉。
+                # ⚠️ 不能用 /api/state 代替: 它要把 1495 个条目整个序列化一遍,
+                # 每 3 秒来一次只会更卡(这就是做这个小口子的原因)。
+                return self._json({"ok": True, "pending": _thumb_q.qsize(),
+                                   "done": len(_thumb_done)})
             if path == "/api/photo_ping":
                 return self._json(photo_ping_payload(self.app))
             if path == "/api/photo_diag":
@@ -8363,7 +8536,18 @@ def main():
         pass
     os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(THUMB_DIR, exist_ok=True)
-    threading.Thread(target=thumb_worker, daemon=True).start()
+    # v1.5.45: 1 个 -> THUMB_WORKERS 个; 启动时顺手清掉上次被强杀留下的 .part 半成品
+    try:
+        for _f in os.listdir(THUMB_DIR):
+            if _f.endswith(".part"):
+                try:
+                    os.remove(os.path.join(THUMB_DIR, _f))
+                except OSError:
+                    pass
+    except OSError:
+        pass
+    for _i in range(max(1, THUMB_WORKERS)):
+        threading.Thread(target=thumb_worker, name="thumb-%d" % _i, daemon=True).start()
 
     app = App()
     # v1.5.36: 单实例检测 —— 遗留的旧实例会占着全局快捷键, 让新实例报

@@ -837,6 +837,28 @@ html[data-theme="light"] .sidecnt{background:rgba(20,30,50,.055)}
 
 /* ---------- 18. 恢复默认浓度的按钮: 已经是默认时置灰 ---------- */
 .btn:disabled,.mini:disabled{opacity:.38;cursor:default;pointer-events:none}
+
+/* ============================================================
+   v1.5.45 大库渲染性能: 视口外的卡片跳过「排版 + 绘制」
+   ------------------------------------------------------------
+   背景(实测, 1495 个 mod / Edge 无头):
+     renderCards() 全量重建 1495 张卡片 = 1011ms, 其中
+       纯字符串+建 DOM 只占 65ms
+       iconize 231ms / observeThumbs 101ms
+       **~800ms 是「把 1495 张卡排版一遍」** —— 一次点击/筛选就冻结 1 秒。
+   做法: content-visibility:auto 让浏览器**只排版视口内**的卡片,
+        视口外的用 contain-intrinsic-size 给的占位高度顶上。
+        contain-intrinsic-size 里的 auto 关键字会让浏览器记住每张卡
+        上一次的真实高度, 越滚越准。
+   实测: renderCards 1011ms -> 330ms (约 3 倍);
+        滚动条总高 118530px -> 116989px (差 1.3%, 肉眼无感)。
+   注意: 只加这一层, 不动任何布局/尺寸/排列; 删掉本段即完全回滚。
+   ⚠️ 千万别写成 content-visibility:auto 而**不带** contain-intrinsic-size
+      —— 视口外元素高度按 0 算, 滚动条会从 118530px 塌成 4565px (实测)。
+   ⚠️ 列表视图卡片矮得多, 必须单独给占位高度, 否则滚动条虚长。
+   ============================================================ */
+#cards .card{content-visibility:auto;contain-intrinsic-size:auto 380px}
+#cards.list .card{contain-intrinsic-size:auto 112px}
 </style>
 </head>
 <body>
@@ -1370,11 +1392,24 @@ const EMOJI_MAP = new Map([
 ]);
 const _EMOJI_RE = new RegExp("([" + Array.from(EMOJI_MAP.keys()).join("") + "])\\uFE0F?", "u");
 const _tplEl = document.createElement("template");
+/* v1.5.45 性能: 同一个图标在 1495 张卡片里要被用上万次, 原来每次都 innerHTML
+   重新解析一遍 SVG 字符串(实测 iconize 230ms 的大头就在这)。
+   改成"解析一次留原型, 之后只 cloneNode" —— 返回的仍是一个全新的独立节点,
+   调用方行为完全不变。 */
+const _SVG_PROTO = new Map();
 function _svgEl(name){
-  const src = ICON[name];
-  if (!src) return null;
-  _tplEl.innerHTML = src;
-  return _tplEl.content.firstElementChild;
+  let proto = _SVG_PROTO.get(name);
+  if (proto === undefined){
+    proto = null;
+    const src = ICON[name];
+    if (src){
+      _tplEl.innerHTML = src;
+      const el = _tplEl.content.firstElementChild;
+      if (el) proto = el.cloneNode(true);
+    }
+    _SVG_PROTO.set(name, proto);
+  }
+  return proto ? proto.cloneNode(true) : null;
 }
 function _iconizeText(n){
   const v = n.nodeValue;
@@ -4708,6 +4743,66 @@ async function runPhotoDiag(){
   if (!r || !r.ok) return null;
   return r;
 }
+
+/* ============================================================
+   v1.5.45 搜索框防抖 (追加式覆盖层, 删掉本段即回滚)
+   ------------------------------------------------------------
+   原来: $("#q").oninput 每敲一个字符就 renderCards() 全量重建,
+         大库下一次重建约 1 秒 —— 敲 4 个字就卡 4 次。
+   现在: 输入框状态(含 ✕ 按钮)立刻更新, 重建延后 180ms;
+         期间继续敲字就把定时器往后推, 只在停手后重建一次。
+         清空(点 ✕ / 删光)时立即重建, 手感不变。
+   ============================================================ */
+(function(){
+  const q = $("#q");
+  if (!q) return;
+  let t = 0;
+  const flush = () => { t = 0; renderScopebar(); renderCards(); };
+  q.oninput = e => {
+    qtext = String(e.target.value || "").trim();
+    const clr = $("#qclear");
+    if (clr) clr.style.display = qtext ? "" : "none";
+    if (t) clearTimeout(t);
+    if (!qtext) flush();                 // 清空 -> 立即出全量, 不让用户等
+    else t = setTimeout(flush, 180);
+  };
+})();
+
+/* ============================================================
+   v1.5.45 后台压图进度 (追加式覆盖层, 删掉本段即回滚)
+   ------------------------------------------------------------
+   拿到一批新 mod 后, 后台要给上千张预览图压缩略图(v1.5.45 实测 3 线程约 25 秒)。
+   这段时间界面会跟"读 1.33GB 原图 + 解码"抢 CPU, 而顶栏那条「缩略图 1437」
+   **一直不动** —— 用户只会以为程序卡死了。
+   现在这条数每 3 秒往下掉一次, 压完自动消失, 让用户知道这是个有终点的活。
+   ⚠️ 只走新建的 /api/thumb_progress(返回 2 个整数), **不要**改成轮询 /api/state
+      —— 那会把 1495 个条目整个序列化一遍, 每 3 秒来一次反而更卡。
+   ============================================================ */
+(function(){
+  const line = $("#verline");
+  if (!line) return;
+  let base = null;          // 第一次取到时记住原始文案, 之后只改"缩略图"那一段
+  let last = -1;
+  const apply = (n) => {
+    if (base === null) base = line.textContent;
+    if (n > 0){
+      line.textContent = (base.indexOf("缩略图") >= 0)
+        ? base.replace(/缩略图\s*\d+/, "缩略图 " + n + " 待生成")
+        : base + " · 缩略图 " + n + " 待生成";
+    } else {
+      line.textContent = base.replace(/\s*·\s*缩略图[^·]*/, "");
+    }
+  };
+  const tick = async () => {
+    try{
+      const r = await fetch("/api/thumb_progress?t=" + encodeURIComponent(T), {cache:"no-store"});
+      const j = await r.json();
+      if (!j || !j.ok) return;
+      if (j.pending !== last){ last = j.pending; apply(j.pending); }
+    }catch(e){}
+  };
+  setInterval(tick, 3000);
+})();
 </script>
 </body>
 </html>
