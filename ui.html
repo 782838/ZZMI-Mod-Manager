@@ -2149,7 +2149,7 @@ $("#cards").addEventListener("click", async ev => {
     const e = S.entries.find(x => x.id === id);
     if (!e) return;
     const sib = (S.entries||[]).filter(x => x.char === e.char && x.id !== id && x.enabled);
-    if (sib.length && !confirm(`「${e.name}」属于角色【${e.char}】。\n\n只留这一套, 并禁用同角色的另外 ${sib.length} 套?`)) return;
+    if (sib.length && !await askConfirm(`「${e.name}」属于角色【${e.char}】。\n\n只留这一套, 并禁用同角色的另外 ${sib.length} 套?`)) return;
     if (sib.length) await api("/api/toggle", {ids: sib.map(s=>s.id), enabled:false});
     return doToggle([id], true);
   }
@@ -2387,7 +2387,7 @@ function renderLibMgrList(){
     b.onclick = async () => {
       const v = b.getAttribute("data-lmdel");
       const name = v.replace(/^abs:/i, "");
-      if (!confirm(`从列表移除「${name}」?\n\n只从下拉里去掉这一项, 磁盘上的文件夹和 mod 一个都不会删。`)) return;
+      if (!await askConfirm(`从列表移除「${name}」?\n\n只从下拉里去掉这一项, 磁盘上的文件夹和 mod 一个都不会删。`)) return;
       const r = await api("/api/del_lib", {lib: v});
       if (r.state) S = r.state;
       if (!r.ok) return toast(r.msg || "移除失败", "err");
@@ -2414,7 +2414,7 @@ async function doMoveBatch(){
   const where = (lib === "__root__") ? "ZZMI 根目录"
               : (isAbsPath(lib) ? "文件夹「" + lib.replace(/^abs:/i,"") + "」"
                                 : "仓库「" + lib + "」");
-  if (!confirm(`把勾选的 ${sel.size} 个 mod 搬到 ${where}?\n\n` +
+  if (!await askConfirm(`把勾选的 ${sel.size} 个 mod 搬到 ${where}?\n\n` +
       `· 搬走后它们不在 Mods 里, 游戏不再加载\n· 文件一个都不会删, 随时能搬回来\n· 同名会自动加 (2), 不会覆盖`)) return;
   const btn = $("#selMove");
   if (btn){ btn.disabled = true; btn.textContent = "搬运中…"; }
@@ -2605,10 +2605,10 @@ async function batchScope(enabled){
   if (!list.length) return toast("没有可操作的 mod","err");
   const nOn = list.filter(e=>e.enabled).length, nOff = list.length - nOn;
   if (enabled){
-    if (nOff && !confirm(`把当前筛选出的 ${nOff} 个 mod 全部【启用】?`)) return;
+    if (nOff && !await askConfirm(`把当前筛选出的 ${nOff} 个 mod 全部【启用】?`)) return;
     return doToggle(list.filter(e=>!e.enabled).map(e=>e.id), true);
   }
-  if (nOn && !confirm(`把当前筛选出的 ${nOn} 个 mod 全部【禁用】?`)) return;
+  if (nOn && !await askConfirm(`把当前筛选出的 ${nOn} 个 mod 全部【禁用】?`)) return;
   return doToggle(list.filter(e=>e.enabled).map(e=>e.id), false);
 }
 $("#btnOnAll").onclick = () => batchScope(true);
@@ -2630,7 +2630,7 @@ $("#btnPresetSave").onclick = async () => {
 $("#btnPresetApply").onclick = async () => {
   const name = $("#presetSel").value;
   if (!name) return toast("先选一个方案","err");
-  if (!confirm(`套用方案「${name}」? 不在方案里的 mod 会被禁用。`)) return;
+  if (!await askConfirm(`套用方案「${name}」? 不在方案里的 mod 会被禁用。`)) return;
   const r = await api("/api/preset", {action:"apply", name});
   if (r.state) S = r.state;
   toast(r.msg, r.ok?"ok":"err"); renderAll();
@@ -2644,7 +2644,7 @@ $("#btnPresetApply").onclick = async () => {
 $("#btnPresetDel").onclick = async () => {
   const name = $("#presetSel").value;
   if (!name) return;
-  if (!confirm(`删除方案「${name}」?`)) return;
+  if (!await askConfirm(`删除方案「${name}」?`)) return;
   const r = await api("/api/preset", {action:"delete", name});
   if (r.state) S = r.state;
   toast(r.msg, r.ok?"ok":"err"); renderPresets();
@@ -3241,7 +3241,7 @@ function renderSetup(){
     toast(r.msg || (r.ok ? "命令窗口已显示" : "没找到命令窗口"), r.ok?"ok":"err");
   };
   $("#btnQuit").onclick = async () => {
-    if (!confirm("确定退出 ZZMI 管家?")) return;
+    if (!await askConfirm("确定退出 ZZMI 管家?")) return;
     try{ await api("/api/quit", {}); }catch(e){}
     document.body.innerHTML = '<div style="display:grid;place-items:center;height:100vh;color:#808b99;font:15px sans-serif">已退出, 可以关掉这个窗口了</div>';
   };
@@ -3369,7 +3369,7 @@ async function openLib(){
     api("/api/openroot", {path: b.dataset.openlib}));
   $("#libBody").querySelectorAll("[data-in]").forEach(b => b.onclick = async () => {
     const [lib, name] = b.dataset.in.split("|::|");
-    if (!confirm(`把「${name}」从仓库「${lib.replace(/^abs:/i,"")}」搬进 Mods 并启用?`)) return;
+    if (!await askConfirm(`把「${name}」从仓库「${lib.replace(/^abs:/i,"")}」搬进 Mods 并启用?`)) return;
     const src = isAbsPath(lib) ? {src_abs: stripAbs(lib), src_rel: name}
                                : {src_base:"root", src_rel: lib + "/" + name};
     const rr = await api("/api/move", Object.assign(src, {dst_base:"mods", dst_rel: name}));
@@ -3394,7 +3394,7 @@ async function openLib(){
     }
     const abs = isAbsPath(target);
     const where = abs ? "文件夹「" + stripAbs(target) + "」" : "仓库「" + target + "」";
-    if (!confirm(`把「${name}」从 Mods 移出到 ${where}?\n(游戏将不再加载它)`)) return;
+    if (!await askConfirm(`把「${name}」从 Mods 移出到 ${where}?\n(游戏将不再加载它)`)) return;
     const dst = abs ? {dst_abs: stripAbs(target), dst_rel: name}
                     : {dst_base:"root", dst_rel: target + "/" + name};
     const rr = await api("/api/move", Object.assign({src_base:"mods", src_rel: name}, dst));
@@ -3413,6 +3413,14 @@ function closeAll(){
 
 // v1.5.10: 自制输入弹窗, 替换浏览器原生 prompt()。原生 prompt 标题是网址且无法自定义,
 // 这里统一显示「ZZMI MOD 管家」。返回 Promise<string|null>, 取消/ESC 返回 null。
+
+// v1.5.47: 自制确认弹窗, 替换浏览器原生 confirm()。原生 confirm 标题栏只能显示
+// "127.0.0.1:port 显示", 用户多次反馈「不要显示域名, 显示管理器的名字」——
+// 调用 openAsk 的 confirm 模式, 标题固定「ZZMI MOD 管家」, 与上方输入弹窗共用一套 DOM。
+// 用法: if (!await askConfirm("把 430 个 mod 全部启用?")) return;
+function askConfirm(msg, opts){
+  return openAsk(msg, null, Object.assign({confirm: true}, opts || {}));
+}
 // v1.5.30: opts.confirm = 只要「取消/确定」两个按钮的确认框(隐藏输入框, 可自定义按钮文字/标红),
 // 确认时 resolve(true), 取消 resolve(false)。
 let _askResolve = null, _askConfirm = false;

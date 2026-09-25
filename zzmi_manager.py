@@ -5,6 +5,17 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.47 更新
+-----------
+* **确认弹窗不再显示域名**(用户多次反馈「这里不要显示域名, 显示管理器的名称啊」):
+  原来 10 处业务确认用的是浏览器原生 `confirm()`, 它的标题栏只能显示 `127.0.0.1:port`
+  这种地址、无法自定义。现在全部换成项目自带的 `#mAsk` 自绘确认弹窗
+  (新增 `askConfirm()` 便利函数, 内部走 `openAsk(..., {confirm:true})`), 标题固定为
+  「ZZMI MOD 管家」, 与原输入弹窗共用一套 DOM 与 Esc 分层。原生 `confirm()`/`prompt()`
+  今后一律禁止再用(标题栏只能显示域名)。已用真浏览器 CDP 实测: 弹的是自定义模态、标题为
+  「ZZMI MOD 管家」、输入框在确认模式下隐藏、确定返回 `true` / 取消返回 `false`、原生 `confirm`
+  调用次数 **0**。
+
 v1.5.46 更新
 -----------
 * <select> 下拉面板文字色修复(用户报告「看不清」):
@@ -661,7 +672,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.46"
+VERSION = "1.5.47"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
