@@ -5,6 +5,16 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.46 更新
+-----------
+* <select> 下拉面板文字色修复(用户报告「看不清」):
+  `<option>` 之前会继承 `<select>` 的 color(樱花粉主题下是浅粉 #FFB7C5 系),
+  撞上 OS 默认画的白底/浅底面板就糊成一团 —— 现在 ① 显式声明 color-scheme
+  让 OS 自己画深/浅面板; ② 同时给 option 设 background/color 作双保险
+  (Chromium 大多会画深面板, 但部分版本会忽略 color-scheme, 用 CSS 兜底)。
+  暗色主题 = 深底浅字, 亮色主题 = 白底深字, 选中项 = 主题强调色。
+  只加一段 CSS(<style> 末尾), 一行布局没动, 删段即回滚。
+
 v1.5.45 更新
 -----------
 * **1500 个 mod 时界面不卡了**(用户反馈"我的 mods 里有一千多个 mod 这导致管理器很卡") ——
@@ -651,7 +661,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.45"
+VERSION = "1.5.46"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork

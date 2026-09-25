@@ -859,6 +859,21 @@ html[data-theme="light"] .sidecnt{background:rgba(20,30,50,.055)}
    ============================================================ */
 #cards .card{content-visibility:auto;contain-intrinsic-size:auto 380px}
 #cards.list .card{contain-intrinsic-size:auto 112px}
+/* ============================================================
+   追加段 19: <select> 下拉面板文字色修复 (2026-09-25)
+   <select> 的下拉面板是 OS 画的, <option> 文字如果不显式设色
+   就会继承 select 的 color —— 在樱花粉主题下是浅粉(#FFB7C5 系),
+   撞上 OS 默认的白底/浅底面板就糊成一团, 用户报告「看不清」。
+   修法: ① 显式声明 color-scheme 让 OS 自己画深/浅面板;
+         ② 同时给 option 显式设 background/color 作双保险
+            (Chromium 大多时候会用 OS 画面板, 但部分版本会忽略
+             color-scheme, 用 CSS 兜底)。
+   注意: 只加这一层, 不动任何布局/尺寸/排列; 删掉本段即完全回滚。
+   ============================================================ */
+select.sel,select.inp{color-scheme:dark}
+html[data-theme="light"] select.sel,html[data-theme="light"] select.inp{color-scheme:light}
+select.sel option,select.inp option{background:var(--panel);color:var(--txt)}
+select.sel option:checked,select.inp option:checked{background:var(--accent);color:var(--ink)}
 </style>
 </head>
 <body>
