@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 *.spec
+# ⚠ 打包配置必须入库: excludes 里写着 numpy/scipy 不收进 exe 的规则,
+# 丢了它换台机器打包就会从 16MB 胖回 31MB (2026-09-29 踩坑)
+!ZZMI-Mod-Manager.spec
 build/
 dist/
 # 带版本后缀的打包工作目录(打包时为了绕开被拦的 --clean 会另建目录)

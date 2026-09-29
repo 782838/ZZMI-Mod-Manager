@@ -2,6 +2,13 @@
 """用系统自带浏览器(无头)渲染验证界面: JS 语法检查 + DOM 渲染 + 截图。"""
 import os, re, subprocess, sys, json, time
 
+# 检查项名字里带 emoji(📸/🖼), 重定向到文件时 Windows 默认 GBK 会炸
+# (UnicodeEncodeError 让整份结果文件停留在上一轮 —— 踩过两次了), 强制 UTF-8 兜底。
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 # Node 路径: 测试者本机 NODE_PATH/系统 PATH 里的 node.exe 即可, 不绑绝对路径
 NODE = "node"
@@ -1048,6 +1055,28 @@ for name, ok in static_checks27:
         sbad27.append(name)
 assert not sbad27, "v1.5.44 静态检查失败: %s" % sbad27
 
+# ============ v1.5.49 静态检查: 连拍线程永不死 + press() 自愈 ============
+static_checks28 = [
+    ("_loop 有顶层 try 兜底(线程永不死)",
+     "def _loop(self):" in zsrc and "连拍线程异常(已自动恢复)" in zsrc),
+    ("每轮逻辑拆进 _loop_tick", "def _loop_tick(self):" in zsrc
+     and "self._loop_tick()" in zsrc),
+    ("异常分支清 rec + 睡一秒重来", "self.rec = None" in zsrc
+     and "self._rec_event.wait(1.0)" in zsrc),
+    ("press() 对陈旧 rec 自愈", "time.time() > rec[\"until\"] + 2.0" in zsrc
+     and "自愈" in zsrc),
+    ("自愈时补收尾不丢旧帧", "self._finish_rec()" in zsrc),
+    ("回归测试文件在位", os.path.isfile(os.path.join(HERE, "_v1549_check.py"))),
+]
+w()
+w("=== v1.5.49 静态检查 ===")
+sbad28 = []
+for name, ok in static_checks28:
+    w(("  [OK]   " if ok else "  [FAIL] ") + name)
+    if not ok:
+        sbad28.append(name)
+assert not sbad28, "v1.5.49 静态检查失败: %s" % sbad28
+
 
 # 先确认服务真的还活着 —— last_url.txt 记的是"上一次启动"的端口, 进程一关就是死链,
 # 浏览器会安静地渲染出 Edge 的"拒绝连接"错误页, 让渲染校验全部假 FAIL(踩过)。
@@ -1147,7 +1176,10 @@ checks = [
     ("出现真实 mod 名-雅", has(">雅<")),
     # 分类维度 = 顶层文件夹名(用户明确要求过: 不要再改成性别分组)
     ("分类树已渲染-顶层文件夹分类", has("1a全女合集") or has("功能")),
-    ("分类未被改成性别分组", not (has("女角色") or has("男角色"))),
+    # ⚠ 只判「分类标签节点本身」叫不叫 女角色/男角色 —— 整页 DOM 子串匹配会误报:
+    # 真实库里有个 mod 目录就叫「…不冲突的女角色模组…」(09-29 踩坑记录)。
+    ("分类未被改成性别分组",
+     not re.search(r'class="tag cat"[^>]*>[^<]*[男女]角色', dom)),
     ("冲突提示条已出现", "hash 重叠" in dom),
     ("路径 chip 已显示", re.search(r"[A-Z]:[/\\].*Mods", dom) is not None),
     ("预览图 img 标签已生成", dom.count("/thumb?") > 5),

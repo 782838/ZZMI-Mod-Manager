@@ -5,6 +5,24 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.49 更新
+-----------
+* **修: 连拍"用一段时间就退化"的根因 —— 录制线程会静默死掉**
+  用户反馈: "当时测着没问题, 有段时间没用就坏了 —— 拍照后不弹窗、
+  三次缓存全没了、而且不清缓存就不能再拍"。定位到两处真 bug:
+  1. **录制守护线程没有任何顶层防护**: 循环体里 `_finish_rec()`(封批/拆金字塔)
+     不在 try 里, 任何一次意外异常都会让整个线程**静默死亡** —— 免安装版没有
+     控制台, 用户看不到任何报错, 之后连拍系统就永远停在"坏过"的状态。
+  2. **press() 没有自愈**: 线程死时如果正卡着一段录制(`rec` 非空), 之后每次
+     按侧键/热键都只会得到"上一段还在录, 这次按得不算" —— 唯一解药是点
+     「🧹 清除缓存」(它顺手把 rec 置空), 但线程仍是死的, 下一次又卡住。
+     这正是"缓存不清除就不能继续拍照"的完整机制。
+  修法: ① `_loop` 拆成 `_loop_tick` + 顶层 try —— 任何一轮炸了都记日志、
+  丢状态、睡一秒重来, **线程永不死**; ② `press()` 加自愈 —— 上一段若早已
+  过截止点 2 秒还没被收尾(= 收尾方没在跑), 就地补收尾再开新录, 一次按都不丢。
+* 提醒: 「🩺 侧键自检」会把每一环的绿灯/红灯直接摆出来(侧键开关/钩子/触发
+  条件/游戏在前台/上次录到几帧), 连拍没反应时先点它, 一秒定位卡在哪。
+
 v1.5.48 更新
 -----------
 * **修复「收藏角色后它下面的所有 mod 都被默认收藏」(用户判定为 bug)**:
@@ -683,7 +701,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.48"
+VERSION = "1.5.49"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -4624,84 +4642,90 @@ class BurstBuffer(object):
 
     def _loop(self):
         while not self._stop.is_set():
-            cfg = self.app.cfg
-            if not cfg.get("photo_on", True):
-                self._clear_ring()
-                self.rec = None
-                self._rec_event.clear()
-                self._rec_event.wait(1.0)
-                continue
-            # ---- v1.5.37: 按下之后的"录 N 秒"优先, 且**不看前台是谁** ----
-            # 用户是在游戏里按的, 这 3 秒必须老实录游戏画面; 不查 proc_probe
-            # (少一次 tasklist), 也不因为管家在前台就冻结。
-            rec = self.rec
-            if rec is None:
-                # v1.5.37 防御: 没在录时清掉唤醒事件, 避免残留 set 让 _loop 空转。
-                self._rec_event.clear()
-            if rec is not None:
-                # v1.5.37 录制触发修复: 一进录制分支就清掉唤醒事件, 避免 set 残留
-                # 误唤醒; press() 在录制进行中再被按会直接返回"上一段还在录", 不会再来 set。
-                self._rec_event.clear()
-                if time.time() >= rec["until"]:
-                    self._finish_rec()
-                    continue
-                t0 = time.time()
-                try:
-                    self._grab_into_rec(rec)
-                except Exception:
-                    log("连拍录制失败:\n" + traceback.format_exc())
-                    self._rec_event.wait(0.2)
-                    continue
-                # v1.5.37 修复: 严格只录到 until —— 剩余时间<=0 立刻收尾,
-                # 绝不把"三秒之后"的帧塞进批次(旧写法要等下一轮循环才收尾,
-                # 期间多等了一个等待周期, 看起来就是"录超了三秒")。
-                left = rec["until"] - time.time()
-                if left <= 0:
-                    self._finish_rec()
-                    continue
-                # v1.5.39 帧率校正: deadline 节流。每一帧的"理想时刻"是
-                # 第一帧时刻 + n*step; grab 完算 sleep_for = deadline - now,
-                # grab 慢 -> sleep 少(甚至不睡), 帧率不再被 PIL 拖低。
-                # v1.5.38 的"固定 sleep(1/24)"解决了 tight-loop 但没把 grab 耗时
-                # 算进去, 实测 ~12fps、3 秒只录 ~37 帧(用户真机反馈)。
-                step = 1.0 / self.TARGET_FPS
-                deadline = self._rec_next_deadline or (time.time() + step)
-                self._rec_next_deadline = deadline + step   # 推到下一帧, 漂移自动校
-                sleep_for = max(0.0, deadline - time.time())
-                if sleep_for > 0:
-                    time.sleep(sleep_for)
-                continue
-            game, _ = proc_probe(cfg)
-            if not game:
-                self._clear_ring()
-                # v1.5.37 修复: 用 rec_event 等, press() 一 set 立刻醒来做录制分支,
-                # 不再傻等 0.8s 才回头看见 self.rec。
-                self._rec_event.wait(0.8)
-                continue
-            # v1.5.32: 只在**游戏在前台**时录。切回管理器/浏览器时冻结缓冲,
-            # 这样打完一套回到管理器再点「📸」, 挑帧条里仍是刚才的游戏画面。
-            # v1.5.35: 判据从「前台不是游戏就冻结」放宽成「前台是管家界面才冻结」。
-            # 老写法一旦 foreground_pid() 和 tasklist 给的 PID 对不上(全屏覆盖层、
-            # 别的启动方式、PID 解析失败…), 缓冲就永远是空的 —— 侧键按下去只会得到
-            # 「缓冲里还没内容」, 用户看到的就是"按了没反应"。现在只在自己界面在前台
-            # 时冻结, 其它情况照录, 宁可多录几帧, 也绝不让缓冲空着。
-            if not _burst_allowed_now(cfg):
-                # v1.5.42: 判据从「管家自己在前台就冻结」收紧成「**绝区零在前台才录**」
-                # (用户明确要求)。老写法只要管家不在最前就 24fps 一直抓屏 ——
-                # 逛网页、看视频、写文档时后台都在录, 既费电又白占 CPU。
-                self._rec_event.wait(0.5)
-                continue
-            t0 = time.time()
+            # v1.5.49: 顶层兜底 —— 之前循环体里任何一处没被内层 try 罩住的异常
+            # (典型: _finish_rec 里封批/拆塔) 都会让这个守护线程**静默死掉**,
+            # 免安装版没控制台, 用户看不到任何报错, 之后每次侧键都卡在
+            # "上一段还在录" —— 只能靠清缓存续命(用户反馈的"退化"真相)。
+            # 现在: 任何一轮炸了就记日志、丢状态、睡一秒重来, 线程永不死。
             try:
-                self._grab_one()
+                if self._loop_tick():
+                    continue
             except Exception:
-                log("连拍抓屏失败:\n" + traceback.format_exc())
+                log("连拍线程异常(已自动恢复):\n" + traceback.format_exc())
+                self.rec = None
+                self._rec_next_deadline = None
                 self._rec_event.wait(1.0)
-                continue
-            # 节流到目标帧率
-            left = 1.0 / self.TARGET_FPS - (time.time() - t0)
-            if left > 0:
-                self._rec_event.wait(left)
+
+    def _loop_tick(self):
+        """跑一轮录制状态机; 返回 True = 本轮已自行处理完等待。"""
+        cfg = self.app.cfg
+        if not cfg.get("photo_on", True):
+            self._clear_ring()
+            self.rec = None
+            self._rec_event.clear()
+            self._rec_event.wait(1.0)
+            return True
+        # ---- v1.5.37: 按下之后的"录 N 秒"优先, 且**不看前台是谁** ----
+        # 用户是在游戏里按的, 这 3 秒必须老实录游戏画面; 不查 proc_probe
+        # (少一次 tasklist), 也不因为管家在前台就冻结。
+        rec = self.rec
+        if rec is None:
+            # v1.5.37 防御: 没在录时清掉唤醒事件, 避免残留 set 让 _loop 空转。
+            self._rec_event.clear()
+        if rec is not None:
+            # v1.5.37 录制触发修复: 一进录制分支就清掉唤醒事件, 避免 set 残留
+            # 误唤醒; press() 在录制进行中再被按会直接返回"上一段还在录", 不会再来 set。
+            self._rec_event.clear()
+            if time.time() >= rec["until"]:
+                self._finish_rec()
+                return True
+            try:
+                self._grab_into_rec(rec)
+            except Exception:
+                log("连拍录制失败:\n" + traceback.format_exc())
+                self._rec_event.wait(0.2)
+                return True
+            # v1.5.37 修复: 严格只录到 until —— 剩余时间<=0 立刻收尾,
+            # 绝不把"三秒之后"的帧塞进批次(旧写法要等下一轮循环才收尾,
+            # 期间多等了一个等待周期, 看起来就是"录超了三秒")。
+            left = rec["until"] - time.time()
+            if left <= 0:
+                self._finish_rec()
+                return True
+            # v1.5.39 帧率校正: deadline 节流。每一帧的"理想时刻"是
+            # 第一帧时刻 + n*step; grab 完算 sleep_for = deadline - now,
+            # grab 慢 -> sleep 少(甚至不睡), 帧率不再被 PIL 拖低。
+            step = 1.0 / self.TARGET_FPS
+            deadline = self._rec_next_deadline or (time.time() + step)
+            self._rec_next_deadline = deadline + step   # 推到下一帧, 漂移自动校
+            sleep_for = max(0.0, deadline - time.time())
+            if sleep_for > 0:
+                time.sleep(sleep_for)
+            return True
+        game, _ = proc_probe(cfg)
+        if not game:
+            self._clear_ring()
+            # v1.5.37 修复: 用 rec_event 等, press() 一 set 立刻醒来做录制分支,
+            # 不再傻等 0.8s 才回头看见 self.rec。
+            self._rec_event.wait(0.8)
+            return True
+        # v1.5.42: 只在「绝区零在前台」时滚动录制(省电省 CPU, 也避免逛网页时
+        # 误按侧键录到无关画面); 设置 photo_only_in_game=false 可切回老行为。
+        if not _burst_allowed_now(cfg):
+            self._rec_event.wait(0.5)
+            return True
+        t0 = time.time()
+        try:
+            self._grab_one()
+        except Exception:
+            log("连拍抓屏失败:\n" + traceback.format_exc())
+            self._rec_event.wait(1.0)
+            return True
+        # 节流到目标帧率
+        left = 1.0 / self.TARGET_FPS - (time.time() - t0)
+        if left > 0:
+            self._rec_event.wait(left)
+        return True
 
     def _clear_ring(self):
         with self.lock:
@@ -4883,10 +4907,23 @@ class BurstBuffer(object):
 
         返回值只说明"录制定没定上", 不是最终结果 —— 结果在 `_finish_rec` 里出。
         低级钩子回调链上这个函数仍是 **0 子进程 / 0 文件 I/O**(只读时钟 + 建 dict)。
+
+        v1.5.49 自愈: 上一段若早已过截止点还没被收尾(= 录制线程当时正死/卡),
+        就地补收尾再开新录 —— 绝不再出现"缓存不清就再也拍不了"。
         """
-        if self.rec is not None:
-            return {"ok": False, "recording": True,
-                    "msg": "上一段还在录, 这次按得不算"}
+        rec = self.rec
+        if rec is not None:
+            if time.time() > rec["until"] + 2.0:
+                # 陈旧录制: 正常 _loop 到点就会收尾, 拖过 2 秒说明它没在跑。
+                # 在按下线程里就地收尾(纯内存操作, 钩子回调里也安全)。
+                try:
+                    self._finish_rec()
+                except Exception:
+                    self.rec = None
+                    log("连拍收尾(自愈)失败:\n" + traceback.format_exc())
+            else:
+                return {"ok": False, "recording": True,
+                        "msg": "上一段还在录, 这次按得不算"}
         if not (self.app.cfg or {}).get("photo_on", True):
             return {"ok": False, "msg": self._why_empty()}
         secs = self._secs()
