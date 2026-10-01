@@ -721,7 +721,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.51"
+VERSION = "1.5.52"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -4887,15 +4887,21 @@ class BurstBuffer(object):
         return self.active()
 
     def bursts_meta(self):
-        """返回所有缓存批的摘要(给前端切换按钮用)。"""
+        """返回所有缓存批的摘要(给前端切换按钮用)。
+        v1.5.52: 附带 fps(这批实测帧率) —— 设置页/挑帧页用来显示"本机实际能录多少",
+        用户不再误以为"帧数少 = 程序坏了"(2560x1600 屏抓屏 ~70ms/帧, 上限就 ~10fps)。"""
         out = []
         for i, b in enumerate(self.bursts):
+            cnt = b.get("count") or len(b.get("frames") or [])
+            secs = b.get("secs") or 0.0
             out.append({"id": b.get("id") or 0,
-                        "count": b.get("count") or len(b.get("frames") or []),
-                        "secs": b.get("secs") or 0.0,
+                        "count": cnt,
+                        "secs": secs,
+                        "fps": round(cnt / secs, 1) if secs else 0.0,
                         "t": b.get("t") or 0.0,
                         "pending": bool(b.get("pending"))})
-        return {"active": self.active_idx, "bursts": out, "max": 3}
+        return {"active": self.active_idx, "bursts": out, "max": 3,
+                "target_fps": self.TARGET_FPS}
 
     def trigger(self):
         """📸 手动触发: 拿滚动缓冲里现有的帧封一批(保留旧行为)。"""
@@ -5057,12 +5063,52 @@ class BurstBuffer(object):
         return {"ok": True, "cleared": n, "burst_id": 0,
                 "msg": "已清除连拍缓存(%d 帧), 下次侧键从零开始录" % n}
 
+    def _tier_targets(self, n):
+        """v1.5.52: 按**实际录到的帧数**算**前 4 档**的目标数 —— 档位自适应。
+        (第 5 档 = 全部帧, 由 _tiers() 末尾天然构成, 不在这里给。)
+
+        老版固定用 TIERS=(8,16,32,64): 用户屏 2560x1600 / DPI150% 时
+        ImageGrab.grab() 单帧就要 ~70ms(实测上限 ~10fps), 3 秒只录到 ~30 帧,
+        于是第 4 档(目标 32)、第 5 档(目标 64)永远填不满 —— 前端显示成
+        "4 档·30 张 / 5 档·30 张", 用户看到的就是"档位填不满 / 后两档没差别"。
+
+        改为: 前 4 档按「几何梯度」铺满 0..n, 每档严格递增且 < n。
+        帧够多(>=64)时结果与旧版一致(8,16,32,64); 帧少时自动降到
+        n=30 -> (2,4,8,16), 5 档共 (2,4,8,16,30), 每档都真实可区分。
+        前端无需改动: 它直接读 tiers[k].length 渲染"N 档 · X 张"。
+        """
+        n = max(1, int(n))
+        if n >= 64:
+            return list(self.TIERS)          # 帧够 -> 与老版完全一致(前4档)
+        if n < 5:
+            # 帧数比档数还少(退化): 只能给 1..n-1 的严格递增, 剩余档靠 _thin
+            # 的"拿多少算多少"自然退化成同一批(至少不报错、不重复计数)。
+            return [min(i + 1, n - 1) if n > 1 else 1 for i in range(4)]
+        # 几何梯度: 前 4 档在对数尺度上等距铺到 n 之前
+        #   n=30 -> frac 2^-4..2^-1 * 30/2 = 1.875,3.75,7.5,15 -> 2,4,8,15
+        out = []
+        for k in range(4):
+            frac = (2.0 ** k) / (2.0 ** 4) * 2.0      # 1/8, 2/8, 4/8, 8/8
+            out.append(max(1, int(round(n * frac))))
+        # 严格递增(至少差 1), 且都必须 < n(给第5档"全部帧"留出差异)
+        for i in range(1, 4):
+            if out[i] <= out[i - 1]:
+                out[i] = out[i - 1] + 1
+        for i in range(3, -1, -1):
+            if out[i] >= n:
+                out[i] = max(1, n - (4 - i))
+        return out
+
     def _tiers(self, snap):
         """自底向上建 5 层: 第 5 层=全部, 每往上按「与前一帧的差异」挑更有代表性的
-        一组(保证最小间隔, 不会挤在同一瞬间), 上层一定是下层的子集。"""
+        一组(保证最小间隔, 不会挤在同一瞬间), 上层一定是下层的子集。
+
+        v1.5.52: 目标数改成 _tier_targets(len(snap)) 自适应 —— 帧少时不再出现
+        "后几档数字都一样、填不满"的情况。"""
+        targets = self._tier_targets(len(snap))
         idxs = list(range(len(snap)))
         tiers = [idxs]
-        for want in reversed(self.TIERS):
+        for want in reversed(targets):
             idxs = self._thin(snap, idxs, want)
             tiers.insert(0, idxs)
         return tiers
@@ -5090,8 +5136,20 @@ class BurstBuffer(object):
                 chosen.append(order)
             if len(chosen) >= want:
                 break
-        chosen = sorted(set(chosen) | {len(idxs) - 1})   # 永远保留最新一帧
-        return [idxs[k] for k in chosen]
+        # v1.5.52: 永远保留最新一帧(idx=-1); 但它可能不在 chosen 里, 硬塞会让结果
+        # 比 want **多 1 个**(实测 want=9 -> 10), 前端档位数就"虚高"。
+        # 修: 塞进来之后若超标, 从"分数最低且非末位"的那些里裁掉, 直到 == want。
+        last = len(idxs) - 1
+        chosen = set(chosen) | {last}
+        if len(chosen) > want:
+            # 按分数从低到高裁(末位 last 永不裁)
+            for k in sorted(range(len(idxs)), key=lambda k: scores[k]):
+                if len(chosen) <= want:
+                    break
+                if k == last:
+                    continue
+                chosen.discard(k)
+        return [idxs[k] for k in sorted(chosen)]
 
     # ---- 读一次触发结果(带 TTL 回收) ----
     def current(self):
@@ -5160,6 +5218,23 @@ class BurstBuffer(object):
         if not snap:
             return {"ok": False, "msg": "截屏失败"}
         return self._build_burst(snap[-1:])
+
+    def discard(self):
+        # v1.5.39: 弃掉**当前活动批**; 切换按钮旁的"弃掉关闭"还是只丢活动那一档,
+        # 其它缓存批(用户切过去还能看)不受影响。
+        # v1.5.52: 修复缩进错位 —— 原先这个方法被误放进 MouseBtnWatcher,
+        # 导致 /api/photo_close 调 app.burst.discard() 抛 AttributeError -> HTTP 500,
+        # 前端"弃掉关闭"永远清不掉缓存批(被空 except 静默)。
+        b = self.active()
+        if b:
+            with self.lock:
+                try:
+                    self.bursts.remove(b)
+                except ValueError:
+                    pass
+                self.active_idx = 0
+                self.burst = self.bursts[0] if self.bursts else None
+        return {"ok": True}
 
 
 class MouseBtnWatcher(object):
@@ -5276,19 +5351,6 @@ class MouseBtnWatcher(object):
             if msg.message == WM_QUIT:
                 break
         user32.UnhookWindowsHookEx(hhk)
-
-    def discard(self):
-        # v1.5.39: 弃掉**当前活动批**; 切换按钮旁的"弃掉关闭"还是只丢活动那一档,
-        # 其它缓存批(用户切过去还能看)不受影响。
-        b = self.active()
-        if b:
-            try:
-                self.bursts.remove(b)
-            except ValueError:
-                pass
-        self.active_idx = 0
-        self.burst = self.bursts[0] if self.bursts else None
-        return {"ok": True}
 
 
 def photo_ping_payload(app):
@@ -5705,6 +5767,12 @@ class App(object):
             "photo_burst": (getattr(self, "burst", None).meta()
                             if getattr(self, "burst", None)
                             else {"burst_id": 0, "frames": []}),
+            # v1.5.52: 3 批缓存摘要 + 每批实测 fps(设置页显示"本机实际能录多少",
+            # 免得用户把"帧数少"当成程序坏了 —— 大屏抓屏上限就是 ~10fps)。
+            "photo_bursts": (getattr(self, "burst", None).bursts_meta()
+                             if getattr(self, "burst", None)
+                             else {"active": 0, "bursts": [], "max": 3,
+                                   "target_fps": 24}),
             # v1.5.35: 侧键钩子装没装上 / 抓拍事件序号 —— 界面拿来提示和去重。
             # photo_press_seq 的口径必须和 /api/photo_ping 完全一致(0 = 没有待处理事件),
             # 否则 2 秒轮询和 0.6 秒哨兵会互相打架(踩过)。

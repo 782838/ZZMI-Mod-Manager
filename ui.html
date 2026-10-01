@@ -3118,7 +3118,29 @@ function renderSetup(){
         style="max-width:80px;padding:6px 9px;display:inline-block"> 秒
       <button class="mini" id="btnPhotoSecs">保存</button>
       <br><span class="hint">按侧键/触发键后，<b>从按下那一刻开始录</b>这么多秒（1~10），
-      录满立刻停下并弹出挑帧页。越长录到的画面越多、内存占得越多，一般 3 秒够用。</span></span></div>
+      录满立刻停下并弹出挑帧页。越长录到的画面越多、内存占得越多，一般 3 秒够用。</span>
+      ${(()=>{
+        // v1.5.52: 显示本机实测帧率 —— 抓屏速度取决于屏幕分辨率/缩放,
+        // 大屏(如 2560x1600 + 150%)每帧要 ~70ms, 3 秒只能录 ~30 帧, 属硬件上限。
+        // 挑帧页的 5 档是按"实际录到多少帧"自适应分档的, 不会有填不满的空档。
+        const pb = S.photo_bursts || {};
+        const bs = pb.bursts || [];
+        const tgt = pb.target_fps || 24;
+        const secs = S.photo_seconds || 3;
+        if (!bs.length)
+          return '<br><span class="hint" style="color:var(--txt2)">📊 还没录过：按一次侧键后，这里会显示本机的<b>实测帧率</b>和每批帧数。</span>';
+        const b0 = bs[0] || {};
+        const fps = b0.fps || 0;
+        const full = Math.round(tgt * secs);
+        const low = fps && fps < tgt * 0.75;
+        return '<br><span class="hint" style="color:' + (low ? "var(--warn,#e8b339)" : "var(--ok,#3fd8b0)") + '">📊 ' +
+          '最近一批: <b>' + (b0.count || 0) + ' 帧 / ' + (b0.secs || secs) + ' 秒</b>' +
+          '（实测 <b>' + fps + ' fps</b>，目标 ' + tgt + ' fps ≈ ' + full + ' 帧）' +
+          (low ? '　—— 屏幕大/缩放开高时抓屏更慢，这是<b>硬件上限</b>，不是出错：' +
+                 '5 档已按实际帧数自动分档，每一档都能用。' : '　✅') +
+          '</span>';
+      })()}
+    </span></div>
     <div class="kv"><span class="k">侧键自检</span><span class="v">
       <button class="mini" id="btnPhotoDiag" title="按了侧键没反应? 点这里逐环查一遍">🩺 侧键自检</button>
       <button class="mini" id="btnPhotoClear" title="清掉内存里缓存的连拍帧(照片墙里已留下的成品不受影响)">🧹 清除缓存</button>
