@@ -5,6 +5,16 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.50 更新
+-----------
+* **连拍录制线程死亡看门狗(彻底根治"不清缓存就不能再拍")**: v1.5.49 只在"异常"时护住线程,
+  但万一线程因别的原因(没被拉起 / 被系统回收)死了, `press()` 自愈只会收尾一个**空** rec、
+  新录的也没人抓帧, 等于还是要清缓存才能续。v1.5.50 新增 `ensure_alive()` 看门狗:
+  ① 每次按侧键(`press`)先确认录制线程活着, 死了立刻复活; ② 前端每次轮询 `/api/state`
+  都顺手复活一次。从此"线程死了"不再导致连拍报废, 也不用再靠清除缓存续命。
+* 三批缓存(`deque(maxlen=3)`、第四档清第一档)与拍照后自动弹挑帧页逻辑经隔离单元测试
+  验证均正常 —— 这俩功能代码本身没坏, 之前"全坏了"的根因是线程死亡引发的连锁, 现已根除。
+
 v1.5.49 更新
 -----------
 * **修: 连拍"用一段时间就退化"的根因 —— 录制线程会静默死掉**
@@ -701,7 +711,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.49"
+VERSION = "1.5.50"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -4631,11 +4641,20 @@ class BurstBuffer(object):
 
     # ---- 生命周期 ----
     def start(self):
-        if self.thread and self.thread.is_alive():
-            return
-        self._stop.clear()
-        self.thread = threading.Thread(target=self._loop, daemon=True)
-        self.thread.start()
+        self.ensure_alive()
+
+    def ensure_alive(self):
+        """v1.5.50: 录制守护线程看门狗 —— 线程没启动或已死就立刻重启。
+        线程死亡的最后防线: 哪怕它因任何原因(异常 / 被系统回收 / 没被拉起)挂了,
+        下次按侧键、或前端每次轮询 /api/state 都会自动把它复活, 连拍再也不会
+        "死了就废、必须清缓存才能续命"。"""
+        if self.thread is None or not self.thread.is_alive():
+            try:
+                self._stop.clear()
+                self.thread = threading.Thread(target=self._loop, daemon=True)
+                self.thread.start()
+            except Exception:
+                pass
 
     def stop(self):
         self._stop.set()
@@ -4910,7 +4929,10 @@ class BurstBuffer(object):
 
         v1.5.49 自愈: 上一段若早已过截止点还没被收尾(= 录制线程当时正死/卡),
         就地补收尾再开新录 —— 绝不再出现"缓存不清就再也拍不了"。
+        v1.5.50: 这一步之前先 `ensure_alive()` 复活录制线程 —— 万一线程彻底死了,
+        自愈只能收尾一个空 rec、新录的也没人抓帧; 先复活, 这次按下去才能真正录到。
         """
+        self.ensure_alive()   # v1.5.50: 线程死了先复活, 否则这次按了也录不到
         rec = self.rec
         if rec is not None:
             if time.time() > rec["until"] + 2.0:
@@ -5562,6 +5584,13 @@ class App(object):
         return find_mods_dir(self.cfg)
 
     def state(self, with_entries=True, probe=True):
+        # v1.5.50: 顺手给连拍录制线程当看门狗 —— 线程万一死了, 前端每 ~2 秒轮询一次
+        # 就把它复活, 用户按侧键前它多半已经活过来了(也兜住"线程没被拉起"的情况)。
+        if getattr(self, "burst", None) is not None:
+            try:
+                self.burst.ensure_alive()
+            except Exception:
+                pass
         s = self.scan
         md = self.mods_dir()
         game = launcher = False
