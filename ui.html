@@ -376,6 +376,7 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .toast.err{border-color:rgba(255,93,115,.5);color:#ffd9df}
 .toast.ok{border-color:rgba(61,220,132,.45)}
+.toast.warn{border-color:rgba(255,179,71,.5);color:#ffe7c7}
 .empty{text-align:center;color:var(--dim);padding:60px 20px;font-size:13px}
 .spin{width:15px;height:15px;border:2px solid var(--line2);border-top-color:var(--accent);
   border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:-2px}
@@ -767,6 +768,7 @@ html[data-theme="light"] .state{background:rgba(15,166,120,.14)!important;color:
 html[data-theme="light"] .state.no{background:rgba(220,74,74,.12)!important;color:#a82f2d!important;
   border-color:rgba(220,74,74,.34)!important}
 html[data-theme="light"] .toast.err{color:#a82f2d}
+html[data-theme="light"] .toast.warn{color:#8a5a17}
 html[data-theme="light"] .navi .cnt{background:rgba(20,30,50,.055)}
 html[data-theme="light"] .sidecnt{background:rgba(20,30,50,.055)}
 
@@ -4642,6 +4644,7 @@ if ($("#pwBurst")) $("#pwBurst").onclick = async () => {
 // v1.5.35: 顺带加 _pressSeen —— 侧键"没抓到帧"也要弹(空状态 + 原因), 以前这种情况
 // 后端什么都不做, 用户看到的就是"按了没反应"。
 let _pbShown = 0, _pressSeen = 0, _recSeen = 0, _pbMax = 0;
+let _rejSeen = 0;   // v1.5.51: 侧键被闸门拦下的提示去重(按后端时间戳)
 function burstForceShow(meta){
   const id = (meta||{}).burst_id || 0;
   if (!id || id === _pbShown) return;
@@ -4710,6 +4713,14 @@ async function pbPingNow(){
     burstRecIndicator(r);
     if (r.press_seq) burstPressShow(r);
     if (r.burst_id) burstForceShow(r.meta);
+    // v1.5.51: 侧键被"游戏不在前台"闸门拦下 -> 不再完全静默。toast 把原因
+    // (含"当前前台 vs 认的游戏")直接说出来 —— 重装 XXMI 后游戏识别断掉这类
+    // 环境问题, 用户第一眼就能看到, 不用再猜"怎么全没了"。
+    const rj = r.reject || {};
+    if (rj.t && rj.msg && rj.t > _rejSeen){
+      _rejSeen = rj.t;
+      toast("🖱 " + rj.msg, "warn");
+    }
   }catch(e){}
 }
 setInterval(pbPingNow, 600);

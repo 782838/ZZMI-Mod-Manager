@@ -5,6 +5,16 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.51 更新
+-----------
+* **修: 侧键被"游戏不在前台"闸门拦下时完全静默 —— "按了毫无反应"的最后一块盲区**。
+  真机 e2e(真实抓屏 + 真实 HTTP + jsdom 前端 64 场景)证明: 只要按键能到达 `press()`,
+  三批缓存/自动弹挑帧页/线程自愈全部正常。用户真机上"三个功能一起没、按了毫无反应"
+  的唯一剩余入口就是按键**根本没进 press()** —— 被 v1.5.42 的前台闸门静默丢弃
+  (重装 XXMI 后游戏识别断掉时必然如此)。现在拦下时把原因连同「当前前台进程名 vs
+  认的游戏程序」记入 `burst.last_reject`(10 秒节流), 前端轮询带回并 toast,
+  环境问题第一眼可见, 不用再猜。开录成功后自动清掉过期提示。
+
 v1.5.50 更新
 -----------
 * **连拍录制线程死亡看门狗(彻底根治"不清缓存就不能再拍")**: v1.5.49 只在"异常"时护住线程,
@@ -711,7 +721,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.50"
+VERSION = "1.5.51"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -4204,6 +4214,32 @@ def _log_reject_throttled(tag, msg, every=60.0):
     log("%s: %s" % (tag, msg))
 
 
+def _reject_bg(app, msg):
+    """v1.5.51: 侧键被"游戏不在前台"闸门拦下后的后台收尾(钩子回调链外, 可做 I/O)。
+    除了照旧限流写日志, 还把原因**连同当前前台进程名**记进 burst.last_reject,
+    前端轮询 /api/photo_ping 时带回并 toast —— 把"按了毫无反应"变成"立刻看见为什么"。
+    重装 XXMI 后游戏识别断掉、或 photo_mouse_btn 配错这类环境问题, 用户不用再猜。
+    节流 10 秒: 浏览器里侧键=后退, 会高频触发, 不能每一下都刷新 UI 记录。"""
+    _log_reject_throttled("侧键连拍被跳过", msg)
+    b = getattr(app, "burst", None)
+    if b is None:
+        return
+    try:
+        now = time.time()
+        if now - getattr(b, "_rej_ui_t", 0.0) < 10.0:
+            return
+        b._rej_ui_t = now
+        fg = ""
+        try:
+            fg = foreground_exe(ttl=0) or ""
+        except Exception:
+            fg = ""
+        extra = ("  ·  当前前台: %s" % fg) if fg else ""
+        b.last_reject = {"msg": msg + extra, "t": time.time()}
+    except Exception:
+        pass
+
+
 def launch_game(cfg):
     """启动游戏。ZZMI 需要管理员权限注入(d3dx.ini: require_admin=true),
     所以必须用 ShellExecute 的 runas 走 UAC, 否则 CreateProcess 会报 WinError 740。"""
@@ -4638,6 +4674,11 @@ class BurstBuffer(object):
         # active_idx 指向当前展示给用户的那个(0=最新), 可被前端切换。
         self.bursts = collections.deque(maxlen=3)
         self.active_idx = 0
+        # v1.5.51: 侧键被"游戏不在前台"闸门拦下的**可见**记录。以前这里完全静默,
+        # 一旦游戏识别断掉(重装 XXMI 后很常见), 用户看到的就是"三个功能全没了、
+        # 按了毫无反应"却无从知道原因 —— 现在拦下时记一笔, 前端轮询带回并 toast。
+        self.last_reject = None      # {"msg": str, "t": float}
+        self._rej_ui_t = 0.0         # UI 记录节流(浏览器"后退"键会频繁触发拦截)
 
     # ---- 生命周期 ----
     def start(self):
@@ -4957,6 +4998,9 @@ class BurstBuffer(object):
         # 抵消 PIL ImageGrab 的耗时、稳住目标帧率。
         self._rec_next_deadline = time.time()
         self._rec_event.set()   # v1.5.37 修复: 立刻唤醒 _loop, 按下即开始录
+        # v1.5.51: 这次真正开录了 —— 旧的"被闸门拦下"提示已完成使命, 清掉,
+        # 免得用户进游戏按了第一下后, 回管家还看到一条过期的"不在前台"toast。
+        self.last_reject = None
         return {"ok": True, "recording": True, "seconds": secs,
                 "seq": self.press_seq}
 
@@ -5203,10 +5247,10 @@ class MouseBtnWatcher(object):
                             threading.Thread(target=_after_press_bg,
                                              args=("侧键连拍", r), daemon=True).start()
                         else:
-                            # 被挡了。限流写日志(侧键在浏览器里是"后退", 会常按到),
-                            # 同样丢后台线程 —— 回调链上不做 I/O。
-                            threading.Thread(target=_log_reject_throttled,
-                                             args=("侧键连拍被跳过",
+                            # 被挡了。限流写日志 + 给前端记一条可见原因(都丢后台
+                            # 线程 —— 回调链上不做 I/O, 见 v1.5.51 _reject_bg)。
+                            threading.Thread(target=_reject_bg,
+                                             args=(self.app,
                                                    _not_game_msg(self.app.cfg)),
                                              daemon=True).start()
             except Exception:
@@ -5279,7 +5323,11 @@ def photo_ping_payload(app):
             "recording": bool(rec.get("recording")),
             "rec_left": rec.get("left") or 0.0,
             "rec_seconds": rec.get("seconds") or 0.0,
-            "rec_seq": rec.get("seq") or 0}
+            "rec_seq": rec.get("seq") or 0,
+            # v1.5.51: 最近一次"侧键被闸门拦下"的可见原因(10 秒节流)。
+            # 前端 toast 出来, 把"按了毫无反应"变成"立刻看见为什么"。
+            "reject": {"msg": (getattr(b, "last_reject", None) or {}).get("msg") or "",
+                       "t": (getattr(b, "last_reject", None) or {}).get("t") or 0}}
 
 
 def photo_diag(app):
