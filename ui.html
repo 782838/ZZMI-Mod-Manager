@@ -2557,28 +2557,43 @@ function showDupNotice(items, title){
   $("#mask").classList.add("on");
 }
 
+// ---------------- 开关 mod 后的「按 F10 重载」提示 ----------------
+// v1.5.56: 开关已改成「点击立即生效」(后端只改内存, 不再整库重扫), 但游戏里的
+// 3DMigoto 仍需 F10 才会重新读文件。这里只在屏幕下方出一条轻提示:
+// 不弹窗、不用点确认, 批量开关时后一条自然覆盖前一条, 不会堆积刷屏。
+function showF10Notice(enabled, hit){
+  toast(`已${enabled?"启用":"禁用"} ${hit||""} 个 mod · 如果没生效请等待一会, 再按 F10 刷新试试`, "ok");
+}
+
 async function doToggle(ids, enabled){
   if (busy) return;
   busy = true;
-  try{
-    const r = await api("/api/toggle", {ids, enabled});
-    S = r.state;
-    const f = r.result;
-    const dups = f.renamed || [];
-    if (f.failed) toast(`完成 ${f.ok} 项, ${f.failed} 项失败:\n` +
-      f.details.slice(0,3).map(d => "· " + d.name + ": " + d.msg).join("\n"), "err");
-    else if (dups.length) toast(`已${enabled?"启用":"禁用"} ${f.ok} 个 mod\n` +
-      `其中 ${dups.length} 个因重名自动加了序号`, "ok");
-    else toast((enabled?"已启用 ":"已禁用 ") + f.ok + " 个 mod\n(游戏里按 F10 立即生效)", "ok");
-    renderAll();
+  // ① 乐观更新: 立刻把受影响卡片翻成目标状态, 不等后端返回(后端只改内存, 本就秒回)
+  const m = {};
+  (S.entries||[]).forEach(x => { m[x.id] = x; });
+  let hit = 0;
+  (ids||[]).forEach(id => {
+    const e = m[id];
+    if (e){ e.enabled = enabled; e.dir_disabled = !enabled; hit++; }
+  });
+  if (hit) renderAll();
+  if (curDetail && ids.includes(curDetail)) openDetail(curDetail, true);
+  // ② 屏幕下方轻提示: 不弹窗、不用点确认
+  showF10Notice(enabled, hit);
+  // ③ 后台提交: 不阻塞 UI; 返回后 S 会被权威状态覆盖(失败也会自动回滚), 3s 轮询兜底
+  api("/api/toggle", {ids, enabled}).then(r => {
+    if (r && r.state){ S = r.state; renderAll(); }
     if (curDetail && ids.includes(curDetail)) openDetail(curDetail, true);
-    // 重名 -> 自动加 (2) (3)…: 弹提示说明改成了什么
+    const f = r && r.result;
+    if (f && f.failed)
+      toast(`完成 ${f.ok} 项, ${f.failed} 项失败:\n` +
+        f.details.slice(0,3).map(d => "· " + d.name + ": " + d.msg).join("\n"), "err");
+    const dups = (f && f.renamed) || [];
     if (dups.length) showDupNotice(dups);
-    // 改名被占用/权限拒绝 -> 弹教程教玩家自己动手(带复制 DISABLED_ + 去改名)
-    const stuck = (f.details || []).filter(d => hasRenameFail([d]));
+    const stuck = f ? (f.details||[]).filter(d => hasRenameFail([d])) : [];
     if (stuck.length) showManualHelp(stuck[0], enabled);
-  }catch(e){ toast("操作失败: "+e.message+"\n多半是后台服务被关了, 或被系统代理拦截", "err"); }
-  finally{ busy = false; }
+  }).catch(e => toast("操作失败: "+e.message+"\n多半是后台服务被关了, 或被系统代理拦截", "err"))
+    .finally(() => { busy = false; });
 }
 
 $$(".chip[data-f]").forEach(c => c.onclick = () => {
@@ -3048,6 +3063,22 @@ function renderSetup(){
       <button class="mini" onclick="setHide(false)">显示</button>
       <span class="hint">(当前: ${S.hide_preview?"隐藏":"显示"})</span></span></div>
     <div class="kv"><span class="k">数据目录</span><span class="v">~/.zzmi-manager</span></div>
+    <h4 style="margin:18px 0 6px;font-size:13px">💾 缓存与存储</h4>
+    <div class="hint" style="margin-bottom:8px">管家会在本机缓存两类数据: <b>扫描索引</b>(让界面秒开) 与 <b>封面缩略图</b>(卡片预览)。
+      你增删 mod 后, 缩略图可能残留已删除文件的孤儿图, 白白占空间。下面可随时查看与清理 —— 清理后下次打开会自动重建, 不影响任何 mod 或设置。</div>
+    <div class="kv"><span class="k">扫描缓存</span><span class="v"><b id="ckScan" style="font-variant-numeric:tabular-nums">—</b>
+      <span class="hint">· 让界面秒开的库索引</span></span></div>
+    <div class="kv"><span class="k">封面缩略图</span><span class="v"><b id="ckThumbs" style="font-variant-numeric:tabular-nums">—</b>
+      <span class="hint" id="ckOrphan"></span></span></div>
+    <div class="kv"><span class="k">操作日志</span><span class="v"><b id="ckJournal" style="font-variant-numeric:tabular-nums">—</b>
+      <span class="hint">· 仅展示, 不清理</span></span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 2px">
+      <button class="btn" id="btnClrThumbs" title="删掉所有封面缩略图, 下次打开卡片时自动重新生成(秒级)">🧹 清理封面缩略图</button>
+      <button class="btn" id="btnClrScan" title="删掉扫描索引缓存, 下次启动会重新扫描一次(约十几秒)">🧹 清理扫描缓存</button>
+      <button class="btn" id="btnClrOrphan" title="只删指向已删除/已改动文件的失效缩略图, 保留还在用的">🧹 清理失效缩略图</button>
+      <button class="btn" id="btnClrAll" title="以上两类一起清">🗑 清空全部缓存</button>
+      <button class="btn ghost" id="btnClrRefresh" title="重新统计大小">🔄 刷新</button>
+    </div>
     <h4 style="margin:18px 0 6px;font-size:13px">自动更新</h4>
     <div class="kv"><span class="k">更新仓库</span><span class="v">
       <input class="inp" id="inRepo" value="${esc(S.update_repo||"")}"
@@ -3259,6 +3290,26 @@ function renderSetup(){
     }catch(e){ toast("清除失败: " + e.message, "err"); }
     finally{ btn.disabled = false; btn.textContent = old; }
   };
+  // v1.5.54: 缓存管理按钮
+  const bindClr = (id, type) => {
+    const b = $("#" + id);
+    if (b) b.onclick = async () => {
+      const old = b.textContent; b.disabled = true; b.textContent = "清理中…";
+      try{
+        const r = await api("/api/cache_clear", {type});
+        toast(r.msg || (r.ok ? "已清理" : "清理失败"), r.ok ? "ok" : "err");
+        if (r.ok) loadCacheInfo();
+      }catch(e){ toast("清理失败: " + e.message, "err"); }
+      finally{ b.disabled = false; b.textContent = old; }
+    };
+  };
+  bindClr("btnClrThumbs", "thumbs");
+  bindClr("btnClrScan", "scan");
+  bindClr("btnClrOrphan", "orphans");
+  bindClr("btnClrAll", "all");
+  const bcr = $("#btnClrRefresh");
+  if (bcr) bcr.onclick = () => loadCacheInfo();
+  loadCacheInfo();
   const bcon = $("#btnConsole");
   if (bcon) bcon.onclick = async () => {
     const r = await api("/api/console", {show: true});
@@ -3290,6 +3341,22 @@ function renderSetup(){
     if (!r.ok) return toast(r.msg,"err");
     S = r.state; renderAll(); toast("已切换到 "+b.dataset.use,"ok"); renderSetup();
   });
+}
+
+async function loadCacheInfo(){
+  const set = (id, t) => { const e = $("#"+id); if (e) e.textContent = t; };
+  try{
+    const r = await api("/api/cache_info");
+    if (!r || !r.ok) return;
+    const fmt = b => (b >= 1048576 ? (b/1048576).toFixed(1)+" MB"
+                      : b >= 1024 ? (b/1024).toFixed(0)+" KB"
+                      : b+" B");
+    set("ckScan", fmt(r.scan_cache.bytes) + " · " + r.scan_cache.files + " 个文件");
+    set("ckThumbs", fmt(r.thumbs.bytes) + " · " + r.thumbs.files + " 个文件");
+    set("ckJournal", fmt(r.journal.bytes));
+    const o = $("#ckOrphan");
+    if (o) o.textContent = (r.orphan_thumbs != null) ? ("· 其中约 " + r.orphan_thumbs + " 张已失效") : "";
+  }catch(e){ /* 设置页开着时后端尚未就绪属正常, 忽略 */ }
 }
 let detecting = false;
 async function autoDetect(){

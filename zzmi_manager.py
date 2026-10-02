@@ -721,7 +721,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.52"
+VERSION = "1.5.57"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -748,6 +748,8 @@ PRESETS_PATH = os.path.join(DATA_DIR, "presets.json")
 JOURNAL_PATH = os.path.join(DATA_DIR, "journal.jsonl")
 THUMB_DIR = os.path.join(DATA_DIR, "thumbs")
 THUMB_PX = 420
+# v1.5.53: 扫描结果缓存目录(按 mods_dir 哈希分文件)，启动秒开用
+SCAN_CACHE_DIR = os.path.join(DATA_DIR, "scan_cache")
 # v1.5.45: 后台压图的工作线程数。原来只有 1 个, 1437 张要排队排 ~60 秒 ——
 # 这段时间界面在跟"读 1.33GB 原图 + 解码"抢 CPU, 用户看到的就是"点一下卡一秒"。
 # Pillow 的解码/缩放是 C 扩展、会释放 GIL, 多线程能真并行; 3 条足够把积压压到 ~10 秒,
@@ -1806,6 +1808,181 @@ def find_mods_dir(cfg):
     return md or ""
 
 
+# ===========================================================================
+# 扫描结果缓存 + 并行 I/O 加速 (v1.5.53)
+# ===========================================================================
+
+def parallel_map(func, items, max_workers=None):
+    """线程池并行 map，失败自动退回串行。读元数据 / 读 ini 是 I/O 密集(会释放 GIL)，
+    外置盘(USB 固态)上并发读收益明显。"""
+    if not items:
+        return []
+    if max_workers is None:
+        max_workers = min(32, (os.cpu_count() or 4) * 2)
+    max_workers = max(1, min(max_workers, len(items)))
+    try:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=max_workers) as ex:
+            return list(ex.map(func, items))
+    except Exception:
+        return [func(x) for x in items]
+
+
+def save_scan_cache(mods_dir, res):
+    """把扫描结果存盘：下次启动秒开，后台静默重扫刷新。"""
+    if not mods_dir or not getattr(res, "entries", None):
+        return
+    try:
+        os.makedirs(SCAN_CACHE_DIR, exist_ok=True)
+        key = hashlib.md5(os.path.normcase(os.path.abspath(mods_dir)).encode("utf-8")).hexdigest()[:16]
+        data = {
+            "v": 1,
+            "root": os.path.abspath(mods_dir),
+            "entries": res.entries,
+            "categories": res.categories,
+            "chars": res.chars,
+            "stats": res.stats,
+            "conflicts": res.conflicts,
+            "thumb_srcs": res.thumb_srcs,
+            "scanned_at": res.scanned_at,
+            "duration": res.duration,
+        }
+        write_json(os.path.join(SCAN_CACHE_DIR, key + ".json"), data)
+    except Exception as e:
+        log("扫描缓存写入失败(忽略): %s" % e)
+
+
+def load_scan_cache(mods_dir):
+    if not mods_dir:
+        return None
+    try:
+        key = hashlib.md5(os.path.normcase(os.path.abspath(mods_dir)).encode("utf-8")).hexdigest()[:16]
+        d = read_json(os.path.join(SCAN_CACHE_DIR, key + ".json"), None)
+        if not isinstance(d, dict):
+            return None
+        if os.path.normcase(d.get("root", "")) != os.path.normcase(os.path.abspath(mods_dir)):
+            return None
+        if not d.get("entries"):
+            return None
+        res = ScanResult()
+        res.root = d.get("root", mods_dir)
+        res.entries = d.get("entries") or []
+        res.categories = d.get("categories") or []
+        res.chars = d.get("chars") or []
+        res.stats = d.get("stats") or {}
+        res.conflicts = d.get("conflicts") or []
+        res.thumb_srcs = d.get("thumb_srcs") or []
+        res.scanned_at = d.get("scanned_at") or 0
+        res.duration = d.get("duration") or 0
+        res.by_id = {e["id"]: e for e in res.entries
+                     if isinstance(e, dict) and "id" in e}
+        return res
+    except Exception as e:
+        log("扫描缓存读取失败(忽略): %s" % e)
+        return None
+
+
+def dir_size(path):
+    """返回 (总字节, 文件数)。目录不存在/不可访问返回 (0, 0)。"""
+    total = 0
+    n = 0
+    try:
+        for _root, _dirs, _files in os.walk(path):
+            for _f in _files:
+                try:
+                    fp = os.path.join(_root, _f)
+                    total += os.path.getsize(fp)
+                    n += 1
+                except OSError:
+                    pass
+    except OSError:
+        pass
+    return total, n
+
+
+def get_cache_info(app):
+    """v1.5.54: 设置页「缓存与存储」用 —— 统计各项磁盘缓存大小。"""
+    scan_b, scan_n = dir_size(SCAN_CACHE_DIR)
+    thumb_b, thumb_n = dir_size(THUMB_DIR)
+    j_b = 0
+    try:
+        if os.path.isfile(JOURNAL_PATH):
+            j_b = os.path.getsize(JOURNAL_PATH)
+    except OSError:
+        pass
+    # 孤儿缩略图: thumbs 里文件名不在「当前库有效 key 集」的 .jpg
+    # (已删 mod 的源文件 stat 失败 -> 不进 valid 集 -> 自然被判孤儿, 安全)
+    orphan = None
+    try:
+        if app.scan and app.scan.thumb_srcs:
+            valid = set()
+            for s in app.scan.thumb_srcs:
+                if os.path.isfile(s):
+                    valid.add(thumb_key(s))
+            orphan = 0
+            for f in os.listdir(THUMB_DIR):
+                if f.endswith(".jpg") and f not in valid:
+                    orphan += 1
+    except Exception:
+        orphan = None
+    return {
+        "ok": True,
+        "scan_cache": {"bytes": scan_b, "files": scan_n},
+        "thumbs": {"bytes": thumb_b, "files": thumb_n},
+        "journal": {"bytes": j_b},
+        "total_cache": scan_b + thumb_b,
+        "orphan_thumbs": orphan,
+    }
+
+
+def clear_disk_cache(app, kind):
+    """v1.5.54: 清理磁盘缓存。kind ∈ thumbs / scan / all / orphans。"""
+    kind = (kind or "all")
+    removed = 0
+    cleared = []
+    try:
+        if kind in ("thumbs", "all"):
+            if os.path.isdir(THUMB_DIR):
+                for f in os.listdir(THUMB_DIR):
+                    try:
+                        os.remove(os.path.join(THUMB_DIR, f))
+                        removed += 1
+                    except OSError:
+                        pass
+            cleared.append("封面缩略图")
+        if kind in ("scan", "all"):
+            if os.path.isdir(SCAN_CACHE_DIR):
+                for f in os.listdir(SCAN_CACHE_DIR):
+                    try:
+                        os.remove(os.path.join(SCAN_CACHE_DIR, f))
+                        removed += 1
+                    except OSError:
+                        pass
+            cleared.append("扫描缓存")
+        if kind == "orphans":
+            if not (app.scan and app.scan.thumb_srcs):
+                return {"ok": False,
+                        "msg": "库还没扫描完, 稍等几秒再试(或点「清理封面缩略图」全清)"}
+            valid = set()
+            for s in app.scan.thumb_srcs:
+                if os.path.isfile(s):
+                    valid.add(thumb_key(s))
+            os.makedirs(THUMB_DIR, exist_ok=True)
+            for f in os.listdir(THUMB_DIR):
+                if f.endswith(".jpg") and f not in valid:
+                    try:
+                        os.remove(os.path.join(THUMB_DIR, f))
+                        removed += 1
+                    except OSError:
+                        pass
+            cleared.append("失效缩略图")
+    except Exception as e:
+        return {"ok": False, "msg": "清理出错: %s" % e}
+    label = "、".join(cleared) if cleared else "无"
+    return {"ok": True, "removed": removed,
+            "msg": "已清理: %s (%d 个文件)" % (label, removed)}
+
+
 def scan_mods(mods_dir, char_overrides=None, thumb_overrides=None, meta=None):
     # meta: {"pinned_mods":[], "pinned_cats":[], "pinned_chars":[], "usage":{路径:秒}}
     char_overrides = char_overrides or {}
@@ -1826,6 +2003,9 @@ def scan_mods(mods_dir, char_overrides=None, thumb_overrides=None, meta=None):
     ini_dirs = []
     total_files = total_size = 0
 
+    # 第一遍 walk: 收集目录元数据 + 待 stat 的文件/目录清单
+    _file_paths = []
+    _dir_paths = []
     for cur, dirs, files in os.walk(mods_dir):
         dirs[:] = [d for d in dirs if d.lower() != "desktop.ini"]
         rel = os.path.relpath(cur, mods_dir)
@@ -1836,27 +2016,44 @@ def scan_mods(mods_dir, char_overrides=None, thumb_overrides=None, meta=None):
         imgs = [f for f in files
                 if f.lower().endswith(IMAGE_EXTS)
                 and not f.lower().endswith(NEVER_IMAGE_EXTS)]
-        sz = 0
-        for f in files:
-            try:
-                sz += os.path.getsize(os.path.join(cur, f))
-            except OSError:
-                pass
-        total_files += len(files)
-        total_size += sz
-        try:
-            mt = os.path.getmtime(cur)
-        except OSError:
-            mt = 0
+        _dir_paths.append(cur)
         dir_info[cur] = {
             "rel": rel, "name": os.path.basename(cur), "parts": parts,
-            "depth": len(parts), "size": sz, "files": len(files), "mtime": mt,
+            "depth": len(parts), "size": 0, "files": len(files), "mtime": 0,
             "ini": local_ini, "imgs": imgs,
             "kids": list(dirs),          # v1.5.37: 层级判定要看直接子目录
             "disabled": any(is_disabled_name(p) for p in parts),
         }
+        for f in files:
+            _file_paths.append(os.path.join(cur, f))
         if local_ini:
             ini_dirs.append(cur)
+
+    # v1.5.53: 并行 stat —— 外置盘(USB 固态)上逐文件 getsize / 目录 getmtime 是主要 I/O
+    # 瓶颈, 用线程池并发读(读元数据会释放 GIL), 大库扫描 ~18s 可降到约 6-9s。串行兜底。
+    def _stat_file(p):
+        try:
+            return os.path.getsize(p)
+        except OSError:
+            return 0
+    def _stat_dir(p):
+        try:
+            return os.path.getmtime(p)
+        except OSError:
+            return 0
+    _file_sizes = parallel_map(_stat_file, _file_paths)
+    _dir_mtimes = parallel_map(_stat_dir, _dir_paths)
+    _sz_by_cur = {}
+    for p, sz in zip(_file_paths, _file_sizes):
+        c = os.path.dirname(p)
+        _sz_by_cur[c] = _sz_by_cur.get(c, 0) + sz
+    for cur, mt in zip(_dir_paths, _dir_mtimes):
+        info = dir_info.get(cur)
+        if info is not None:
+            info["mtime"] = mt
+            info["size"] = _sz_by_cur.get(cur, 0)
+    total_size = sum(_sz_by_cur.values())
+    total_files = len(_file_paths)
 
     if not ini_dirs:
         res.stats = {"total": 0, "enabled": 0, "disabled": 0, "partial": 0,
@@ -2333,21 +2530,43 @@ def _ini_overrides(txt):
 
 
 def collect_hashes(ini_dirs, dir_info):
-    out = {}
+    out = {d: set() for d in ini_dirs}
+    jobs = []
     for d in ini_dirs:
-        hs = set()
         for f in dir_info.get(d, {}).get("ini", []):
             if is_disabled_name(f):
                 continue
-            p = os.path.join(d, f)
-            try:
-                if os.path.getsize(p) > 4 * 1024 * 1024:
-                    continue
-                with open(p, "r", encoding="utf-8", errors="replace") as fh:
-                    hs |= _ini_overrides(fh.read())
-            except Exception:
+            jobs.append(os.path.join(d, f))
+    if not jobs:
+        return out
+
+    # v1.5.53: 每个 .ini 的读取 + hash 解析是纯 I/O, 用线程池并发(读文件释放 GIL),
+    # 大库几千个 ini 在外部盘上串行很慢, 并发可显著缩短。串行兜底保证稳妥。
+    def _hash_one(p):
+        try:
+            if os.path.getsize(p) > 4 * 1024 * 1024:
+                return set()
+            with open(p, "r", encoding="utf-8", errors="replace") as fh:
+                return _ini_overrides(fh.read())
+        except Exception:
+            return set()
+
+    try:
+        from concurrent.futures import ThreadPoolExecutor
+        nw = min(16, (os.cpu_count() or 4) + 4)
+        with ThreadPoolExecutor(max_workers=nw) as ex:
+            results = list(ex.map(_hash_one, jobs))
+    except Exception:
+        results = [_hash_one(j) for j in jobs]
+
+    # 按原顺序归并回每个目录(跳过禁用 ini)
+    ji = 0
+    for d in ini_dirs:
+        for f in dir_info.get(d, {}).get("ini", []):
+            if is_disabled_name(f):
                 continue
-        out[d] = hs
+            out[d] |= results[ji]
+            ji += 1
     return out
 
 
@@ -5684,11 +5903,106 @@ class App(object):
             self.scan = scan_mods(md, self.cfg.get("char_overrides") or {},
                                   self.cfg.get("thumb_overrides") or {},
                                   self.meta()) if md else ScanResult()
-            if self.scan.thumb_srcs:
-                n = enqueue_thumbs(self.scan.thumb_srcs)
+        if self.scan.thumb_srcs:
+            n = enqueue_thumbs(self.scan.thumb_srcs)
+            if n:
+                log("需生成缩略图 %d 张(后台进行)" % n)
+        save_scan_cache(md, self.scan)     # v1.5.53: 落盘缓存, 下次启动秒开
+        return self.scan
+
+    def patch_toggle_state(self, ids, enabled, renamed_map=None):
+        """v1.5.55: 开关 mod 后**只改内存里的条目状态**, 立即返回, 不再整库重扫。
+
+        改名只是翻转文件夹名前的 DISABLED_ 前缀, 不动文件内容, 所以 size / hashes /
+        thumb / char 全部不变, 只需把随前缀翻转的字段改掉即可; 冲突表与统计在内存里
+        重算(都是纯计算, 不碰磁盘), 然后把扫描缓存落盘。整库 walk + 逐文件 stat 完全省掉,
+        开关从「等整库重扫」变成「瞬间完成」。"""
+        if not self.scan:
+            return []
+        renamed_map = renamed_map or {}
+        by_id = self.scan.by_id
+        succ = []
+        for i in (ids or []):
+            e = by_id.get(i)
+            if not e:
+                continue
+            # 冲突/重名被自动加序号的情况, 用后端给的真实新文件夹名
+            new_name = renamed_map.get(i)
+            if not new_name:
+                base = strip_disabled(e.get("name") or "")
+                new_name = base if enabled else (DISABLED_PREFIX + base)
+            # 路径: 把末段(= 这个 mod 根目录名)换成 new_name
+            old_path = norm_rel(e.get("path") or "")
+            segs = old_path.split("/") if old_path else []
+            if segs:
+                segs[-1] = new_name
+            else:
+                segs = [new_name]
+            e["name"] = new_name
+            e["path"] = "/".join(segs)
+            e["dir_disabled"] = not enabled
+            e["enabled"] = enabled
+            # 子目录: 自身名带 DISABLED_ 或祖先(根)被禁用 -> 禁用
+            for s in (e.get("sub_dirs") or []):
+                own = is_disabled_name(os.path.basename(s.get("local") or ""))
+                s["disabled"] = bool(own or (not enabled))
+            e["partial"] = bool(enabled) and any(
+                s.get("disabled") for s in (e.get("sub_dirs") or []))
+            succ.append(i)
+        # 重算统计 + 冲突(都是内存计算, 不涉及磁盘扫描)
+        E = self.scan.entries or []
+        if self.scan.stats:
+            self.scan.stats["enabled"] = sum(1 for x in E if x.get("enabled"))
+            self.scan.stats["disabled"] = sum(1 for x in E if not x.get("enabled"))
+            self.scan.stats["partial"] = sum(1 for x in E if x.get("partial"))
+        self.scan.conflicts = detect_conflicts(E)
+        # 落盘缓存(一次 JSON 写, 不是扫描), 让下次启动也是对的
+        try:
+            md = find_mods_dir(self.cfg)
+            if md:
+                save_scan_cache(md, self.scan)
+        except Exception:
+            pass
+        return succ
+
+    def rescan_async(self):
+        """v1.5.55: **后台**静默重扫, 不阻塞当前响应。用于目录/文件级开关、改键等
+        需要刷新整库元数据(但不在主路径上卡 UI)的场景。前端 3 秒轮询会自动拉到结果。"""
+        threading.Thread(target=self.rescan, name="scan-bg-async",
+                        daemon=True).start()
+
+    def rescan_startup(self):
+        """启动专用：先秒开缓存(界面立即有数据)，再后台静默重扫刷新。
+        库变动后真正的扫描在后台跑，不阻塞启动。"""
+        md = find_mods_dir(self.cfg)
+        cached = load_scan_cache(md) if md else None
+        if cached is not None:
+            with self.lock:
+                self.scan = cached
+            log("扫描缓存已加载(秒开)：%d 个 mod，后台将静默刷新"
+                % cached.stats.get("total", len(cached.entries)))
+        if md:
+            threading.Thread(target=self._rescan_bg, args=(md,),
+                            name="scan-bg", daemon=True).start()
+        return cached or ScanResult()
+
+    def _rescan_bg(self, md):
+        try:
+            s = scan_mods(md, self.cfg.get("char_overrides") or {},
+                          self.cfg.get("thumb_overrides") or {}, self.meta())
+            with self.lock:
+                self.scan = s
+            save_scan_cache(md, s)
+            if s.thumb_srcs:
+                n = enqueue_thumbs(s.thumb_srcs)
                 if n:
                     log("需生成缩略图 %d 张(后台进行)" % n)
-            return self.scan
+            log("后台扫描完成：共 %d 个 mod / %d 个角色 (启用 %d / 禁用 %d / 部分 %d / 冲突 %d 组)，%.2fs"
+                % (s.stats["total"], s.stats["chars"], s.stats["enabled"],
+                   s.stats["disabled"], s.stats["partial"], s.stats["conflicts"],
+                   s.duration))
+        except Exception as e:
+            log("后台扫描失败(保留上次结果)：%s" % e)
 
     def mods_dir(self):
         return find_mods_dir(self.cfg)
@@ -6892,6 +7206,8 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json({"error": "not found"}, 404)
             if not self._ok(qs):
                 return self._json({"error": "unauthorized"}, 403)
+            if path == "/api/cache_info":
+                return self._json(get_cache_info(self.app))
             if path == "/api/state":
                 return self._json(self.app.state())
             if path == "/api/thumb_progress":
@@ -7019,13 +7335,23 @@ class Handler(BaseHTTPRequestHandler):
             body = self._body()
             app = self.app
 
+            if act == "cache_clear":
+                return self._json(clear_disk_cache(app, (body or {}).get("type")))
+
             if act == "toggle":
                 ids = body.get("ids")
                 r = batch_toggle(app.mods_dir(), app.find_entries(ids),
                                  bool(body.get("enabled")))
                 if body.get("enabled"):
                     app.touch_usage(ids, exclude=[d["id"] for d in r["details"]])
-                app.rescan()
+                # v1.5.55: 不再整库重扫, 只改内存状态立即返回(后台 3s 轮询会拉到校正)
+                failed_ids = {d["id"] for d in r.get("details", [])}
+                renamed_map = {d["id"]: d["target_name"]
+                               for d in r.get("renamed", [])
+                               if d.get("target_name")}
+                app.patch_toggle_state(
+                    [i for i in (ids or []) if i not in failed_ids],
+                    bool(body.get("enabled")), renamed_map)
                 return self._json({"result": r, "state": app.state()})
 
             if act == "scope":
@@ -7034,7 +7360,14 @@ class Handler(BaseHTTPRequestHandler):
                 if body.get("enabled"):
                     app.touch_usage([e["id"] for e in ent],
                                     exclude=[d["id"] for d in r["details"]])
-                app.rescan()
+                # v1.5.55: 同上, 只改内存状态, 不整库重扫
+                failed_ids = {d["id"] for d in r.get("details", [])}
+                renamed_map = {d["id"]: d["target_name"]
+                               for d in r.get("renamed", [])
+                               if d.get("target_name")}
+                app.patch_toggle_state(
+                    [e["id"] for e in ent if e["id"] not in failed_ids],
+                    bool(body.get("enabled")), renamed_map)
                 return self._json({"result": r, "state": app.state()})
 
             if act == "dir_toggle":
@@ -7045,7 +7378,8 @@ class Handler(BaseHTTPRequestHandler):
                 extra = res[2] if len(res) == 3 else None
                 if ok and body.get("enabled") and body.get("id"):
                     app.touch_usage([body["id"]])
-                app.rescan()
+                # v1.5.55: 目录级开关走后台重扫, 不卡 UI(前端 3s 轮询拉校正)
+                app.rescan_async()
                 out = {"ok": ok, "msg": msg, "state": app.state()}
                 if ok and extra and extra.get("renamed"):
                     out["renamed"] = True
@@ -7064,7 +7398,8 @@ class Handler(BaseHTTPRequestHandler):
                                          bool(body.get("enabled")))
                 if ok and body.get("enabled"):
                     app.touch_usage([e["id"]])
-                app.rescan()
+                # v1.5.55: 文件级开关走后台重扫, 不卡 UI
+                app.rescan_async()
                 return self._json({"ok": ok, "msg": msg, "state": app.state()})
 
             if act == "variant_select":
@@ -7076,7 +7411,8 @@ class Handler(BaseHTTPRequestHandler):
                 ok, msg = do_variant_select(root, body.get("rel") or "")
                 if ok:
                     app.touch_usage([e["id"]])
-                app.rescan()
+                # v1.5.55: 改默认变体走后台重扫, 不卡 UI
+                app.rescan_async()
                 return self._json({"ok": ok, "msg": msg, "state": app.state()})
 
             if act == "cycle_set":
@@ -7664,7 +8000,11 @@ class Handler(BaseHTTPRequestHandler):
                               "text/plain; charset=utf-8")
         html = html.replace("__BOOT__", json.dumps(
             {"token": self.app.token, "version": VERSION}, ensure_ascii=False))
-        return self._send(200, html, "text/html; charset=utf-8")
+        # v1.5.56: 必须 no-store —— 以前没给任何缓存头, 浏览器会把旧 ui.html 缓存住,
+        # 结果改了前端提示, 用户刷新页面看到的还是旧文案("提示消息为什么没变啊")。
+        # ui.html 才 ~240KB 且本地传输, 每次重发的开销可以忽略。
+        return self._send(200, html, "text/html; charset=utf-8",
+                          extra={"Cache-Control": "no-store"})
 
     def serve_thumb(self, qs):
         rel = qs.get("p") or ""
@@ -8796,11 +9136,12 @@ def main():
 
     if app.mods_dir() and os.path.isdir(app.mods_dir()):
         log("扫描 Mods:", app.mods_dir())
-        s = app.rescan()
-        log("共 %d 个 mod / %d 个角色 (启用 %d / 禁用 %d / 部分 %d / 冲突 %d 组), %.2fs"
-            % (s.stats["total"], s.stats["chars"], s.stats["enabled"],
-               s.stats["disabled"], s.stats["partial"], s.stats["conflicts"],
-               s.duration))
+        s = app.rescan_startup()
+        if s.entries:
+            log("扫描缓存已秒开 %d 个 mod，后台静默刷新中…"
+                % s.stats.get("total", len(s.entries)))
+        else:
+            log("首次扫描中(后台)…")
 
     port = pick_port()
     Handler.app = app

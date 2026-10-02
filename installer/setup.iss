@@ -4,7 +4,7 @@
 
 #define MyAppName "ZZMI Mod 管家"
 #define MyAppNameEn "ZZMI Mod Manager"
-#define MyAppVersion "1.5.52"
+#define MyAppVersion "1.5.57"
 #define MyAppExeName "ZZMI-Mod-Manager.exe"
 #define MyAppId "{{8F3D6C21-9A47-4E5B-B0D2-77A1C3E9F504}"
 
@@ -46,7 +46,9 @@ Name: "desktopicon"; Description: "创建桌面快捷方式(&D)"; GroupDescripti
 Name: "quicklaunchicon"; Description: "创建快速启动栏快捷方式(&Q)"; GroupDescription: "附加任务:"; Flags: unchecked
 
 [Files]
-Source: "..\ZZMI-Mod-Manager.exe"; DestDir: "{app}"; DestName: "{#MyAppExeName}"; Flags: ignoreversion
+; onedir 打包产物在 dist\ZZMI-Mod-Manager\ 文件夹(内含 exe + _internal)
+; 把文件夹内容扁平拷进 {app}, exe 最终落在 {app}\ZZMI-Mod-Manager.exe, 与旧 onefile 路径一致
+Source: "..\dist\ZZMI-Mod-Manager\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]

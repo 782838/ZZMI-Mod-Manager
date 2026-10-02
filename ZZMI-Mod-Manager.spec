@@ -21,9 +21,8 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
+    exclude_binaries=True,
     name='ZZMI-Mod-Manager',
     debug=False,
     uac_admin=True,  # 默认以管理员权限启动(嵌 requireAdministrator 清单)
@@ -39,4 +38,14 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=['installer/app.ico'],
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='ZZMI-Mod-Manager',
 )
