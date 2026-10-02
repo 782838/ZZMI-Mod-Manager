@@ -5,6 +5,17 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.58 更新
+-----------
+* **修: 「同名 mod 自动加序号后, 打开文件夹/开关/改名/删除 全指向错误的那个 mod」**。
+  开启或关闭某个 mod 时, 管理器会自动加上 (2)(3)... 序号来区分重名, 但条目的内部
+  身份 `id` 是「剥掉 DISABLED_ 前缀的逻辑名」, 加序号后**没跟着更新** —— 于是拿它去
+  反查目录时, 匹配不到那套新目录, 反而匹配到**同名的另一套**。两个可见症状: 
+  ① 📂「打开文件夹」开出的是另一个 mod; ② 再点一次开关, 操作的是**另一个** mod
+  (这也是「同一个 mod 越改越乱」的机制来源)。
+  根治: 目录定位改为**优先认真实相对路径 `path`**(天然唯一、含 DISABLED_ 与 (N) 字面量),
+  `id` 退居为界面标识与历史兜底。收藏 / 角色分类 / 封面 / 使用统计等用户设置**零影响**。
+
 v1.5.51 更新
 -----------
 * **修: 侧键被"游戏不在前台"闸门拦下时完全静默 —— "按了毫无反应"的最后一块盲区**。
@@ -721,7 +732,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.57"
+VERSION = "1.5.58"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -985,11 +996,28 @@ def resolve_rel_dir(base, rel, prefer=None):
 
 
 def entry_root(mods_dir, e):
-    """按条目找它的真实目录(自动处理 id 的 #N 后缀 + 同名两套的精确选中)。"""
+    """按条目找它的真实目录。
+
+    v1.5.58 修: **优先认 `path`(真实相对路径)**。
+    背景: 条目的 `id` 是剥掉 DISABLED_ 前缀的「逻辑名」, 同名两套(启用套+禁用套)
+    剥完前缀一模一样, 只能靠加 `#N` 区分。而「自动加序号」把目录真名改成
+    「DISABLED_露西皮肤 (2)」后, id 仍是老逻辑名「露西皮肤」——
+    id 的 stripped 名匹配不到新目录, 反而匹配到**同名的另一套**,
+    于是「打开文件夹/开关/改名/删除」全部作用在错误的 mod 上。
+    `path` 是扫描/快速路径都同步维护的真实路径(含 DISABLED_ 与 (N) 字面量),
+    天然唯一、不受逻辑名去重影响, 所以优先用它定位; 只有当 path 解析不出目录时,
+    才退回老逻辑(id + prefer)兜底, 保证历史缓存/异常数据仍能定位。
+    """
     if not e:
         return None
-    prefer = os.path.basename(norm_rel(e.get("path") or ""))
-    return resolve_rel_dir(mods_dir, e["id"], prefer=prefer or None)
+    rel = norm_rel(e.get("path") or "")
+    if rel:
+        p = resolve_rel_dir(mods_dir, rel)
+        if p and os.path.isdir(p):
+            return p
+        # path 也可能指向一个 ini(根目录散落文件), 或历史脏数据 —— 落到 id 兜底
+    prefer = os.path.basename(rel) or None
+    return resolve_rel_dir(mods_dir, e.get("id") or rel, prefer=prefer)
 
 
 # ===========================================================================
