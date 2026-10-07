@@ -382,6 +382,26 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
   border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:-2px}
 @keyframes sp{to{transform:rotate(360deg)}}
 
+/* v1.5.61: 脚本启动 / 文件互转 面板 */
+.zsec{border:1px solid var(--line);border-radius:var(--r2);padding:14px;margin-bottom:14px;
+  background:var(--panel2)}
+.zsec:last-child{margin-bottom:0}
+.zsec-t{font-size:14px;font-weight:700;margin-bottom:6px}
+.zsec-d{font-size:12px;color:var(--dim);line-height:1.6;margin-bottom:12px}
+.zsec-d code{background:var(--panel3);border-radius:4px;padding:1px 5px;font-size:11px}
+.zrow{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.zrow-act{margin-top:12px;margin-bottom:0;flex-wrap:wrap}
+.zrow .zlab{flex:0 0 78px;font-size:12px;color:var(--txt2);font-weight:600}
+.zpath{flex:1 1 auto;min-width:0;font-size:12px}
+.zside{display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:var(--r2);
+  background:var(--panel3);border:1px solid var(--line);margin-bottom:12px}
+.zside .zbig{font-size:15px;font-weight:700}
+.zside .zsm{font-size:11px;color:var(--dim);margin-top:2px}
+.zside.ok-cn{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.35)}
+.zside.ok-intl{background:rgba(96,165,250,.12);border-color:rgba(96,165,250,.35)}
+.zside.ok-unk{background:rgba(245,197,24,.10);border-color:rgba(245,197,24,.30)}
+.zhint2{margin-top:10px;font-size:11.5px;line-height:1.6}
+
 /* v1.5.12: GameBanana 下载区 */
 .gbmodal{width:min(1140px,96vw);max-height:92vh}
 .gbtabs{display:flex;gap:6px;padding:10px 14px 0;border-bottom:1px solid var(--line)}
@@ -873,7 +893,7 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
     </div>
     <div class="spacer"></div>
     <button class="btn primary" id="btnLaunch" title="用 ZZMI 直接启动绝区零(需要管理员授权, 会弹 UAC 窗口)">▶ 启动游戏</button>
-    <button class="btn ghost" id="btnZZZTool" title="一键启动: 以管理员打开脚本 Launcher.exe → 打开使用说明.txt → 启动游戏。首次点击选择文件夹, 之后一键完成">📂 脚本启动</button>
+    <button class="btn ghost" id="btnZZZTool" title="脚本启动 &amp; 文件替换: 一键以管理员打开脚本 Launcher.exe → 打开使用说明 → 启动游戏; 并在同一个面板里一键切换 国服 ⇄ 国际服 文件">📂 脚本启动</button>
     <button class="btn" id="btnUndo" title="撤销上一步操作">↶ 撤销</button>
     <button class="btn" id="btnRescan" title="重新扫描 Mods 目录">⟳ 重新扫描</button>
     <button class="btn ghost" id="btnLib" title="管理 Mods 外面的仓库目录">🗄 仓库</button>
@@ -1165,6 +1185,60 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
     <span class="sp"></span>
     <button class="btn" id="mmOpen">📂 去改名</button>
     <button class="btn primary" data-close="mManual">知道了</button>
+  </div>
+</div>
+
+<!-- v1.5.61: 脚本启动 / 国服国际服文件互转 面板 -->
+<div class="mask" id="zsMask"></div>
+<div class="modal" id="mZS" style="width:min(560px,94vw)">
+  <div class="dh"><h3>📂 脚本启动 &amp; 文件替换</h3>
+    <button class="xbtn" id="zsCloseX">✕</button></div>
+  <div class="dbody">
+    <!-- 一、脚本启动 -->
+    <div class="zsec">
+      <div class="zsec-t">① 脚本启动（注入器）</div>
+      <div class="zsec-d">一键：以管理员打开 <code>Launcher.exe</code> → 打开 <code>使用说明.txt</code> → 启动游戏。</div>
+      <div class="zrow">
+        <input class="inp zpath" id="zsToolDir" type="text" readonly placeholder="尚未选择注入器文件夹" />
+        <button class="btn mini3" id="zsToolPick">📁 选择</button>
+      </div>
+      <div class="zrow zrow-act">
+        <button class="btn primary" id="zsToolRun">🚀 一键启动脚本</button>
+        <span class="hint" id="zsToolInfo"></span>
+      </div>
+    </div>
+
+    <!-- 二、文件互转 -->
+    <div class="zsec">
+      <div class="zsec-t">② 国服 ⇄ 国际服 文件替换</div>
+      <div class="zsec-d">两套文件各存一份，互相覆盖即可（不用备份）。点一下按钮自动切到另一边。</div>
+
+      <div class="zside" id="zsSide">
+        <span class="hint">正在检测当前版本…</span>
+      </div>
+
+      <div class="zrow">
+        <label class="zlab">国服原文件</label>
+        <input class="inp zpath" id="zsCnDir" type="text" readonly placeholder="尚未选择" />
+        <button class="btn mini3" id="zsCnPick">📁</button>
+      </div>
+      <div class="zrow">
+        <label class="zlab">国际服替换</label>
+        <input class="inp zpath" id="zsIntlDir" type="text" readonly placeholder="尚未选择" />
+        <button class="btn mini3" id="zsIntlPick">📁</button>
+      </div>
+
+      <div class="zrow zrow-act">
+        <button class="btn primary" id="zsSwap">🔄 一键互转</button>
+        <button class="btn ghost" id="zsToCn" title="强制换成国服文件">换成国服</button>
+        <button class="btn ghost" id="zsToIntl" title="强制换成国际服文件">换成国际服</button>
+      </div>
+      <div class="zhint2 hint">提示：替换前请<strong>先关掉游戏</strong>。换完直接启动游戏即可生效。</div>
+    </div>
+  </div>
+  <div class="dfoot">
+    <span id="zsFoot" class="hint"></span>
+    <button class="btn" id="zsCloseF">关闭</button>
   </div>
 </div>
 
@@ -4000,20 +4074,101 @@ async function gbConfirm(msg){
 }
 
 if ($("#btnGB")) $("#btnGB").onclick = gbOpen;
-if ($("#btnZZZTool")) $("#btnZZZTool").onclick = zzzToolOpen;
-async function zzzToolOpen(){
+if ($("#btnZZZTool")) $("#btnZZZTool").onclick = zsOpen;
+
+/* ===== v1.5.61: 脚本启动 & 国服/国际服文件互转 ===== */
+function zsShow(on){
+  const m = $("#mZS"), mk = $("#zsMask");
+  if (!m) return;
+  m.classList.toggle("on", on);
+  if (mk) mk.classList.toggle("on", on);
+}
+function zsOpen(){ zsShow(true); zsRefresh(); }
+async function zsRefresh(){
+  try{
+    const r = await api("/api/zzz_swap_status", {});
+    if ($("#zsToolDir")) $("#zsToolDir").value = r.tool_dir || "";
+    if ($("#zsCnDir")) $("#zsCnDir").value = r.cn_dir || "";
+    if ($("#zsIntlDir")) $("#zsIntlDir").value = r.intl_dir || "";
+    const box = $("#zsSide");
+    const nameMap = {cn:"国服", intl:"国际服"};
+    let cls = "ok-unk", big = "认不出当前版本", sm = "";
+    if (r.side === "cn" || r.side === "intl"){
+      cls = r.side === "cn" ? "ok-cn" : "ok-intl";
+      big = "当前装的是：" + nameMap[r.side];
+      sm = "点下面「一键互转」可切到" + (r.side === "cn" ? "国际服" : "国服");
+    } else if (r.cur_size > 0){
+      sm = "文件像是被其他工具改过。可手动点「换成国服 / 换成国际服」";
+    } else {
+      sm = "游戏目录里没找到 GameAssembly.dll" +
+           (r.game_root ? "（目录：" + r.game_root + "）" : "，请先在设置里配好游戏路径");
+    }
+    if (box){
+      box.className = "zside " + cls;
+      box.innerHTML = '<div><div class="zbig">' + esc(big) +
+        '</div><div class="zsm">' + esc(sm) + '</div></div>';
+    }
+    const miss = [];
+    if (!r.has_cn) miss.push("国服文件");
+    if (!r.has_intl) miss.push("国际服文件");
+    if ($("#zsFoot")) $("#zsFoot").textContent =
+      miss.length ? ("⚠ 还没配好：" + miss.join("、") + "（请点 📁 选择文件夹）") : "";
+  }catch(e){
+    if ($("#zsSide")) $("#zsSide").innerHTML =
+      '<span class="hint">检测失败: ' + esc(e.message) + '</span>';
+  }
+}
+async function zsToolPick(){
+  try{
+    const r = await api("/api/zzz_tool_pick", {});
+    toast(r.msg || (r.ok ? "已记住" : "未选择"), r.ok ? "" : "err", 7000);
+    if (r.ok) zsRefresh();
+  }catch(e){ toast("出错了: " + e.message, "err", 8000); }
+}
+async function zsSwapPick(which){
+  try{
+    const r = await api("/api/zzz_swap_pick", {which});
+    toast(r.msg || (r.ok ? "已记住" : "未选择"), r.ok ? "" : "err", 8000);
+    if (r.ok) zsRefresh();
+  }catch(e){ toast("出错了: " + e.message, "err", 8000); }
+}
+async function zsToolRun(){
+  toast("正在启动脚本（①脚本 ②说明 ③游戏）…", "", 4000);
   try{
     let r = await api("/api/zzz_tool", {});
     if (r.need_pick){
-      let p = await api("/api/zzz_tool_pick", {});
-      if (!p.ok){ toast(p.msg || "未选择文件夹", "err"); return; }
+      const p = await api("/api/zzz_tool_pick", {});
+      if (!p.ok){ toast(p.msg || "未选择文件夹", "err", 7000); return; }
       toast((p.msg || "已记住文件夹") + "，正在打开…", "", 4000);
       r = await api("/api/zzz_tool", {});
+      zsRefresh();
     }
-    // 三步结果比较长, 多留一会儿让用户看清(默认 3.4s 太短)
-    toast(r.msg || (r.ok ? "已打开" : "打开失败"), r.ok ? "" : "err", r.ok ? 8000 : 10000);
-  }catch(e){ toast("出错了: " + e.message, "err"); }
+    toast(r.msg || (r.ok ? "已打开" : "打开失败"), r.ok ? "" : "err", 9000);
+  }catch(e){ toast("出错了: " + e.message, "err", 9000); }
 }
+async function zsDoSwap(side){
+  const label = side === "auto" ? "一键互转" : (side === "cn" ? "换成国服" : "换成国际服");
+  const btn = side === "auto" ? $("#zsSwap") : (side === "cn" ? $("#zsToCn") : $("#zsToIntl"));
+  const old = btn ? btn.textContent : "";
+  if (btn){ btn.disabled = true; btn.textContent = "⏳ 替换中…"; }
+  toast("正在" + label + "…文件较大，稍等几秒", "", 5000);
+  try{
+    const r = await api("/api/zzz_swap", {side});
+    toast(r.msg || (r.ok ? "完成" : "失败"), r.ok ? "" : "err", r.ok ? 8000 : 12000);
+    zsRefresh();
+  }catch(e){ toast("出错了: " + e.message, "err", 10000); }
+  finally{ if (btn){ btn.disabled = false; btn.textContent = old; } }
+}
+if ($("#zsCloseX")) $("#zsCloseX").onclick = () => zsShow(false);
+if ($("#zsCloseF")) $("#zsCloseF").onclick = () => zsShow(false);
+if ($("#zsMask")) $("#zsMask").onclick = () => zsShow(false);
+if ($("#zsToolPick")) $("#zsToolPick").onclick = zsToolPick;
+if ($("#zsToolRun")) $("#zsToolRun").onclick = zsToolRun;
+if ($("#zsCnPick")) $("#zsCnPick").onclick = () => zsSwapPick("cn");
+if ($("#zsIntlPick")) $("#zsIntlPick").onclick = () => zsSwapPick("intl");
+if ($("#zsSwap")) $("#zsSwap").onclick = () => zsDoSwap("auto");
+if ($("#zsToCn")) $("#zsToCn").onclick = () => zsDoSwap("cn");
+if ($("#zsToIntl")) $("#zsToIntl").onclick = () => zsDoSwap("intl");
 if ($("#gbCloseX")) $("#gbCloseX").onclick = gbClose;
 if ($("#gbCloseF")) $("#gbCloseF").onclick = gbClose;
 if ($("#gbMask")) $("#gbMask").onclick = () => { gbCloseDl(); gbClose(); };

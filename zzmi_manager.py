@@ -5,6 +5,21 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.61 更新
+-----------
+* **新: 「📂 脚本启动」改成弹出一个面板**(不再是点了直接执行), 面板里同时管两件事:
+  ① 脚本启动(一键: 管理员开 `Launcher.exe` → 开 `使用说明.txt` → 启动游戏);
+  ② **国服 ⇄ 国际服 文件一键互转**。
+* **新: 国服/国际服文件互转**。国服和国际服有三类文件不同(`GameAssembly.dll`、
+  `mhypbase.dll`、`il2cpp_data/...`), 本版做了**一个按钮双向切换**:
+  · 面板顶部**自动显示当前装的是国服还是国际服**(靠 `GameAssembly.dll` 字节大小做指纹);
+  · 点「🔄 一键互转」就切到另一边 —— 更新游戏后想切回来, 再点一次即可;
+  · 也可手动「换成国服 / 换成国际服」;
+  · **两套文件各存一份, 互相覆盖, 不需要额外备份**(共约 650MB)。
+* **新: 两套源文件夹都能自选并随时更改**。首次点 📁 选一次, 之后记住路径;
+  面板里随时能重新选。分享包多套一层(`替换文件/`)也会**自动识别钻进去**。
+* 注: 注入器文件夹(脚本)同样保留"自选 + 可随时更改"。
+
 v1.5.60 更新
 -----------
 * **修: 「脚本启动」可能"假装成功"却没真提权**。原 `run_exe_admin` 在
@@ -748,7 +763,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.60"
+VERSION = "1.5.61"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -856,6 +871,10 @@ DEFAULT_CONFIG = {
     "downloads_dir": "",        # v1.5.12 下载区: mod 下载到哪(空=数据目录/downloads)
     "show_translated": True,    # v1.5.12 下载区: 是否显示中文译名
     "zzz_tool_dir": "",         # 注入器文件夹(Launcher.exe / Cheat.dll / 使用说明.txt): 不打包, 用户自选
+    # v1.5.61: 国服/国际服 文件互转 —— 两套文件各存一份, 互相覆盖即可(无需备份)
+    "cn_files_dir": "",         # 「国服原文件」文件夹(根下要有 GameAssembly.dll / mhypbase.dll / il2cpp_data)
+    "intl_files_dir": "",       # 「国际服替换文件」文件夹(根下是 替换文件/ 或直接是这三个)
+    "patch_side": "",           # 最近一次识别/操作后的版本: "cn" / "intl" / ""(未知)
     "photo_on": True,           # v1.5.31 连拍缓冲: 游戏运行时是否后台录屏
     "photo_hotkey": "Ctrl+Shift+C",   # v1.5.31 连拍触发键(可改)
     "photo_mouse_btn": 1,       # v1.5.32 鼠标侧键: 0=关 1=侧键1(后退) 2=侧键2(前进)
@@ -4610,6 +4629,166 @@ def run_exe_admin(exe, workdir=""):
         return False, "启动失败: %s" % ex
 
 
+# ===========================================================================
+# v1.5.61: 国服 / 国际服 文件互转
+# ---------------------------------------------------------------------------
+# 国服和国际服的绝区零, 有三类文件不同, 互转就是按【相对路径】整体覆盖:
+#     GameAssembly.dll                                   -> <游戏根>\GameAssembly.dll
+#     mhypbase.dll                                       -> <游戏根>\mhypbase.dll
+#     il2cpp_data\...  (Metadata / Resources / etc)       -> <游戏根>\ZenlessZoneZero_Data\il2cpp_data\...
+#
+# 两套文件各存一份(「国服原文件」/「国际服替换文件」), 互相覆盖即可, 不需要额外备份。
+# 版本判断用 **GameAssembly.dll 的字节大小**做指纹: 国服/国际服 两套 dll 大小必然不同
+# (实测 533644064 vs 533617456), 拷 650MB 算哈希太慢, 比大小就够快够准。
+# ===========================================================================
+
+# 相对游戏根的固定落点(以 "/" 分隔)
+ZZZ_SWAP_TOP = ["GameAssembly.dll", "mhypbase.dll"]
+ZZZ_SWAP_DATA_SUB = "ZenlessZoneZero_Data"
+ZZZ_SWAP_IL2CPP = "il2cpp_data"
+
+
+def _zzz_game_root(cfg):
+    """从 game_exe 推出游戏根目录(没有则空)。"""
+    exe = (cfg or {}).get("game_exe") or ""
+    if exe and os.path.isfile(exe):
+        return os.path.dirname(exe)
+    if exe:
+        return os.path.dirname(exe)      # 就算 exe 暂时不在, 也先按它推
+    return ""
+
+
+def _zzz_resolve_source(root):
+    """把用户选的文件夹规整成"源根"。
+
+    有的分享包里文件在 `替换文件/` 子目录下(实测国际服包就是), 有的直接铺在根下。
+    这里自动往下钻一层: 只要某个子目录里同时有 GameAssembly.dll 就认它。
+    """
+    if not root or not os.path.isdir(root):
+        return ""
+    if os.path.isfile(os.path.join(root, "GameAssembly.dll")):
+        return root
+    try:
+        for n in os.listdir(root):
+            sub = os.path.join(root, n)
+            if os.path.isdir(sub) and \
+                    os.path.isfile(os.path.join(sub, "GameAssembly.dll")):
+                return sub
+    except Exception:
+        pass
+    return root          # 找不到也返回原目录, 交给后面报错说清缺什么
+
+
+def _zzz_src_dll_size(src_root):
+    try:
+        return os.path.getsize(os.path.join(src_root, "GameAssembly.dll"))
+    except Exception:
+        return -1
+
+
+def _zzz_current_side(cfg):
+    """当前游戏装的是哪一套 —— 和两套源比 GameAssembly.dll 大小。
+
+    返回 (side, current_size, cn_size, intl_size)
+    side ∈ "cn" / "intl" / "unknown" / ""(游戏或源缺失)
+    """
+    root = _zzz_game_root(cfg)
+    cur_dll = os.path.join(root, "GameAssembly.dll") if root else ""
+    cur = os.path.getsize(cur_dll) if cur_dll and os.path.isfile(cur_dll) else -1
+    cn = _zzz_src_dll_size(_zzz_resolve_source(
+        (cfg or {}).get("cn_files_dir") or ""))
+    intl = _zzz_src_dll_size(_zzz_resolve_source(
+        (cfg or {}).get("intl_files_dir") or ""))
+    side = "unknown"
+    if cur > 0:
+        if cn > 0 and cur == cn:
+            side = "cn"
+        elif intl > 0 and cur == intl:
+            side = "intl"
+    return side, cur, cn, intl
+
+
+def _zzz_copy_swap(cfg, src_dir, label):
+    """把 src_dir 那套文件覆盖到游戏目录。返回 (ok, msg, copied_list)。
+
+    只覆盖这三类存在的文件; 缺什么补什么, 不删多余文件。
+    """
+    root = _zzz_game_root(cfg)
+    if not root or not os.path.isdir(root):
+        return False, "找不到游戏目录(请先在设置里配置游戏路径)", []
+    src = _zzz_resolve_source(src_dir)
+    if not src or not os.path.isdir(src):
+        return False, "找不到「%s」文件夹, 请在面板里重新选择" % label, []
+    if not os.path.isfile(os.path.join(src, "GameAssembly.dll")):
+        return False, "「%s」里没有 GameAssembly.dll, 可能选错文件夹了" % label, []
+
+    jobs = []      # (src_file, dst_file)
+    for name in ZZZ_SWAP_TOP:
+        s = os.path.join(src, name)
+        if os.path.isfile(s):
+            jobs.append((s, os.path.join(root, name)))
+    # il2cpp_data 整棵子树
+    src_data = os.path.join(src, ZZZ_SWAP_IL2CPP)
+    dst_data = os.path.join(root, ZZZ_SWAP_DATA_SUB, ZZZ_SWAP_IL2CPP)
+    if os.path.isdir(src_data):
+        for dp, _dn, fns in os.walk(src_data):
+            rel = os.path.relpath(dp, src_data)
+            for fn in fns:
+                jobs.append((os.path.join(dp, fn),
+                             os.path.join(dst_data, rel, fn)
+                             if rel != "." else os.path.join(dst_data, fn)))
+    if not jobs:
+        return False, "「%s」里没找到可替换的文件" % label, []
+
+    copied, failed = [], []
+    for s, d in jobs:
+        try:
+            os.makedirs(os.path.dirname(d), exist_ok=True)
+            shutil.copy2(s, d)
+            copied.append(os.path.basename(d))
+        except Exception as ex:
+            failed.append("%s (%s)" % (os.path.basename(d), ex))
+    if failed:
+        return False, ("替换了 %d 个, 但有 %d 个失败: %s"
+                       % (len(copied), len(failed), "；".join(failed[:3]))), copied
+    return True, "已替换 %d 个文件" % len(copied), copied
+
+
+def zzz_swap_run(cfg, side):
+    """执行互转。
+
+    side = "cn"(换成国服) / "intl"(换成国际服) / "auto"(自动切到另一边)
+    返回 (ok, msg, new_side)
+    """
+    cur_side, cur, cn, intl = _zzz_current_side(cfg)
+    if cur <= 0:
+        return False, "游戏目录里没有 GameAssembly.dll, 请先确认游戏路径", ""
+    if side == "auto":
+        if cur_side == "cn":
+            side = "intl"
+        elif cur_side == "intl":
+            side = "cn"
+        else:
+            return False, ("认不出当前是哪一套(可能文件被其他工具改过)。"
+                           "请手动点「换成国服」或「换成国际服」"), ""
+    if side == "cn":
+        src_dir = (cfg or {}).get("cn_files_dir") or ""
+        label = "国服原文件"
+        want = "cn"
+    elif side == "intl":
+        src_dir = (cfg or {}).get("intl_files_dir") or ""
+        label = "国际服替换文件"
+        want = "intl"
+    else:
+        return False, "未知的替换方向: %s" % side, ""
+    ok, msg, _copied = _zzz_copy_swap(cfg, src_dir, label)
+    if not ok:
+        return False, msg, ""
+    cfg["patch_side"] = want
+    return True, "%s。现在装的是【%s】" \
+        % (msg, "国服" if want == "cn" else "国际服"), want
+
+
 def _find_readme(d):
     """在文件夹里找使用说明.txt(兼容 使用说明*.txt / 任意 .txt)。"""
     try:
@@ -7643,6 +7822,64 @@ class Handler(BaseHTTPRequestHandler):
                     extra = "；未找到使用说明.txt"
                 return self._json({"ok": True, "path": p,
                                    "msg": "已记住注入器文件夹: %s%s" % (p, extra)})
+
+            # ---- v1.5.61: 国服/国际服 文件互转 ----
+            if act == "zzz_swap_status":
+                side, cur, cn, intl = _zzz_current_side(app.cfg)
+                name = {"cn": "国服", "intl": "国际服"}.get(side, "未知")
+                return self._json({
+                    "ok": True, "side": side, "side_name": name,
+                    "cur_size": cur, "cn_size": cn, "intl_size": intl,
+                    "tool_dir": app.cfg.get("zzz_tool_dir") or "",
+                    "cn_dir": app.cfg.get("cn_files_dir") or "",
+                    "intl_dir": app.cfg.get("intl_files_dir") or "",
+                    "game_root": _zzz_game_root(app.cfg),
+                    "has_cn": _zzz_src_dll_size(_zzz_resolve_source(
+                        app.cfg.get("cn_files_dir") or "")) > 0,
+                    "has_intl": _zzz_src_dll_size(_zzz_resolve_source(
+                        app.cfg.get("intl_files_dir") or "")) > 0,
+                })
+
+            if act == "zzz_swap":
+                side = (body.get("side") or "auto").strip()
+                log("[文件互转] 方向=%s | 当前识别=%s"
+                    % (side, _zzz_current_side(app.cfg)[0]))
+                ok, msg, new_side = zzz_swap_run(app.cfg, side)
+                if ok:
+                    app.save_config()
+                log("[文件互转] 结果 | ok=%s | %s" % (ok, msg))
+                return self._json({"ok": ok, "msg": msg, "side": new_side})
+
+            if act == "zzz_swap_pick":
+                which = (body.get("which") or "").strip()   # "cn" / "intl"
+                hwnd = None
+                try:
+                    hwnd = find_manager_window()
+                    if hwnd:
+                        _bring_to_front(hwnd)
+                except Exception:
+                    hwnd = None
+                if which == "cn":
+                    title = "选择「国服原文件」文件夹(根下要有 GameAssembly.dll)"
+                    key = "cn_files_dir"
+                    label = "国服原文件"
+                else:
+                    title = "选择「国际服替换文件」文件夹(根下要有 GameAssembly.dll 或 替换文件/)"
+                    key = "intl_files_dir"
+                    label = "国际服替换文件"
+                p = pick_folder(initial=(app.cfg.get(key) or ""),
+                                owner=hwnd, title=title)
+                if not p:
+                    return self._json({"ok": False, "msg": "没选文件夹(或系统选择框不可用)"})
+                app.cfg[key] = p
+                app.save_config()
+                sz = _zzz_src_dll_size(_zzz_resolve_source(p))
+                if sz <= 0:
+                    return self._json({"ok": True, "path": p,
+                                       "msg": "已记住「%s」: %s\n但没找到 GameAssembly.dll, "
+                                              "请确认选对了文件夹" % (label, p)})
+                return self._json({"ok": True, "path": p,
+                                   "msg": "已记住「%s」: %s" % (label, p)})
 
             if act == "launch":
                 ok, msg = launch_game(app.cfg)

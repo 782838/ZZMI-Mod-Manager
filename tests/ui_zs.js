@@ -1,0 +1,165 @@
+// v1.5.61 前端 jsdom 测试: 脚本启动弹窗 + 国服国际服文件互转
+// 独立跑: NODE_PATH=... node tests/ui_zs.js
+const fs = require('fs');
+const path = require('path');
+const { JSDOM } = require('jsdom');
+
+const ROOT = path.dirname(__dirname);
+const UI = fs.readFileSync(path.join(ROOT, 'ui.html'), 'utf8');
+
+const FAIL = [], PASS = [];
+function ck(name, cond, extra) {
+  (cond ? PASS : FAIL).push(name);
+  console.log((cond ? '  ok   ' : '  FAIL ') + name + (extra !== undefined ? ' | ' + extra : ''));
+}
+
+const BOOT = { token: 'tok', version: '1.5.61' };
+
+// ---- 假后端状态 ----
+let STATUS = {
+  ok: true, side: 'intl', side_name: '国际服',
+  cur_size: 533617456, cn_size: 533644064, intl_size: 533617456,
+  tool_dir: 'F:\\11aa快捷方式\\zzz_0.6.3(3)',
+  cn_dir: 'F:\\11aa快捷方式\\外挂前置\\国服原文件',
+  intl_dir: 'F:\\11aa快捷方式\\外挂前置\\国际服替换文件3.2(1)',
+  game_root: 'F:\\miHoYo Launcher\\games\\ZenlessZoneZero Game',
+  has_cn: true, has_intl: true,
+};
+const calls = [];       // 记录所有请求: {url, body}
+let swapResult = { ok: true, msg: '已替换 7 个文件。现在装的是【国服】', side: 'cn' };
+
+const dom = new JSDOM(UI.replace('__BOOT__', JSON.stringify(BOOT)), {
+  runScripts: 'dangerously',
+  pretendToBeVisual: true,
+  url: 'http://127.0.0.1:1/',
+  beforeParse(w) {
+    w.fetch = (u, opt) => {
+      const url = String(u);
+      const body = opt && opt.body ? JSON.parse(opt.body) : null;
+      calls.push({ url, body });
+      let payload = { ok: true };
+      if (url.includes('/api/state')) {
+        payload = { stats: { total: 0, chars: 0, categories: [] }, entries: [],
+                    theme: 'dark', mods_dir: '', hotkey: 'F9', downloads_dir: 'C:/dl',
+                    categories: [], chars: [], game_exe: STATUS.game_root + '\\ZenlessZoneZero.exe' };
+      } else if (url.includes('/api/zzz_swap_status')) {
+        payload = STATUS;
+      } else if (url.includes('/api/zzz_swap_pick')) {
+        payload = { ok: true, path: 'X:\\picked', msg: '已记住「国服原文件」: X:\\picked' };
+      } else if (url.includes('/api/zzz_tool_pick')) {
+        payload = { ok: true, path: 'F:\\tool', msg: '已记住注入器文件夹: F:\\tool' };
+      } else if (url.includes('/api/zzz_swap')) {
+        payload = swapResult;
+      } else if (url.includes('/api/zzz_tool')) {
+        payload = { ok: true, msg: '① 脚本 已启动；② 说明 已打开；③ 游戏 已请求启动' };
+      }
+      return Promise.resolve({
+        ok: true, status: 200, json: () => Promise.resolve(payload),
+      });
+    };
+  },
+});
+
+const w = dom.window, d = w.document;
+const $ = s => d.querySelector(s);
+setTimeout(() => {
+  // ---- 1. 面板默认隐藏 ----
+  ck('面板默认隐藏', !$('#mZS').classList.contains('on'));
+  ck('遮罩默认隐藏', !$('#zsMask').classList.contains('on'));
+
+  // ---- 2. 点「脚本启动」→ 打开面板 ----
+  $('#btnZZZTool').click();
+  ck('点按钮后面板打开', $('#mZS').classList.contains('on'));
+  ck('点按钮后遮罩打开', $('#zsMask').classList.contains('on'));
+  ck('打开时请求了 swap_status',
+     calls.some(c => c.url.includes('/api/zzz_swap_status')));
+
+  setTimeout(() => {
+    // ---- 3. 状态正确渲染 ----
+    const side = $('#zsSide');
+    ck('侧栏显示「当前装的是：国际服」', /当前装的是：国际服/.test(side.textContent),
+       side.textContent.trim().slice(0, 40));
+    ck('侧栏带 ok-intl 样式类', side.className.includes('ok-intl'), side.className);
+    ck('提示可切到国服', /切到国服/.test(side.textContent));
+    ck('国服路径框已回填', ($('#zsCnDir').value || '').includes('国服原文件'),
+       $('#zsCnDir').value);
+    ck('国际服路径框已回填', ($('#zsIntlDir').value || '').includes('国际服替换文件'),
+       $('#zsIntlDir').value);
+    ck('注入器路径框已回填', ($('#zsToolDir').value || '').includes('zzz_0.6.3'),
+       $('#zsToolDir').value);
+    ck('两套都到位 → 底部无警告', ($('#zsFoot').textContent || '').trim() === '',
+       $('#zsFoot').textContent);
+
+    // ---- 4. 一键互转 ----
+    const before = calls.length;
+    // 后端执行前先把状态改好, 这样 zsRefresh 拿到的是"替换后"的状态
+    STATUS.side = 'cn'; STATUS.side_name = '国服';
+    $('#zsSwap').click();
+    setTimeout(() => {
+      const swapCalls = calls.slice(before)
+        .filter(c => c.url.includes('/api/zzz_swap?'));
+      ck('一键互转发出了 POST', swapCalls.length === 1, JSON.stringify(swapCalls));
+      ck('一键互转 side=auto', swapCalls[0] && swapCalls[0].body && swapCalls[0].body.side === 'auto',
+         JSON.stringify(swapCalls[0] && swapCalls[0].body));
+      ck('互转后刷新了 status',
+         calls.slice(before).some(c => c.url.includes('/api/zzz_swap_status')));
+      setTimeout(() => {
+        ck('互转后侧栏更新为国服', /当前装的是：国服/.test($('#zsSide').textContent),
+           $('#zsSide').textContent.trim().slice(0, 40));
+
+        // ---- 5. 强制指定方向 ----
+        const b2 = calls.length;
+        $('#zsToIntl').click();
+        setTimeout(() => {
+          const c2 = calls.slice(b2)
+            .filter(c => c.url.includes('/api/zzz_swap?'));
+          ck('「换成国际服」side=intl',
+             c2.length === 1 && c2[0].body && c2[0].body.side === 'intl',
+             JSON.stringify(c2.map(c => c.body)));
+
+          // ---- 6. 选文件夹 ----
+          const b3 = calls.length;
+          $('#zsCnPick').click();
+          setTimeout(() => {
+            const c3 = calls.slice(b3).filter(c => c.url.includes('/api/zzz_swap_pick'));
+            ck('点📁发出 swap_pick', c3.length === 1, JSON.stringify(c3.map(c => c.body)));
+            ck('swap_pick which=cn',
+               c3.length === 1 && c3[0].body && c3[0].body.which === 'cn',
+               JSON.stringify(c3[0] && c3[0].body));
+
+            // ---- 7. 一键启动脚本 ----
+            const b4 = calls.length;
+            $('#zsToolRun').click();
+            setTimeout(() => {
+              const c4 = calls.slice(b4).filter(c => c.url.includes('/api/zzz_tool'));
+              ck('一键启动脚本发出 zzz_tool', c4.length >= 1, JSON.stringify(c4.length));
+
+              // ---- 8. 关闭 ----
+              $('#zsCloseF').click();
+              ck('点关闭后面板隐藏', !$('#mZS').classList.contains('on'));
+              $('#btnZZZTool').click();
+              ck('可重新打开', $('#mZS').classList.contains('on'));
+              $('#zsMask').click();
+              ck('点遮罩也能关', !$('#mZS').classList.contains('on'));
+
+              // ---- 9. 文件缺失时的警告 ----
+              STATUS.has_cn = false;
+              $('#btnZZZTool').click();
+              setTimeout(() => {
+                ck('缺国服文件时底部有警告',
+                   /还没配好/.test($('#zsFoot').textContent) &&
+                   /国服文件/.test($('#zsFoot').textContent),
+                   $('#zsFoot').textContent);
+
+                console.log('\n==== 结果: ' + PASS.length + ' 通过, ' +
+                            FAIL.length + ' 失败 ====');
+                if (FAIL.length) { console.log('失败项:', FAIL); process.exit(1); }
+                process.exit(0);
+              }, 150);
+            }, 150);
+          }, 150);
+        }, 150);
+      }, 200);
+    }, 200);
+  }, 150);
+}, 200);
