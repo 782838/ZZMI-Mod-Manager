@@ -1587,13 +1587,13 @@ async function api(path, body){
   if(!r.ok) throw new Error("HTTP " + r.status);
   return r.json();
 }
-function toast(msg, kind){
+function toast(msg, kind, ms){
   const el = $("#toast");
   el.textContent = msg;
   el.className = "toast on" + (kind ? " " + kind : "");
   el.innerHTML = esc(msg).replace(/\n/g, "<br>");   // 保留换行, 但不吃 HTML
   clearTimeout(el._t);
-  el._t = setTimeout(()=>{ el.className = "toast"; }, 3400);
+  el._t = setTimeout(()=>{ el.className = "toast"; }, ms || 3400);
 }
 // 复制文本到剪贴板(带降级: http:// 下 navigator.clipboard 不可用)
 async function copyText(t){
@@ -4007,10 +4007,11 @@ async function zzzToolOpen(){
     if (r.need_pick){
       let p = await api("/api/zzz_tool_pick", {});
       if (!p.ok){ toast(p.msg || "未选择文件夹", "err"); return; }
-      toast((p.msg || "已记住文件夹") + "，正在打开…");
+      toast((p.msg || "已记住文件夹") + "，正在打开…", "", 4000);
       r = await api("/api/zzz_tool", {});
     }
-    toast(r.msg || (r.ok ? "已打开" : "打开失败"), r.ok ? "" : "err");
+    // 三步结果比较长, 多留一会儿让用户看清(默认 3.4s 太短)
+    toast(r.msg || (r.ok ? "已打开" : "打开失败"), r.ok ? "" : "err", r.ok ? 8000 : 10000);
   }catch(e){ toast("出错了: " + e.message, "err"); }
 }
 if ($("#gbCloseX")) $("#gbCloseX").onclick = gbClose;

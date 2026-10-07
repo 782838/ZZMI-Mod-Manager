@@ -5,6 +5,22 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.60 更新
+-----------
+* **修: 「脚本启动」可能"假装成功"却没真提权**。原 `run_exe_admin` 在
+  `ShellExecuteW(runas)` 抛异常时会**静默回落到非提权的 `subprocess.Popen`** 并
+  返回"已启动(未提权)" —— 而注入器 `Launcher.exe` 自带 `requireAdministrator` 清单,
+  这种降权启动必然 `WinError 740` 失败, 结果就是「提示成功、实际没起来 / 顶着旧进程」。
+  现在: runas 失败 = 明确报错, **绝不再偷偷降权启动**。
+* **新: 脚本启动全链路写日志**。记录 `runas 返回码` + `管理器自身是否管理员` +
+  ①②③ 三步结果, 出问题直接看 `%USERPROFILE%/.zzmi-manager/zzmi.log`, 不用再猜。
+* **改: 游戏已在运行时的提示**。原来是干巴巴一句"游戏已经在运行了"; 现在明确告诉
+  你: 脚本注入的顺序**必须是先脚本、后游戏**, 没生效就关掉游戏重来。
+* **说明**: 经字节级核对, `Launcher.exe` 与管理器 `ZZMI-Mod-Manager.exe` **都带
+  `requireAdministrator` 清单**。所以 `Launcher.exe` 只要能弹出来, 就必然已拿到
+  管理员权限 —— "菜单能呼出但功能不生效"属于注入/杀软层面, 不是权限问题
+  (详见 `使用说明.txt` 的"问题总结": 火绒拦截 / 游戏版本不匹配 / Win11 24H2 无解)。
+
 v1.5.59 更新
 -----------
 * **新: 顶栏「📂 脚本和说明」按钮**。
@@ -732,7 +748,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.59"
+VERSION = "1.5.60"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -4498,7 +4514,11 @@ def launch_game(cfg):
     if launcher:
         return False, "XXMI Launcher 已经在运行, 请先关掉它"
     if game:
-        return False, "游戏已经在运行了"
+        # v1.5.60: 游戏已经在跑时, 注入器的正确用法是"自己启动游戏到门口再注入",
+        # 管理器不该假装又拉了一次 —— 给用户明确指引。
+        return False, ("游戏已经在运行了(无需再启动)。\n"
+                       "如果脚本功能没生效: 先关掉游戏, 重新点「脚本启动」"
+                       "(顺序必须是 先脚本、后游戏)")
     importer = cfg.get("importer") or "ZZMI"
     workdir = os.path.dirname(exe)
     args = "--nogui --xxmi %s" % importer
@@ -4532,34 +4552,61 @@ def launch_game(cfg):
     return True, "已启动游戏 (--nogui --xxmi %s)" % importer
 
 
+def _am_i_admin():
+    """当前进程是否真的拿到了管理员令牌(虚拟机/组策略下的"管理员"可能是假的)。"""
+    try:
+        import ctypes
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        return False
+
+
 def run_exe_admin(exe, workdir=""):
     """以管理员权限启动一个 exe(走 UAC runas), 返回 (ok, msg)。
 
-    和 launch_game 的提权逻辑一致: 注入器需要管理员注入,
-    普通 CreateProcess 会报 WinError 740, 必须用 ShellExecute 的 runas。
+    v1.5.60 关键修正 —— 用户实测「游戏里脚本功能不生效, 怀疑没拿到管理员」:
+      · **删掉 except 里的静默回落**。原代码在 ShellExecuteW 抛异常时会掉进
+        非提权的 subprocess.Popen, 而注入器(Launcher.exe)自带 requireAdministrator
+        清单 —— Popen 必然 WinError 740 失败, 却还返回"已启动(未提权)"。
+        这种"假装成功"会让用户以为脚本起来了, 实则是残留的旧进程在顶着。
+        现在: runas 失败 = 明确报错, 绝不偷偷降权启动。
+      · **rc 与父进程权限全部写进日志**, 以后排查一眼就能看到真相。
+      · **父进程已是管理员时, runas 是静默提权(不弹 UAC)** —— 这是 Windows
+        既定行为, 用户看到"没弹框"不代表"没提权"。
     """
     if not os.path.isfile(exe):
         return False, "找不到文件: %s" % exe
+    parent_admin = _am_i_admin()
     if os.name == "nt":
         try:
             import ctypes
+            wd = workdir or os.path.dirname(exe)
             rc = ctypes.windll.shell32.ShellExecuteW(
-                None, "runas", exe, None, workdir or os.path.dirname(exe), 1)
+                None, "runas", exe, None, wd, 1)
+            log("[脚本启动] runas rc=%s parent_admin=%s exe=%s wd=%s"
+                % (rc, parent_admin, exe, wd))
             if rc > 32:
+                if parent_admin:
+                    return True, ("已以管理员身份启动脚本(本程序已是管理员, "
+                                  "系统静默提权、不会再弹 UAC)")
                 return True, "已请求管理员权限 —— 请在 UAC 弹窗点「是」"
             if rc == 5:
                 return False, "你取消了管理员授权, 没有启动(请再点一次并选「是」)"
             if rc == 2:
                 return False, "找不到启动器文件"
+            if rc == 0:
+                return False, "系统内存不足, 启动被拒绝"
             return False, "启动被系统拒绝 (错误码 %d)" % rc
         except Exception as ex:
-            log("runas 启动失败, 改用普通方式:", ex)
+            # 不再回落到非提权启动 —— 见函数头 v1.5.60 说明
+            log("[脚本启动] runas 抛异常(RC 未拿到), 不再降权启动:", ex)
+            return False, ("提权启动失败: %s\n"
+                           "请右键本程序「以管理员身份运行」后重试" % ex)
+    # 非 Windows(理论上到不了这里) —— 普通方式
     try:
         subprocess.Popen([exe], cwd=workdir or os.path.dirname(exe), close_fds=True)
-        return True, "已启动(未提权)"
+        return True, "已启动(非 Windows 环境, 未提权)"
     except Exception as ex:
-        if "740" in str(ex):
-            return False, "启动需要管理员权限但被拒绝。请右键本程序「以管理员身份运行」"
         return False, "启动失败: %s" % ex
 
 
@@ -7541,6 +7588,8 @@ class Handler(BaseHTTPRequestHandler):
                 if not os.path.isfile(launcher):
                     return self._json({"ok": False, "need_pick": True,
                                        "msg": "该文件夹里找不到 Launcher.exe, 请重新选择"})
+                log("[脚本启动] 开始 | 文件夹=%s | 管理器管理员=%s"
+                    % (d, _am_i_admin()))
                 steps = []
                 # ① 打开脚本(注入器, 管理员)
                 ok_l, msg_l = run_exe_admin(launcher, d)
@@ -7562,6 +7611,10 @@ class Handler(BaseHTTPRequestHandler):
                 cheat = os.path.join(d, "Cheat.dll")
                 warn = "" if os.path.isfile(cheat) else \
                     "（提醒: 文件夹里没有 Cheat.dll, 可能注入失败）"
+                log("[脚本启动] 结果 | ① %s | ② %s | ③ %s%s"
+                    % ("ok" if ok_l else msg_l,
+                       "ok" if opened_rd else "无txt",
+                       "ok" if ok_g else msg_g, warn))
                 return self._json({"ok": ok_l, "msg": "；".join(steps) + warn})
 
             if act == "zzz_tool_pick":
