@@ -801,7 +801,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.64"
+VERSION = "1.5.65"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -4562,8 +4562,14 @@ def _reject_bg(app, msg):
 
 
 def launch_game(cfg):
-    """启动游戏。ZZMI 需要管理员权限注入(d3dx.ini: require_admin=true),
-    所以必须用 ShellExecute 的 runas 走 UAC, 否则 CreateProcess 会报 WinError 740。"""
+    """启动 XXMI Launcher(挂 mod 用; XXMI 自己会拉起游戏, 并被脚本注入)。
+
+    需要管理员权限注入(d3dx.ini: require_admin=true), 所以必须用 ShellExecute 的
+    runas 走 UAC, 否则 CreateProcess 会报 WinError 740。
+
+    用户实测: 走 XXMI 启动是可以同时挂 mod + 用脚本的, 所以「一键启动脚本+游戏」
+    继续走这里没问题(问题不在拉谁, 见 zzz_tool 里的时序/权限说明)。
+    """
     exe = cfg.get("launcher_exe") or ""
     if not os.path.isfile(exe):
         return False, "找不到 XXMI Launcher: %s" % (exe or "(未配置)")
@@ -4618,6 +4624,166 @@ def _am_i_admin():
         return False
 
 
+def _zzz_diag_launcher(exe, how):
+    """v1.5.64 诊断: 启动 Launcher.exe 后, 采集它【真实进程】的状态并写日志。
+
+    为什么需要: 用户实测「管理器一键启动 -> 脚本菜单能呼出但功能全废;
+    手动双击 -> 一切正常」, 而 runas 返回值必然是成功(不能区分对错),
+    必须去看真进程的: 在不在 / 是不是管理员 / 命令行 / 父进程是谁。
+    `how` 标记来源(runas / 手动)。
+    ⚠ 不能用 wmic —— 新版 Windows 已移除该命令, 必须纯 ctypes。
+    """
+    base = os.path.basename(exe).lower()
+    time.sleep(1.8)         # 给进程一点起来的时间
+    try:
+        procs = _enum_processes()
+    except Exception as ex:
+        log("[诊断][%s] 枚举进程失败: %s" % (how, ex))
+        return
+    by_pid = {p[0]: p for p in procs}
+    hits = [p for p in procs if p[2].lower() == base]
+    if not hits:
+        log("[诊断][%s] ✗ 没找到 %s 进程 —— 脚本其实没起来!" % (how, base))
+        return
+    for pid, ppid, name in hits:
+        p = by_pid.get(ppid)
+        log("[诊断][%s] PID=%s | 管理员=%s | 父进程=%s | 路径=%s | 命令行=%s"
+            % (how, pid, _pid_is_admin(pid),
+               (p[2] if p else "(已退出)") + "(%s)" % ppid,
+               _proc_path(pid) or "?", _proc_cmdline(pid) or "(空)"))
+
+
+# ---- 以下三个是纯 ctypes 的进程信息读取(wmic 已被新版 Windows 移除) ----
+
+class _PROCESSENTRY32W(ctypes.Structure):
+    _fields_ = [
+        ("dwSize", ctypes.wintypes.DWORD),
+        ("cntUsage", ctypes.wintypes.DWORD),
+        ("th32ProcessID", ctypes.wintypes.DWORD),
+        ("th32DefaultHeapID", ctypes.POINTER(ctypes.c_ulong)),
+        ("th32ModuleID", ctypes.wintypes.DWORD),
+        ("cntThreads", ctypes.wintypes.DWORD),
+        ("th32ParentProcessID", ctypes.wintypes.DWORD),
+        ("pcPriClassBase", ctypes.c_long),
+        ("dwFlags", ctypes.wintypes.DWORD),
+        ("szExeFile", ctypes.c_wchar * 260),
+    ]
+
+
+def _enum_processes():
+    """返回 [(pid, ppid, exe名), ...]"""
+    k32 = ctypes.windll.kernel32
+    TH32CS_SNAPPROCESS = 0x00000002
+    snap = k32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
+    if snap == -1:
+        return []
+    out = []
+    try:
+        pe = _PROCESSENTRY32W()
+        pe.dwSize = ctypes.sizeof(pe)
+        ok = k32.Process32FirstW(snap, ctypes.byref(pe))
+        while ok:
+            out.append((pe.th32ProcessID, pe.th32ParentProcessID, pe.szExeFile))
+            ok = k32.Process32NextW(snap, ctypes.byref(pe))
+    finally:
+        k32.CloseHandle(snap)
+    return out
+
+
+def _proc_path(pid):
+    k32 = ctypes.windll.kernel32
+    h = k32.OpenProcess(0x1000, False, pid)     # QUERY_LIMITED_INFORMATION
+    if not h:
+        return None
+    try:
+        buf = ctypes.create_unicode_buffer(1024)
+        size = ctypes.wintypes.DWORD(1024)
+        if k32.QueryFullProcessImageNameW(h, 0, buf, ctypes.byref(size)):
+            return buf.value
+        return None
+    finally:
+        k32.CloseHandle(h)
+
+
+class _UNICODE_STRING(ctypes.Structure):
+    _fields_ = [("Length", ctypes.wintypes.USHORT),
+                ("MaximumLength", ctypes.wintypes.USHORT),
+                ("Buffer", ctypes.c_void_p)]
+
+
+class _PROCESS_BASIC_INFORMATION(ctypes.Structure):
+    _fields_ = [("Reserved1", ctypes.c_void_p),
+                ("PebBaseAddress", ctypes.c_void_p),
+                ("Reserved2", ctypes.c_void_p * 2),
+                ("UniqueProcessId", ctypes.c_void_p),
+                ("Reserved3", ctypes.c_void_p)]
+
+
+def _proc_cmdline(pid):
+    """读目标进程命令行(走 PEB)。读不到返回 None。"""
+    k32 = ctypes.windll.kernel32
+    ntd = ctypes.windll.ntdll
+    h = k32.OpenProcess(0x0400 | 0x0010, False, pid)   # QUERY_INFORMATION|VM_READ
+    if not h:
+        return None
+    try:
+        pbi = _PROCESS_BASIC_INFORMATION()
+        ret = ctypes.c_ulong()
+        if ntd.NtQueryInformationProcess(h, 0, ctypes.byref(pbi),
+                                         ctypes.sizeof(pbi),
+                                         ctypes.byref(ret)) != 0:
+            return None
+        pp = ctypes.c_void_p()
+        if not k32.ReadProcessMemory(h, ctypes.c_void_p(
+                pbi.PebBaseAddress + 0x20), ctypes.byref(pp),
+                ctypes.sizeof(pp), None):
+            return None
+        us = _UNICODE_STRING()
+        if not k32.ReadProcessMemory(h, ctypes.c_void_p(pp.value + 0x70),
+                                     ctypes.byref(us), ctypes.sizeof(us), None):
+            return None
+        if not us.Length:
+            return ""
+        buf = ctypes.create_unicode_buffer(us.Length // 2 + 1)
+        if not k32.ReadProcessMemory(h, ctypes.c_void_p(us.Buffer),
+                                     buf, us.Length, None):
+            return None
+        return buf.value
+    except Exception:
+        return None
+    finally:
+        k32.CloseHandle(h)
+
+
+def _pid_is_admin(pid):
+    """判断 PID 的进程是否以提权令牌在跑。失败返回 None(未知)。"""
+    try:
+        import ctypes.wintypes as wt
+        k32 = ctypes.windll.kernel32
+        adv = ctypes.windll.advapi32
+        h = k32.OpenProcess(0x1000, False, pid)
+        if not h:
+            return None
+        try:
+            tok = wt.HANDLE()
+            if not adv.OpenProcessToken(h, 0x0008, ctypes.byref(tok)):
+                return None
+            try:
+                elev = wt.DWORD(0)
+                ret = wt.DWORD(0)
+                if not adv.GetTokenInformation(
+                        tok, 20, ctypes.byref(elev), ctypes.sizeof(elev),
+                        ctypes.byref(ret)):
+                    return None
+                return bool(elev.value)
+            finally:
+                k32.CloseHandle(tok)
+        finally:
+            k32.CloseHandle(h)
+    except Exception:
+        return None
+
+
 def run_exe_admin(exe, workdir=""):
     """以管理员权限启动一个 exe(走 UAC runas), 返回 (ok, msg)。
 
@@ -4643,6 +4809,13 @@ def run_exe_admin(exe, workdir=""):
             log("[脚本启动] runas rc=%s parent_admin=%s exe=%s wd=%s"
                 % (rc, parent_admin, exe, wd))
             if rc > 32:
+                # v1.5.64 诊断: 启动后去查【实际跑起来的进程】到底什么状态。
+                # 用户实测「管理器启动 -> 脚本菜单能出但功能全废; 手动双击 -> 正常」,
+                # 光看 runas 返回值(必然成功)找不出差异, 必须看真进程。
+                try:
+                    _zzz_diag_launcher(exe, "runas")
+                except Exception as ex:
+                    log("[诊断] 采集失败:", ex)
                 if parent_admin:
                     return True, ("已以管理员身份启动脚本(本程序已是管理员, "
                                   "系统静默提权、不会再弹 UAC)")
@@ -8201,6 +8374,17 @@ class Handler(BaseHTTPRequestHandler):
             if act == "launch":
                 ok, msg = launch_game(app.cfg)
                 return self._json({"ok": ok, "msg": msg})
+
+            # v1.5.64 诊断: 采集当前 Launcher.exe 进程的真实状态(手动双击后对照用)
+            if act == "zzz_diag":
+                d = (app.cfg.get("zzz_tool_dir") or "").strip()
+                exe = os.path.join(d, "Launcher.exe") if d else "Launcher.exe"
+                try:
+                    _zzz_diag_launcher(exe, "手动")
+                    return self._json({"ok": True,
+                                       "msg": "已采集, 请把 zzmi.log 里 [诊断][手动] 那几行发我"})
+                except Exception as ex:
+                    return self._json({"ok": False, "msg": "采集失败: %s" % ex})
 
             if act == "quit":
                 self._json({"ok": True, "msg": "bye"})

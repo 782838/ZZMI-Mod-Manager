@@ -1227,6 +1227,7 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
       </div>
       <div class="zrow zrow-act">
         <button class="btn primary" id="zsToolRun">🚀 一键启动脚本+游戏</button>
+        <button class="btn mini3" id="zsDiag" title="排查用：先手动双击 Launcher.exe，再点这里，把脚本进程的真实状态记进日志">🩺 诊断</button>
         <span class="hint" id="zsToolInfo"></span>
       </div>
     </div>
@@ -4244,6 +4245,13 @@ if ($("#zsMask")) $("#zsMask").onclick = () => zsShow(false);
 if ($("#zsToolPick")) $("#zsToolPick").onclick = zsToolPick;
 if ($("#zsRescan")) $("#zsRescan").onclick = () => zsAutoScan(true);
 if ($("#zsToolRun")) $("#zsToolRun").onclick = zsToolRun;
+if ($("#zsDiag")) $("#zsDiag").onclick = async () => {
+  toast("正在采集脚本进程状态…", "", 4000);
+  try{
+    const r = await api("/api/zzz_diag", {});
+    toast(r.msg || (r.ok ? "已采集" : "采集失败"), r.ok ? "" : "err", 8000);
+  }catch(e){ toast("出错了: " + e.message, "err", 8000); }
+};
 if ($("#zsCnPick")) $("#zsCnPick").onclick = () => zsSwapPick("cn");
 if ($("#zsIntlPick")) $("#zsIntlPick").onclick = () => zsSwapPick("intl");
 if ($("#zsSwap")) $("#zsSwap").onclick = () => zsDoSwap("auto");
