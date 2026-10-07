@@ -60,6 +60,7 @@ recon_*.py
 check_uijs.py
 build_venv/
 dist_venv/
+buildenv/
 .git_leaked_bak/
 tests/_*
 tests/run_*.py

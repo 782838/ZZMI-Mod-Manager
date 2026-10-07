@@ -5,6 +5,16 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.59 更新
+-----------
+* **新: 顶栏「📂 脚本和说明」按钮**。
+  一键以管理员身份运行注入器 `Launcher.exe` 并打开 `使用说明.txt`(内含翻译)。
+  三个文件(`Cheat.dll` / `Launcher.exe` / `使用说明.txt`)**不打包进管理器**, 首次点击
+  让你自选文件夹(之后记住路径、一键打开), 方便你随时更新注入器版本。
+  文件夹里缺 `Launcher.exe` 或 `Cheat.dll` 时会有提示。
+* **移除: 蓝飞机(Telegram)下载区**。该功能已废弃, 本版整体下线 —— 后端 `tg_*` 接口与
+  telethon 导入逻辑、前端「蓝飞机」tab 与教程面板、配置项全部删除, 下载区只保留香蕉网。
+
 v1.5.58 更新
 -----------
 * **修: 「同名 mod 自动加序号后, 打开文件夹/开关/改名/删除 全指向错误的那个 mod」**。
@@ -451,8 +461,6 @@ v1.5.22 更新
   `white_high_heels_recolor_3.zip`)保持英文。现在文件名先去后缀/下划线换空格
   清洗成短语再机翻, 翻得出来就显示在文件名下面(受「中文译名」开关控制);
   翻不出(如整串是角色名)就不硬凑, 保持原样
-* **蓝飞机(Telegram)接口暂时关闭**: 该功能还没实测通过, 本版把入口整体下线
-  (下载区只剩香蕉网), 测通后下个版本恢复
 
 v1.5.21 更新
 -----------
@@ -480,16 +488,8 @@ v1.5.19 更新
   按钮文字被压换行。现在按钮行放不下会自动换行、按钮均分空间, 任何窗口宽度都不再溢出
 * (v1.5.11 加「重命名」按钮后埋下的雷, 2 按钮时代不触发, 所以"之前是好的")
 
-v1.5.18 更新
------------
-* **蓝飞机(Telegram)下载区现在开箱即用**: telethon 库已直接打进安装包里, 不用再自己装任何依赖。
-  打开「下载区 → 蓝飞机」按教程申请 api_id/api_hash、填代理、验证码登录, 就能导入频道里的 mod
-* 连接 Telegram/香蕉网失败时都会提示「请确认代理/魔法已开启」
-
 v1.5.17 更新
 -----------
-* 下载区顶部新增双 tab: 「香蕉网」(默认, 匿名可用) 与「蓝飞机」(Telegram 导入, 含完整教程与设置表单)
-* 首次引入 Telegram userbot 导入: 拉频道消息、下载 zip/ini 附件与预览图, 只写工具自己的下载目录
 * **修: 「📁 选择…」终于能用了(真凶找到了)**: 上次换成了 Windows 自带的文件夹选择框,
   但没给这个系统函数声明返回值类型 —— 它返回的是 64 位指针, Python 默认按 32 位读,
   指针被砍掉一半, 紧接着拿它去取路径就**内存越界, 程序直接崩**。
@@ -732,7 +732,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.58"
+VERSION = "1.5.59"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -839,6 +839,7 @@ DEFAULT_CONFIG = {
     "update_repo": UPDATE_REPO,
     "downloads_dir": "",        # v1.5.12 下载区: mod 下载到哪(空=数据目录/downloads)
     "show_translated": True,    # v1.5.12 下载区: 是否显示中文译名
+    "zzz_tool_dir": "",         # 注入器文件夹(Launcher.exe / Cheat.dll / 使用说明.txt): 不打包, 用户自选
     "photo_on": True,           # v1.5.31 连拍缓冲: 游戏运行时是否后台录屏
     "photo_hotkey": "Ctrl+Shift+C",   # v1.5.31 连拍触发键(可改)
     "photo_mouse_btn": 1,       # v1.5.32 鼠标侧键: 0=关 1=侧键1(后退) 2=侧键2(前进)
@@ -4121,7 +4122,7 @@ def _shell_execute(path):
     return True
 
 
-def _pick_folder_win(initial="", owner=None):
+def _pick_folder_win(initial="", owner=None, title="选择 mod 下载保存到哪个文件夹"):
     """弹 Windows 原生「浏览文件夹」框(SHBrowseForFolderW), 返回绝对路径; 取消 = ''。
 
     v1.5.16 致命修正(用户实测「选择…」永远失败):
@@ -4170,7 +4171,7 @@ def _pick_folder_win(initial="", owner=None):
     # owner: 优先用传进来的界面窗口; 退一步用当前前台窗口
     bi.hwndOwner = owner or user32.GetForegroundWindow()
     bi.pszDisplayName = ctypes.cast(buf, wintypes.LPWSTR)
-    bi.lpszTitle = "选择 mod 下载保存到哪个文件夹"
+    bi.lpszTitle = title
     bi.ulFlags = BIF_USENEWUI
 
     ole32.CoInitializeEx(None, 0x2)      # APARTMENTTHREADED
@@ -4228,7 +4229,7 @@ def _pick_keep_front(hwnd, stop):
         time.sleep(0.35)
 
 
-def pick_folder(initial="", owner=None):
+def pick_folder(initial="", owner=None, title="选择 mod 下载保存到哪个文件夹"):
     """弹系统文件夹选择框(Windows) 与浏览结果的容器, 返回绝对路径; 取消返回 ''。
 
     v1.5.13: 给「下载目录」用, 免得玩家自己手打路径。
@@ -4252,7 +4253,7 @@ def pick_folder(initial="", owner=None):
                     hwnd = None
             threading.Thread(target=_pick_keep_front, args=(hwnd, stop),
                              daemon=True).start()
-            return _pick_folder_win(initial, hwnd or None)
+            return _pick_folder_win(initial, hwnd or None, title)
         except Exception as e:
             log("pick_folder 原生框失败, 试 tkinter: %s" % str(e)[:160])
         finally:
@@ -4269,7 +4270,7 @@ def pick_folder(initial="", owner=None):
         except Exception:
             pass
         init = initial if (initial and os.path.isdir(initial)) else None
-        p = filedialog.askdirectory(title="选择 mod 下载保存到哪个文件夹",
+        p = filedialog.askdirectory(title=title,
                                     initialdir=init, mustexist=False)
         try:
             root.destroy()
@@ -4529,6 +4530,50 @@ def launch_game(cfg):
         return False, "启动失败: %s" % ex
     _proc_cache["t"] = 0
     return True, "已启动游戏 (--nogui --xxmi %s)" % importer
+
+
+def run_exe_admin(exe, workdir=""):
+    """以管理员权限启动一个 exe(走 UAC runas), 返回 (ok, msg)。
+
+    和 launch_game 的提权逻辑一致: 注入器需要管理员注入,
+    普通 CreateProcess 会报 WinError 740, 必须用 ShellExecute 的 runas。
+    """
+    if not os.path.isfile(exe):
+        return False, "找不到文件: %s" % exe
+    if os.name == "nt":
+        try:
+            import ctypes
+            rc = ctypes.windll.shell32.ShellExecuteW(
+                None, "runas", exe, None, workdir or os.path.dirname(exe), 1)
+            if rc > 32:
+                return True, "已请求管理员权限 —— 请在 UAC 弹窗点「是」"
+            if rc == 5:
+                return False, "你取消了管理员授权, 没有启动(请再点一次并选「是」)"
+            if rc == 2:
+                return False, "找不到启动器文件"
+            return False, "启动被系统拒绝 (错误码 %d)" % rc
+        except Exception as ex:
+            log("runas 启动失败, 改用普通方式:", ex)
+    try:
+        subprocess.Popen([exe], cwd=workdir or os.path.dirname(exe), close_fds=True)
+        return True, "已启动(未提权)"
+    except Exception as ex:
+        if "740" in str(ex):
+            return False, "启动需要管理员权限但被拒绝。请右键本程序「以管理员身份运行」"
+        return False, "启动失败: %s" % ex
+
+
+def _find_readme(d):
+    """在文件夹里找使用说明.txt(兼容 使用说明*.txt / 任意 .txt)。"""
+    try:
+        names = os.listdir(d)
+    except Exception:
+        return ""
+    for n in names:
+        if n.lower().startswith("使用说明") and n.lower().endswith(".txt"):
+            return os.path.join(d, n)
+    txts = [n for n in names if n.lower().endswith(".txt")]
+    return os.path.join(d, txts[0]) if txts else ""
 
 
 BROWSER_CANDIDATES = [
@@ -6075,7 +6120,6 @@ class App(object):
             "test_mode": TEST_MODE,
             "downloads_dir": gb_downloads_dir(self.cfg),
             "show_translated": bool(self.cfg.get("show_translated", True)),
-            "tg_enabled": bool(TG_ENABLED),   # v1.5.22: 蓝飞机总开关(关=前端隐藏 tab)
             "update_repo": self.cfg.get("update_repo", UPDATE_REPO),
             "win_size": self.cfg.get("win_size") or "auto",
             "stats": s.stats, "categories": s.categories, "chars": s.chars,
@@ -6869,217 +6913,6 @@ def gb_subcategories(cat=GB_CHAR_CAT, refresh=False):
     return items
 
 
-# ===================== v1.5.17: 蓝飞机(Telegram) 导入 =====================
-# 用 telethon(userbot) 拉「自己已加入的频道」里的 mod 文件(zip/ini)。
-# 凭据(api_id/api_hash)只存本机 config, 不进日志、不分发。
-# telethon 未安装时所有接口优雅降级(返回清晰错误, 不崩)。
-# 分类: Telegram 无原生分类, 按频道 + 文件名/角色名推断; 预览: 下载消息里的 photo。
-# v1.5.22: **总开关** —— 功能未实测通过前暂时整体关闭(作者拍板: 等 API 申请
-# 下来测通了再开)。所有 /api/tg_* 直接返回「暂未开放」, 前端隐藏整个 tab。
-# 恢复只需把 TG_ENABLED 改回 True。
-import threading as _tg_threading
-
-TG_ENABLED = False
-
-TG_LOCK = _tg_threading.Lock()
-TG_STATE = {"client": None, "phone_code_hash": "", "phone": ""}
-TG_SESSION = os.path.join(DATA_DIR, "tg", "tg_session")
-TG_EXTS = (".zip", ".ini", ".7z", ".rar", ".cfg")
-
-
-def _tg_proxy(proxy):
-    if not proxy:
-        return None
-    m = re.match(r"^(socks5|socks4|http)://([^:/]+):(\d+)$", (proxy or "").strip())
-    if not m:
-        return None
-    return (m.group(1), m.group(2), int(m.group(3)))
-
-
-def _tg_client(app):
-    """创建/复用 telethon client(进程内缓存)。无 telethon 或没配凭据 -> None。"""
-    with TG_LOCK:
-        if TG_STATE["client"] is not None:
-            return TG_STATE["client"]
-        t = app.cfg.get("tg") or {}
-        try:
-            api_id = int(t.get("api_id") or 0)
-        except Exception:
-            api_id = 0
-        api_hash = (t.get("api_hash") or "").strip()
-        if not api_id or not api_hash:
-            return None
-        try:
-            from telethon import TelegramClient
-        except Exception:
-            return None
-        try:
-            os.makedirs(os.path.dirname(TG_SESSION), exist_ok=True)
-        except Exception:
-            pass
-        proxy = _tg_proxy(t.get("proxy") or "")
-        c = TelegramClient(TG_SESSION, api_id, api_hash, proxy=proxy)
-        TG_STATE["client"] = c
-        return c
-
-
-def _tg_run(client, coro):
-    return client.loop.run_until_complete(coro)
-
-
-def _tg_trunc(e):
-    return (str(e) or type(e).__name__).replace("\n", " ").strip()[:200]
-
-
-def tg_status(app):
-    have = False
-    try:
-        import telethon  # noqa
-        have = True
-    except Exception:
-        pass
-    t = app.cfg.get("tg") or {}
-    configured = bool(t.get("api_id") and t.get("api_hash"))
-    logged_in = False
-    c = _tg_client(app)
-    if c is not None:
-        try:
-            with TG_LOCK:
-                _tg_run(c, c.connect())
-                logged_in = _tg_run(c, c.is_user_authorized())
-        except Exception:
-            logged_in = False
-    return {"ok": True, "telethon": have, "configured": configured,
-            "logged_in": bool(logged_in),
-            "api_id": t.get("api_id", ""), "api_hash": t.get("api_hash", ""),
-            "proxy": t.get("proxy", "")}
-
-
-def tg_save_cfg(app, api_id, api_hash, proxy):
-    t = app.cfg.setdefault("tg", {})
-    t["api_id"] = (api_id or "").strip()
-    t["api_hash"] = (api_hash or "").strip()
-    t["proxy"] = (proxy or "").strip()
-    with TG_LOCK:
-        TG_STATE["client"] = None
-    app.save_config()
-    return {"ok": True}
-
-
-def tg_send_code(app, phone):
-    with TG_LOCK:
-        c = _tg_client(app)
-        if c is None:
-            return {"ok": False, "msg": "未配置 api_id/api_hash 或后端未安装 telethon"}
-        try:
-            _tg_run(c, c.connect())
-            sent = _tg_run(c, c.send_code_request(phone))
-            TG_STATE["phone_code_hash"] = getattr(sent, "phone_code_hash", "")
-            TG_STATE["phone"] = phone
-            return {"ok": True, "phone_code_hash": TG_STATE["phone_code_hash"]}
-        except Exception as e:
-            return {"ok": False, "msg": _tg_trunc(e)}
-
-
-def tg_sign_in(app, phone, code, password, phone_code_hash):
-    with TG_LOCK:
-        c = _tg_client(app)
-        if c is None:
-            return {"ok": False, "msg": "未配置或未安装 telethon"}
-        try:
-            if password:
-                _tg_run(c, c.sign_in(password=password))
-            else:
-                ph = phone_code_hash or TG_STATE["phone_code_hash"]
-                _tg_run(c, c.sign_in(phone, code, phone_code_hash=ph))
-            ok = _tg_run(c, c.is_user_authorized())
-            return {"ok": bool(ok), "logged_in": bool(ok), "need_password": (not ok)}
-        except Exception as e:
-            msg = _tg_trunc(e)
-            if re.search(r"password|2fa|two.step|two-step", msg, re.I):
-                return {"ok": False, "need_password": True, "msg": "需要两步验证密码"}
-            return {"ok": False, "msg": msg}
-
-
-def tg_list(app):
-    with TG_LOCK:
-        c = _tg_client(app)
-        if c is None:
-            return {"ok": False, "msg": "未配置或未安装 telethon"}
-        try:
-            _tg_run(c, c.connect())
-            if not _tg_run(c, c.is_user_authorized()):
-                return {"ok": False, "msg": "未登录，请先发验证码登录"}
-            dialogs = _tg_run(c, c.get_dialogs())
-            items = []
-            for d in dialogs:
-                ent = d.entity
-                uname = getattr(ent, "username", None) or ""
-                title = getattr(ent, "title", None) or getattr(ent, "first_name", "") or ""
-                items.append({"id": getattr(ent, "id", 0), "title": title,
-                              "username": uname, "type": type(ent).__name__})
-            items.sort(key=lambda x: (x["type"] != "Channel", x["title"].lower()))
-            return {"ok": True, "items": items}
-        except Exception as e:
-            return {"ok": False, "msg": _tg_trunc(e)}
-
-
-def tg_import(app, channel, prev):
-    with TG_LOCK:
-        c = _tg_client(app)
-        if c is None:
-            return {"ok": False, "msg": "未配置或未安装 telethon"}
-        try:
-            _tg_run(c, c.connect())
-            if not _tg_run(c, c.is_user_authorized()):
-                return {"ok": False, "msg": "未登录，请先发验证码登录"}
-            ent = _tg_run(c, c.get_entity(channel))
-            d = gb_downloads_dir(app.cfg)
-            prev_dir = os.path.join(d, "tg_previews")
-            if prev:
-                try:
-                    os.makedirs(prev_dir, exist_ok=True)
-                except Exception:
-                    pass
-            items = []
-            seen_prev = set()
-            msgs = _tg_run(c, c.get_messages(ent, limit=200))
-            for m in msgs:
-                if m.document:
-                    fn = (m.file.name if m.file else None) or ("file_%s" % m.id)
-                    if not fn.lower().endswith(TG_EXTS):
-                        continue
-                    dest = gb_unique_path(d, fn)
-                    _tg_run(c, c.download_media(m, file=dest))
-                    size = os.path.getsize(dest) if os.path.exists(dest) else 0
-                    sub = (m.message or "")[:90]
-                    if not sub and size:
-                        sub = "%.1f MB" % (size / 1048576.0)
-                    items.append({"name": os.path.basename(dest), "path": dest, "sub": sub})
-                elif prev and m.photo:
-                    pid = getattr(m.photo, "id", m.id)
-                    if pid in seen_prev:
-                        continue
-                    seen_prev.add(pid)
-                    ppath = os.path.join(prev_dir, "prev_%s.jpg" % pid)
-                    try:
-                        _tg_run(c, c.download_media(m, file=ppath))
-                    except Exception:
-                        pass
-            msg = ("导入 %d 个文件" % len(items)) if items else "最近消息里没有 zip/ini 文件"
-            return {"ok": True, "items": items, "msg": msg}
-        except Exception as e:
-            return {"ok": False, "msg": _tg_trunc(e)}
-
-
-def tg_open(app, path):
-    try:
-        if path and os.path.exists(path):
-            open_in_explorer(os.path.dirname(path))
-            return {"ok": True}
-    except Exception as e:
-        return {"ok": False, "msg": _tg_trunc(e)}
-    return {"ok": False, "msg": "文件不存在"}
 
 
 def gb_files_batch(mod_ids, limit=40, workers=6):
@@ -7340,11 +7173,6 @@ class Handler(BaseHTTPRequestHandler):
                                    "job": gb_get_job(qs.get("job") or "")})
             if path == "/api/gb_downloads":
                 return self._json(gb_list_downloads(self.app.cfg))
-            if path == "/api/tg_status":
-                if not TG_ENABLED:
-                    return self._json({"ok": False, "disabled": True,
-                                       "msg": "蓝飞机接口暂未开放，敬请期待"})
-                return self._json(tg_status(self.app))
             if path == "/gbimg":
                 return self.gb_serve_img(qs)
             if path == "/thumb":
@@ -7702,6 +7530,67 @@ class Handler(BaseHTTPRequestHandler):
                                    "show_translated":
                                        bool(app.cfg.get("show_translated"))})
 
+            # ---- 注入器(脚本启动): 不打包, 用户自选文件夹 ----
+            # 点一下 = ① 打开脚本(Launcher.exe, 管理员) ② 打开使用说明.txt ③ 启动游戏
+            if act == "zzz_tool":
+                d = (app.cfg.get("zzz_tool_dir") or "").strip()
+                if not d or not os.path.isdir(d):
+                    return self._json({"ok": False, "need_pick": True,
+                                       "msg": "请先选择注入器文件夹"})
+                launcher = os.path.join(d, "Launcher.exe")
+                if not os.path.isfile(launcher):
+                    return self._json({"ok": False, "need_pick": True,
+                                       "msg": "该文件夹里找不到 Launcher.exe, 请重新选择"})
+                steps = []
+                # ① 打开脚本(注入器, 管理员)
+                ok_l, msg_l = run_exe_admin(launcher, d)
+                steps.append("① 脚本 " + ("已启动" if ok_l else "失败: " + msg_l))
+                # ② 打开使用说明.txt
+                rd = _find_readme(d)
+                opened_rd = False
+                if rd:
+                    try:
+                        _shell_execute(rd)
+                        opened_rd = True
+                    except Exception as ex:
+                        log("打开使用说明失败:", ex)
+                steps.append("② 说明 " + ("已打开" if opened_rd else "未找到 txt"))
+                # ③ 最后启动游戏(先等注入器起来, 再拉游戏)
+                time.sleep(1.5)
+                ok_g, msg_g = launch_game(app.cfg)
+                steps.append("③ 游戏 " + ("已请求启动(请在 UAC 点是)" if ok_g else msg_g))
+                cheat = os.path.join(d, "Cheat.dll")
+                warn = "" if os.path.isfile(cheat) else \
+                    "（提醒: 文件夹里没有 Cheat.dll, 可能注入失败）"
+                return self._json({"ok": ok_l, "msg": "；".join(steps) + warn})
+
+            if act == "zzz_tool_pick":
+                hwnd = None
+                try:
+                    hwnd = find_manager_window()
+                    if hwnd:
+                        _bring_to_front(hwnd)
+                except Exception:
+                    hwnd = None
+                p = pick_folder(
+                    initial=(app.cfg.get("zzz_tool_dir") or ""),
+                    owner=hwnd,
+                    title="选择注入器文件夹(里面要有 Launcher.exe / Cheat.dll / 使用说明.txt)")
+                if not p:
+                    return self._json({"ok": False, "msg": "没选文件夹(或系统选择框不可用)"})
+                app.cfg["zzz_tool_dir"] = p
+                app.save_config()
+                hard = [n for n in ("Launcher.exe", "Cheat.dll")
+                        if not os.path.isfile(os.path.join(p, n))]
+                rd = _find_readme(p)
+                extra = ""
+                if hard:
+                    extra = "；但缺少: %s（注入可能不完整）" % "、".join(hard)
+                elif not rd:
+                    extra = "；未找到使用说明.txt"
+                return self._json({"ok": True, "path": p,
+                                   "msg": "已记住注入器文件夹: %s%s" % (p, extra)})
+
             if act == "launch":
                 ok, msg = launch_game(app.cfg)
                 return self._json({"ok": ok, "msg": msg})
@@ -7971,26 +7860,6 @@ class Handler(BaseHTTPRequestHandler):
                 except Exception as ex:
                     return self._json({"ok": False, "msg": str(ex)})
 
-            # ---- v1.5.17: 蓝飞机(Telegram) 导入 ---------------------------------
-            # v1.5.22: TG_ENABLED=False 时整组接口不可用(测通后恢复)
-            if act.startswith("tg_") and not TG_ENABLED:
-                return self._json({"ok": False, "disabled": True,
-                                   "msg": "蓝飞机接口暂未开放，敬请期待"})
-            if act == "tg_save_cfg":
-                return self._json(tg_save_cfg(app, body.get("api_id", ""),
-                                              body.get("api_hash", ""), body.get("proxy", "")))
-            if act == "tg_send_code":
-                return self._json(tg_send_code(app, body.get("phone", "")))
-            if act == "tg_sign_in":
-                return self._json(tg_sign_in(app, body.get("phone", ""),
-                                            body.get("code", ""), body.get("password", ""),
-                                            body.get("phone_code_hash", "")))
-            if act == "tg_list":
-                return self._json(tg_list(app))
-            if act == "tg_import":
-                return self._json(tg_import(app, body.get("channel", ""), bool(body.get("prev"))))
-            if act == "tg_open":
-                return self._json(tg_open(app, body.get("path", "")))
 
             return self._json({"error": "not found"}, 404)
         except Exception:

@@ -10,8 +10,9 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    # telethon: v1.5.22 蓝飞机下线; numpy/scipy: 主程序不用, 但系统 Python 装了
-    # 就会被连带收进 exe(实测 16.3MB -> 31MB), 打包环境换机器时务必保留这条。
+    # telethon: v1.5.59 起蓝飞机已整体移除, 全代码不再 import telethon; 留这条纯防误装
+    # numpy/scipy: 主程序不用, 但系统 Python 装了就会被连带收进 exe(实测 16.3MB -> 31MB),
+    # 打包环境换机器时务必保留这条。
     excludes=["telethon", "numpy", "scipy", "pandas", "matplotlib"],
     noarchive=False,
     optimize=0,

@@ -384,28 +384,11 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
 
 /* v1.5.12: GameBanana 下载区 */
 .gbmodal{width:min(1140px,96vw);max-height:92vh}
-/* v1.5.17: 蓝飞机(Telegram) 下载区 */
 .gbtabs{display:flex;gap:6px;padding:10px 14px 0;border-bottom:1px solid var(--line)}
 .gbtab{flex:0 0 auto;padding:8px 14px;border:1px solid var(--line);border-bottom:none;
   background:var(--panel3);color:var(--txt2);border-radius:10px 10px 0 0;cursor:pointer;font-size:13px}
 .gbtab.on{background:var(--panel);color:var(--txt);font-weight:600;position:relative;top:1px;
   border-color:var(--line)}
-.tgwrap{padding:12px 14px;display:flex;flex-direction:column;gap:12px}
-.tgtut{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--panel3)}
-.tgtut summary{cursor:pointer;font-weight:600;font-size:13px}
-.tgtutol{margin:8px 0 4px;padding-left:20px;display:flex;flex-direction:column;gap:7px;
-  font-size:12.5px;color:var(--txt2);line-height:1.5}
-.tgtutol code{background:var(--panel);padding:1px 5px;border-radius:5px;color:var(--accent);font-size:11.5px}
-.tgwarn{margin:6px 0 0;color:#d9734a;font-size:12px}
-.tgcfg{display:flex;flex-direction:column;gap:8px}
-.gblist{display:flex;flex-direction:column;gap:8px;max-height:42vh;overflow:auto;margin-top:2px}
-.gbitem{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);
-  border-radius:10px;background:var(--panel)}
-.gbitem .meta{flex:1;min-width:0}
-.gbitem .nm{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.gbitem .sub{font-size:11px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.gbitem .acts{display:flex;gap:6px;flex:0 0 auto}
-.gbitem .acts .btn{flex:0 0 auto;padding:5px 9px;font-size:12px}
 .gbbody{padding:12px 14px}
 .gburl{display:flex;gap:8px;align-items:center}
 .gburl .inp{flex:1;min-width:0}
@@ -527,7 +510,7 @@ header,aside,.toolbar,.selbar,.scopebar,.dp,.drawer,.modal,#dead .box{
   backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);
   box-shadow:var(--sh2)}
 /* 玻璃: 卡片类(数量多, 用更轻的模糊保性能) */
-.card,.gbcard,.pw-cell,.tree,.tgtut{
+.card,.gbcard,.pw-cell,.tree{
   background:var(--glass);border-color:var(--gline);
   backdrop-filter:blur(12px) saturate(150%);-webkit-backdrop-filter:blur(12px) saturate(150%);
   box-shadow:var(--sh2)}
@@ -571,7 +554,7 @@ header,aside,.toolbar,.selbar,.scopebar,.dp,.drawer,.modal,#dead .box{
 .card:hover .thumbwrap img.ld{transform:scale(1.05)}
 /* 抽屉/模态里的暗底行 + 自检框 */
 .trow:nth-child(odd),.gbdlrow:nth-child(odd){background:var(--gfill)}
-.diagbox,.tgtut{background:var(--gfill)}
+.diagbox{background:var(--gfill)}
 /* toast */
 .toast{background:var(--glass);border:1px solid var(--gline2);
   backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);box-shadow:var(--sh3)}
@@ -890,6 +873,7 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
     </div>
     <div class="spacer"></div>
     <button class="btn primary" id="btnLaunch" title="用 ZZMI 直接启动绝区零(需要管理员授权, 会弹 UAC 窗口)">▶ 启动游戏</button>
+    <button class="btn ghost" id="btnZZZTool" title="一键启动: 以管理员打开脚本 Launcher.exe → 打开使用说明.txt → 启动游戏。首次点击选择文件夹, 之后一键完成">📂 脚本启动</button>
     <button class="btn" id="btnUndo" title="撤销上一步操作">↶ 撤销</button>
     <button class="btn" id="btnRescan" title="重新扫描 Mods 目录">⟳ 重新扫描</button>
     <button class="btn ghost" id="btnLib" title="管理 Mods 外面的仓库目录">🗄 仓库</button>
@@ -1191,7 +1175,6 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
     <button class="xbtn" id="gbCloseX">✕</button></div>
   <div class="gbtabs">
     <button class="gbtab on" data-tab="banana">⬇ 香蕉网</button>
-    <button class="gbtab" data-tab="tg" id="gbTgTab">✈ 蓝飞机 (Telegram)</button>
   </div>
   <div class="dbody gbbody" id="gbBananaPane">
     <div class="gburl">
@@ -1228,55 +1211,6 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
       <button class="btn gbPrev">‹ 上一页</button>
       <span class="hint gbPage"></span>
       <button class="btn gbNext">下一页 ›</button>
-    </div>
-  </div>
-  <div class="dbody gbbody" id="gbTgPane" style="display:none">
-    <div class="tgwrap">
-      <details class="tgtut" open>
-        <summary>📖 使用教程（首次必读）</summary>
-        <ol class="tgtutol">
-          <li><b>申请 API 凭据</b>：打开 <code>https://my.telegram.org</code> 登录 → <b>API development tools</b> → 填 App title / Short name（随便写）→ 拿到 <code>api_id</code>（数字）和 <code>api_hash</code>（字符串）。这是你个人的，<b>只存本机，别分享</b>。</li>
-          <li><b>代理</b>：国内直连不通。填代理软件的本地端口，如 <code>socks5://127.0.0.1:7890</code>（clash）或 <code>socks5://127.0.0.1:10808</code>（v2ray）。打开代理软件看「本地端口 / SOCKS」。</li>
-          <li><b>登录验证</b>：填 api_id / api_hash / 代理 / 手机号 → 点「发送验证码」→ Telegram 把码发到手机或桌面端 → 填进「验证码」→ 点「登录」。要两步验证密码也填进去。登录后生成本机 session，之后免验证。</li>
-          <li><b>导入群组</b>：登录后，粘贴 <code>@用户名</code> 或 <code>t.me/xxx</code>（公开频道），或已加入的私有频道名 → 点「验证导入」→ 自动拉最近带附件的消息、下载 zip/ini 到下载目录（预览图可选）。</li>
-        </ol>
-        <p class="hint tgwarn">⚠️ 只爬你已加入的频道 / 作者公开频道，不碰私有无授权。只读不发送。下载只进工具自己的下载目录，<b>不碰 Mods</b>。</p>
-      </details>
-
-      <div class="field tgcfg">
-        <div class="gburl">
-          <input class="inp" id="tgApiId" type="text" inputmode="numeric" autocomplete="off" placeholder="api_id（my.telegram.org 申请）" />
-          <input class="inp" id="tgApiHash" type="text" autocomplete="off" placeholder="api_hash" />
-        </div>
-        <div class="gburl">
-          <input class="inp" id="tgProxy" type="text" autocomplete="off" spellcheck="false" placeholder="代理 socks5://127.0.0.1:7890（国内必填，留空=直连）" />
-        </div>
-        <div class="gburl">
-          <input class="inp" id="tgPhone" type="text" autocomplete="off" placeholder="手机号 含国家码 如 8613800138000" />
-          <button class="btn" id="tgSendCode">发送验证码</button>
-        </div>
-        <div class="gburl">
-          <input class="inp" id="tgCode" type="text" inputmode="numeric" autocomplete="off" placeholder="验证码（发到手机/桌面端）" />
-          <input class="inp" id="tgPw" type="text" autocomplete="off" placeholder="两步验证密码（若需要）" />
-          <button class="btn primary" id="tgSignIn">登录</button>
-        </div>
-        <div class="hint" id="tgLoginStat"></div>
-      </div>
-
-      <div class="gbsubbar">
-        <span class="hint" style="white-space:nowrap">频道 / 群组</span>
-        <input class="inp" id="tgChannel" type="text" autocomplete="off" spellcheck="false"
-          placeholder="@用户名 或 t.me/xxx 或已加入的私有频道名" />
-        <button class="btn mini3" id="tgMyChats" title="列出我已加入的频道/群组">我的频道</button>
-      </div>
-      <div class="gbbar">
-        <span id="tgCount" class="hint"></span>
-        <label class="gbtog" title="同时把消息里的预览图下载到 下载目录/tg_previews（备查）"><input type="checkbox" id="tgPrev" checked /> 预览图</label>
-        <span class="sp"></span>
-        <button class="btn primary" id="tgImport">✈ 验证导入</button>
-      </div>
-      <div id="tgList" class="gblist"></div>
-      <div id="tgEmpty" class="empty">登录后粘贴频道，点「验证导入」</div>
     </div>
   </div>
   <div class="dfoot">
@@ -1724,19 +1658,6 @@ function renderAll(){
     + (S.hotkey ? " · 呼出键 " + S.hotkey : "");
   renderPath(); renderChars(); renderCats(); renderPresets();
   renderBanners(); renderScopebar(); renderCards(); observeThumbs();
-  // v1.5.22: 蓝飞机接口未开放 -> 下载区整个 tab 隐藏, 只留香蕉网
-  const tt = $("#gbTgTab");
-  if (tt){
-    if (S.tg_enabled === false){
-      tt.style.display = "none";
-      $$(".gbtab").forEach(x => x.classList.toggle("on", x.dataset.tab === "banana"));
-      const bp = $("#gbBananaPane"), tp = $("#gbTgPane");
-      if (bp) bp.style.display = "";
-      if (tp) tp.style.display = "none";
-    } else {
-      tt.style.display = "";
-    }
-  }
 }
 
 function renderPath(){
@@ -4079,6 +4000,19 @@ async function gbConfirm(msg){
 }
 
 if ($("#btnGB")) $("#btnGB").onclick = gbOpen;
+if ($("#btnZZZTool")) $("#btnZZZTool").onclick = zzzToolOpen;
+async function zzzToolOpen(){
+  try{
+    let r = await api("/api/zzz_tool", {});
+    if (r.need_pick){
+      let p = await api("/api/zzz_tool_pick", {});
+      if (!p.ok){ toast(p.msg || "未选择文件夹", "err"); return; }
+      toast((p.msg || "已记住文件夹") + "，正在打开…");
+      r = await api("/api/zzz_tool", {});
+    }
+    toast(r.msg || (r.ok ? "已打开" : "打开失败"), r.ok ? "" : "err");
+  }catch(e){ toast("出错了: " + e.message, "err"); }
+}
 if ($("#gbCloseX")) $("#gbCloseX").onclick = gbClose;
 if ($("#gbCloseF")) $("#gbCloseF").onclick = gbClose;
 if ($("#gbMask")) $("#gbMask").onclick = () => { gbCloseDl(); gbClose(); };
@@ -4168,113 +4102,6 @@ if ($("#gbDlSet")) $("#gbDlSet").onclick = async () => {
   }finally{ btn.disabled = false; btn.textContent = old; }
 };
 
-// ===== v1.5.17: 下载区 tab 切换 + 蓝飞机(Telegram) 面板 =====
-$$(".gbtab").forEach(b => b.onclick = () => {
-  const tab = b.dataset.tab;
-  // v1.5.22: 蓝飞机暂时关闭(S.tg_enabled=false)时, 点它无效
-  if (tab === "tg" && S && S.tg_enabled === false) return;
-  $$(".gbtab").forEach(x => x.classList.toggle("on", x === b));
-  $("#gbBananaPane").style.display = tab === "banana" ? "" : "none";
-  $("#gbTgPane").style.display = tab === "tg" ? "" : "none";
-  if (tab === "tg") tgOnShow();
-});
-
-let tgPhoneHash = "";
-function tgSetStat(t, cls){
-  const e = $("#tgLoginStat");
-  if (!e) return;
-  e.textContent = t;
-  e.style.color = cls === "err" ? "#d9734a" : (cls === "ok" ? "var(--accent)" : "var(--txt2)");
-}
-async function tgOnShow(){
-  try{
-    const r = await api("/api/tg_status", {});
-    if (!r) return;
-    if (r.api_id) $("#tgApiId").value = r.api_id;
-    if (r.api_hash) $("#tgApiHash").value = r.api_hash;
-    if (r.proxy) $("#tgProxy").value = r.proxy;
-    if (r.logged_in){
-      tgSetStat("✅ 已登录（本机 session 有效），可直接导入", "ok");
-      const imp = $("#tgImport"); if (imp) imp.disabled = false;
-    } else if (r.configured){
-      tgSetStat("已保存凭据，请填手机号发验证码登录", "");
-    } else if (!r.telethon){
-      tgSetStat("⚠️ 后端未安装 telethon，蓝飞机导入不可用（见发布说明）", "err");
-    } else {
-      tgSetStat("首次使用：请填写上面的设置并登录", "");
-    }
-  }catch(e){ tgSetStat("状态读取失败: " + e.message, "err"); }
-}
-if ($("#tgSendCode")) $("#tgSendCode").onclick = async () => {
-  const api_id = ($("#tgApiId").value || "").trim();
-  const api_hash = ($("#tgApiHash").value || "").trim();
-  const proxy = ($("#tgProxy").value || "").trim();
-  const phone = ($("#tgPhone").value || "").trim();
-  if (!api_id || !api_hash){ toast("先填 api_id / api_hash", "err"); return; }
-  if (!phone){ toast("填手机号（含国家码）", "err"); return; }
-  await api("/api/tg_save_cfg", { api_id, api_hash, proxy });
-  const btn = $("#tgSendCode"); btn.disabled = true; const old = btn.textContent; btn.textContent = "发送中…";
-  try{
-    const r = await api("/api/tg_send_code", { phone });
-    if (r.ok){ tgPhoneHash = r.phone_code_hash || ""; tgSetStat("✅ 验证码已发到 " + phone + "，请填到「验证码」", "ok"); }
-    else tgSetStat("发送失败: " + (r.msg || "?") + "（连接问题请确认代理/魔法已开启）", "err");
-  }catch(e){ tgSetStat("发送失败: " + e.message, "err"); }
-  finally{ btn.disabled = false; btn.textContent = old; }
-};
-if ($("#tgSignIn")) $("#tgSignIn").onclick = async () => {
-  const phone = ($("#tgPhone").value || "").trim();
-  const code = ($("#tgCode").value || "").trim();
-  const pw = ($("#tgPw").value || "").trim();
-  if (!code && !pw){ toast("填验证码（或两步验证密码）", "err"); return; }
-  const btn = $("#tgSignIn"); btn.disabled = true; const old = btn.textContent; btn.textContent = "登录中…";
-  try{
-    const r = await api("/api/tg_sign_in", { phone, code, password: pw, phone_code_hash: tgPhoneHash });
-    if (r.ok && r.logged_in){ tgSetStat("✅ 登录成功，可导入", "ok"); toast("登录成功"); }
-    else if (r.need_password){ tgSetStat("需要两步验证密码，请填到「两步验证密码」再点登录", "err"); }
-    else tgSetStat("登录失败: " + (r.msg || "?"), "err");
-  }catch(e){ tgSetStat("登录失败: " + e.message, "err"); }
-  finally{ btn.disabled = false; btn.textContent = old; }
-};
-if ($("#tgMyChats")) $("#tgMyChats").onclick = async () => {
-  const btn = $("#tgMyChats"); btn.disabled = true; const old = btn.textContent; btn.textContent = "读取中…";
-  try{
-    const r = await api("/api/tg_list", {});
-    if (r && r.ok && r.items && r.items.length){
-      const pick = window.prompt("选择要导入的频道（输入序号）:\n" +
-        r.items.map((c,i)=>`${i+1}. ${c.title}${c.username?" @"+c.username:""}`).join("\n"), "");
-      if (pick){ const m = pick.match(/\d+/); if (m){ const c = r.items[parseInt(m[1],10)-1]; if (c) $("#tgChannel").value = c.username ? "@"+c.username : (c.title || String(c.id)); } }
-    } else if (r && r.msg){ toast(r.msg, "err"); }
-    else toast("没读到频道（先登录；连接问题请确认代理/魔法已开启）", "err");
-  }catch(e){ toast("读取失败: " + e.message, "err"); }
-  finally{ btn.disabled = false; btn.textContent = old; }
-};
-if ($("#tgImport")) $("#tgImport").onclick = async () => {
-  const channel = ($("#tgChannel").value || "").trim();
-  const prev = $("#tgPrev") && $("#tgPrev").checked;
-  if (!channel){ toast("填频道 @用户名 / t.me/xxx", "err"); return; }
-  const btn = $("#tgImport"); btn.disabled = true; const old = btn.textContent; btn.textContent = "导入中…";
-  try{
-    const r = await api("/api/tg_import", { channel, prev });
-    if (r && r.ok){
-      if (r.items && r.items.length){
-        $("#tgEmpty").style.display = "none";
-        $("#tgList").innerHTML = r.items.map(it => `<div class="gbitem">
-          <div class="meta"><div class="nm">${esc(it.name)}</div>
-          <div class="sub">${esc(it.sub || "")}</div></div>
-          <div class="acts"><button class="btn" data-open="${esc(it.path||"")}">打开</button></div></div>`).join("");
-        $("#tgList").querySelectorAll("[data-open]").forEach(b => b.onclick = () => {
-          const p = b.dataset.open; if (p) api("/api/tg_open", { path: p });
-        });
-        $("#tgCount").textContent = "导入 " + r.items.length + " 个文件";
-        toast("导入完成 " + r.items.length + " 个文件", "ok");
-      } else {
-        $("#tgCount").textContent = r.msg || "没有可导出的文件";
-        toast(r.msg || "没有可导出的文件", "ok");
-      }
-    } else toast((r && r.msg) || "导入失败", "err");
-  }catch(e){ toast("导入失败: " + e.message, "err"); }
-  finally{ btn.disabled = false; btn.textContent = old; }
-};
 
 load();
 // ---------------- v1.5.31 连拍挑帧 + 照片墙 ----------------
