@@ -909,7 +909,7 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
     </div>
     <div class="spacer"></div>
     <button class="btn primary" id="btnLaunch" title="用 ZZMI 直接启动绝区零(需要管理员授权, 会弹 UAC 窗口)">▶ 启动游戏</button>
-    <button class="btn ghost" id="btnZZZTool" title="脚本启动 &amp; 文件替换: 一键以管理员打开脚本 Launcher.exe → 打开使用说明 → 启动游戏; 并在同一个面板里一键切换 国服 ⇄ 国际服 文件">📂 脚本启动</button>
+    <button class="btn ghost" id="btnZZZTool" title="国服 ⇄ 国际服 文件替换: 一键在两套文件之间切换。用脚本要换国际服, 更新游戏要换回国服">🔄 文件替换</button>
     <button class="btn" id="btnUndo" title="撤销上一步操作">↶ 撤销</button>
     <button class="btn" id="btnRescan" title="重新扫描 Mods 目录">⟳ 重新扫描</button>
     <button class="btn ghost" id="btnLib" title="管理 Mods 外面的仓库目录">🗄 仓库</button>
@@ -1207,34 +1207,19 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
 <!-- v1.5.61: 脚本启动 / 国服国际服文件互转 面板 -->
 <div class="mask" id="zsMask"></div>
 <div class="modal" id="mZS" style="width:min(560px,94vw)">
-  <div class="dh"><h3>📂 脚本启动 &amp; 文件替换</h3>
+  <div class="dh"><h3>🔄 国服 ⇄ 国际服 文件替换</h3>
     <button class="xbtn" id="zsCloseX">✕</button></div>
   <div class="dbody">
     <!-- v1.5.63: 自动扫描条 -->
     <div class="zscan" id="zsScanBar">
       <span class="zscan-ico">🔍</span>
       <span class="zscan-msg hint" id="zsScanMsg">正在自动扫描文件夹…</span>
-      <button class="btn mini3" id="zsRescan" title="重新在常见位置找一遍三个文件夹">重新扫描</button>
+      <button class="btn mini3" id="zsRescan" title="重新在常见位置找一遍文件夹">重新扫描</button>
     </div>
 
-    <!-- 一、脚本启动 -->
+    <!-- 文件互转 -->
     <div class="zsec">
-      <div class="zsec-t">① 脚本启动（注入器 + 游戏）</div>
-      <div class="zsec-d">一键：以<b>管理员</b>打开 <code>Launcher.exe</code> → 打开 <code>使用说明.txt</code> → 启动游戏。</div>
-      <div class="zrow">
-        <input class="inp zpath" id="zsToolDir" type="text" readonly placeholder="尚未找到注入器文件夹（可点📁手动选）" />
-        <button class="btn mini3" id="zsToolPick">📁 选择</button>
-      </div>
-      <div class="zrow zrow-act">
-        <button class="btn primary" id="zsToolRun">🚀 一键启动脚本+游戏</button>
-        <button class="btn mini3" id="zsDiag" title="排查用：先手动双击 Launcher.exe，再点这里，把脚本进程的真实状态记进日志">🩺 诊断</button>
-        <span class="hint" id="zsToolInfo"></span>
-      </div>
-    </div>
-
-    <!-- 二、文件互转 -->
-    <div class="zsec">
-      <div class="zsec-t">② 国服 ⇄ 国际服 文件替换</div>
+      <div class="zsec-t">在两套文件之间切换</div>
       <div class="zsec-d">点下面的按钮，自动在国服 / 国际服两套文件之间切换（两套各存一份，互相覆盖，不用备份）。</div>
 
       <div class="zside" id="zsSide">
@@ -4133,21 +4118,19 @@ async function zsAutoScan(force){
   try{
     const r = await api("/api/zzz_autodetect", {force: !!force});
     if (r.skipped){
-      zsScanState("done", "✓ 三个文件夹都正常");
+      zsScanState("done", "✓ 两个文件夹都正常");
     } else {
       const got = [];
-      if (r.tool) got.push("注入器");
       if (r.cn) got.push("国服原文件");
       if (r.intl) got.push("国际服替换");
       const miss = [];
-      if (!r.tool) miss.push("注入器");
       if (!r.cn) miss.push("国服原文件");
       if (!r.intl) miss.push("国际服替换");
       if (miss.length){
         zsScanState("warn", "扫描完成（" + r.elapsed + "s）：找到 " +
           (got.join("、") || "无") + "；没找到 " + miss.join("、") + "，请点 📁 手动选");
       } else {
-        zsScanState("done", "✓ 已自动找到全部 3 个文件夹（" + r.elapsed + "s）");
+        zsScanState("done", "✓ 已自动找到两个文件夹（" + r.elapsed + "s）");
       }
       if (r.changed && r.changed.length)
         toast("已自动填好：" + r.changed.join("、"), "", 5000);
@@ -4161,7 +4144,6 @@ async function zsAutoScan(force){
 async function zsRefresh(){
   try{
     const r = await api("/api/zzz_swap_status", {});
-    if ($("#zsToolDir")) $("#zsToolDir").value = r.tool_dir || "";
     if ($("#zsCnDir")) $("#zsCnDir").value = r.cn_dir || "";
     if ($("#zsIntlDir")) $("#zsIntlDir").value = r.intl_dir || "";
     const box = $("#zsSide");
@@ -4194,37 +4176,12 @@ async function zsRefresh(){
       '<span class="hint">检测失败: ' + esc(e.message) + '</span>';
   }
 }
-async function zsToolPick(){
-  try{
-    const r = await api("/api/zzz_tool_pick", {});
-    toast(r.msg || (r.ok ? "已记住" : "未选择"), r.ok ? "" : "err", 7000);
-    if (r.ok) zsRefresh();
-  }catch(e){ toast("出错了: " + e.message, "err", 8000); }
-}
 async function zsSwapPick(which){
   try{
     const r = await api("/api/zzz_swap_pick", {which});
     toast(r.msg || (r.ok ? "已记住" : "未选择"), r.ok ? "" : "err", 8000);
     if (r.ok) zsRefresh();
   }catch(e){ toast("出错了: " + e.message, "err", 8000); }
-}
-async function zsToolRun(){
-  const btn = $("#zsToolRun");
-  const old = btn ? btn.textContent : "";
-  if (btn){ btn.disabled = true; btn.textContent = "⏳ 启动中（等脚本挂上）…"; }
-  toast("① 正在启动脚本…（先清残留 → 经资源管理器启动，与手动双击同一条路；等 3 秒后自动开游戏）", "", 7000);
-  try{
-    let r = await api("/api/zzz_tool", {});
-    if (r.need_pick){
-      const p = await api("/api/zzz_tool_pick", {});
-      if (!p.ok){ toast(p.msg || "未选择文件夹", "err", 7000); return; }
-      toast((p.msg || "已记住文件夹") + "，正在打开…", "", 4000);
-      r = await api("/api/zzz_tool", {});
-      zsRefresh();
-    }
-    toast(r.msg || (r.ok ? "已打开" : "打开失败"), r.ok ? "" : "err", 9000);
-  }catch(e){ toast("出错了: " + e.message, "err", 9000); }
-  finally{ if (btn){ btn.disabled = false; btn.textContent = old; } }
 }
 async function zsDoSwap(side){
   const label = side === "auto" ? "一键互转" : (side === "cn" ? "换成国服" : "换成国际服");
@@ -4242,16 +4199,7 @@ async function zsDoSwap(side){
 if ($("#zsCloseX")) $("#zsCloseX").onclick = () => zsShow(false);
 if ($("#zsCloseF")) $("#zsCloseF").onclick = () => zsShow(false);
 if ($("#zsMask")) $("#zsMask").onclick = () => zsShow(false);
-if ($("#zsToolPick")) $("#zsToolPick").onclick = zsToolPick;
 if ($("#zsRescan")) $("#zsRescan").onclick = () => zsAutoScan(true);
-if ($("#zsToolRun")) $("#zsToolRun").onclick = zsToolRun;
-if ($("#zsDiag")) $("#zsDiag").onclick = async () => {
-  toast("正在采集脚本进程状态…", "", 4000);
-  try{
-    const r = await api("/api/zzz_diag", {});
-    toast(r.msg || (r.ok ? "已采集" : "采集失败"), r.ok ? "" : "err", 8000);
-  }catch(e){ toast("出错了: " + e.message, "err", 8000); }
-};
 if ($("#zsCnPick")) $("#zsCnPick").onclick = () => zsSwapPick("cn");
 if ($("#zsIntlPick")) $("#zsIntlPick").onclick = () => zsSwapPick("intl");
 if ($("#zsSwap")) $("#zsSwap").onclick = () => zsDoSwap("auto");

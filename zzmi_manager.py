@@ -5,6 +5,23 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.67 更新
+-----------
+* **删: 「脚本启动 / 一键启动脚本+游戏」功能整体移除**(用户明确要求: 自己手动启动脚本)。
+  连带删掉: 侧栏按钮、面板里的「① 脚本启动」整块、以及后端
+  `zzz_tool` / `zzz_tool_pick` / `zzz_diag` 三个接口。
+* **删: 「🩺 诊断」按钮**(用户: "诊断这没用的玩意还在 而且根本打开不了")。
+  连同进程探测/提权启动的全部代码(`run_exe_admin`、`_kill_proc_by_name`、
+  `_zzz_diag_launcher`、`_zzz_diag_game`、`_enum_processes`、`_proc_path`、
+  `_proc_cmdline`、`_pid_is_admin`、`_am_i_admin`)一起清掉。
+* **改: 侧栏按钮「📂 脚本启动」→「🔄 文件替换」**, 面板标题改为
+  「🔄 国服 ⇄ 国际服 文件替换」, 只保留文件互转这一个功能。
+* **改: 自动扫描只找两个文件夹**(国服原文件 / 国际服替换), 不再扫注入器文件夹。
+* 说明: 版本切换 **仍然只有 3 个文件真的不同** ——
+  `GameAssembly.dll`(国服 533644064 / 国际服 533617456)、
+  `mhypbase.dll`(26719176 / 26739680)、
+  `il2cpp_data/global-metadata.dat`(119482496 / 119482276)。
+
 v1.5.63 更新
 -----------
 * **新: 三个文件夹全自动扫描, 不用再手动选**(用户要求)。打开面板时自动找:
@@ -801,7 +818,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.66"
+VERSION = "1.5.67"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -908,7 +925,7 @@ DEFAULT_CONFIG = {
     "update_repo": UPDATE_REPO,
     "downloads_dir": "",        # v1.5.12 下载区: mod 下载到哪(空=数据目录/downloads)
     "show_translated": True,    # v1.5.12 下载区: 是否显示中文译名
-    "zzz_tool_dir": "",         # 注入器文件夹(Launcher.exe / Cheat.dll / 使用说明.txt): 不打包, 用户自选
+    # v1.5.67: 脚本启动功能已移除, 不再需要 zzz_tool_dir
     # v1.5.61: 国服/国际服 文件互转 —— 两套文件各存一份, 互相覆盖即可(无需备份)
     "cn_files_dir": "",         # 「国服原文件」文件夹(根下要有 GameAssembly.dll / mhypbase.dll / il2cpp_data)
     "intl_files_dir": "",       # 「国际服替换文件」文件夹(根下是 替换文件/ 或直接是这三个)
@@ -4567,8 +4584,7 @@ def launch_game(cfg):
     需要管理员权限注入(d3dx.ini: require_admin=true), 所以必须用 ShellExecute 的
     runas 走 UAC, 否则 CreateProcess 会报 WinError 740。
 
-    用户实测: 走 XXMI 启动是可以同时挂 mod + 用脚本的, 所以「一键启动脚本+游戏」
-    继续走这里没问题(问题不在拉谁, 见 zzz_tool 里的时序/权限说明)。
+    用户实测: 走 XXMI 启动是可以同时挂 mod + 用脚本的。
     """
     exe = cfg.get("launcher_exe") or ""
     if not os.path.isfile(exe):
@@ -4615,325 +4631,12 @@ def launch_game(cfg):
     return True, "已启动游戏 (--nogui --xxmi %s)" % importer
 
 
-def _am_i_admin():
-    """当前进程是否真的拿到了管理员令牌(虚拟机/组策略下的"管理员"可能是假的)。"""
-    try:
-        import ctypes
-        return bool(ctypes.windll.shell32.IsUserAnAdmin())
-    except Exception:
-        return False
-
-
-def _zzz_diag_launcher(exe, how):
-    """v1.5.64 诊断: 启动 Launcher.exe 后, 采集它【真实进程】的状态并写日志。
-
-    为什么需要: 用户实测「管理器一键启动 -> 脚本菜单能呼出但功能全废;
-    手动双击 -> 一切正常」, 而 runas 返回值必然是成功(不能区分对错),
-    必须去看真进程的: 在不在 / 是不是管理员 / 命令行 / 父进程是谁。
-    `how` 标记来源(runas / 手动)。
-    ⚠ 不能用 wmic —— 新版 Windows 已移除该命令, 必须纯 ctypes。
-    """
-    base = os.path.basename(exe).lower()
-    time.sleep(1.8)         # 给进程一点起来的时间
-    try:
-        procs = _enum_processes()
-    except Exception as ex:
-        log("[诊断][%s] 枚举进程失败: %s" % (how, ex))
-        return
-    by_pid = {p[0]: p for p in procs}
-    hits = [p for p in procs if p[2].lower() == base]
-    if not hits:
-        log("[诊断][%s] ✗ 没找到 %s 进程 —— 脚本其实没起来!" % (how, base))
-        return
-    for pid, ppid, name in hits:
-        p = by_pid.get(ppid)
-        log("[诊断][%s] PID=%s | 管理员=%s | 父进程=%s | 路径=%s | 命令行=%s"
-            % (how, pid, _pid_is_admin(pid),
-               (p[2] if p else "(已退出)") + "(%s)" % ppid,
-               _proc_path(pid) or "?", _proc_cmdline(pid) or "(空)"))
-    # v1.5.66: 顺便把【游戏进程】也记下来 —— 用户实测脚本进程两种方式完全一致,
-    # 那差异只可能在"游戏是怎么起来的"上, 必须一起对比。
-    _zzz_diag_game(how)
-
-
-# 游戏相关进程名(小写, 精确匹配 exe 名)
-_ZZZ_GAME_PROC = ("zenlesszonezero.exe", "xxmi launcher.exe",
-                  "hoyoplay.exe", "hoyolauncher.exe", "launcher.exe")
-
-
-def _kill_proc_by_name(names, exclude_pids=()):
-    """v1.5.66: 结束指定 exe 名的所有进程。返回被杀掉的 [(pid, name), ...]。
-
-    为什么要这个: 「一键启动脚本+游戏」如果上一次的脚本(Launcher.exe)还残留着,
-    再启动一个新的, 两个注入器会同时往游戏里注入 —— 实测表现就是
-    「菜单能呼出、功能全废」(用户手动双击时只有一个脚本, 所以正常)。
-    启动前先清干净, 保证永远只有一个脚本实例。
-    """
-    killed = []
-    names = {n.lower() for n in names}
-    try:
-        procs = _enum_processes()
-    except Exception as ex:
-        log("[清理] 枚举进程失败:", ex)
-        return killed
-    for pid, ppid, name in procs:
-        if name.lower() not in names:
-            continue
-        if pid in exclude_pids:
-            continue
-        try:
-            # 1 = PROCESS_TERMINATE 需要; 用 OpenProcess + TerminateProcess
-            h = ctypes.windll.kernel32.OpenProcess(0x0001 | 0x1000, False, pid)
-            if not h:
-                # 普通权限打不开管理员进程 —— 记下来让调用方提示
-                log("[清理] 无法结束 %s(PID=%s) —— 权限不足, 可能还残留"
-                    % (name, pid))
-                continue
-            ok = ctypes.windll.kernel32.TerminateProcess(h, 1)
-            ctypes.windll.kernel32.CloseHandle(h)
-            if ok:
-                killed.append((pid, name))
-                log("[清理] 已结束残留 %s (PID=%s)" % (name, pid))
-            else:
-                log("[清理] TerminateProcess 失败 %s (PID=%s) err=%s"
-                    % (name, pid, ctypes.get_last_error()))
-        except Exception as ex:
-            log("[清理] 结束 %s(PID=%s) 异常: %s" % (name, pid, ex))
-    return killed
-
-
-def _zzz_diag_game(how):
-    """记录当前与游戏启动链相关的所有进程(名/管理员/父进程/命令行)。"""
-    try:
-        procs = _enum_processes()
-    except Exception as ex:
-        log("[诊断][%s] 游戏进程枚举失败: %s" % (how, ex))
-        return
-    by_pid = {p[0]: p for p in procs}
-    seen = []
-    for pid, ppid, name in procs:
-        n = name.lower()
-        # Launcher.exe 已经在上一步记过了, 这里只看游戏/启动器
-        if n in ("zenlesszonezero.exe", "xxmi launcher.exe",
-                 "hoyoplay.exe", "hoyolauncher.exe"):
-            seen.append((pid, ppid, name))
-    if not seen:
-        log("[诊断][%s] (游戏进程: 尚未启动)" % how)
-        return
-    for pid, ppid, name in seen:
-        p = by_pid.get(ppid)
-        log("[诊断][%s] 游戏链 %s | PID=%s | 管理员=%s | 父进程=%s | 命令行=%s"
-            % (how, name, pid, _pid_is_admin(pid),
-               (p[2] if p else "(已退出)") + "(%s)" % ppid,
-               _proc_cmdline(pid) or "(空)"))
-
-
-# ---- 以下三个是纯 ctypes 的进程信息读取(wmic 已被新版 Windows 移除) ----
-
-class _PROCESSENTRY32W(ctypes.Structure):
-    _fields_ = [
-        ("dwSize", ctypes.wintypes.DWORD),
-        ("cntUsage", ctypes.wintypes.DWORD),
-        ("th32ProcessID", ctypes.wintypes.DWORD),
-        ("th32DefaultHeapID", ctypes.POINTER(ctypes.c_ulong)),
-        ("th32ModuleID", ctypes.wintypes.DWORD),
-        ("cntThreads", ctypes.wintypes.DWORD),
-        ("th32ParentProcessID", ctypes.wintypes.DWORD),
-        ("pcPriClassBase", ctypes.c_long),
-        ("dwFlags", ctypes.wintypes.DWORD),
-        ("szExeFile", ctypes.c_wchar * 260),
-    ]
-
-
-def _enum_processes():
-    """返回 [(pid, ppid, exe名), ...]"""
-    k32 = ctypes.windll.kernel32
-    TH32CS_SNAPPROCESS = 0x00000002
-    snap = k32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
-    if snap == -1:
-        return []
-    out = []
-    try:
-        pe = _PROCESSENTRY32W()
-        pe.dwSize = ctypes.sizeof(pe)
-        ok = k32.Process32FirstW(snap, ctypes.byref(pe))
-        while ok:
-            out.append((pe.th32ProcessID, pe.th32ParentProcessID, pe.szExeFile))
-            ok = k32.Process32NextW(snap, ctypes.byref(pe))
-    finally:
-        k32.CloseHandle(snap)
-    return out
-
-
-def _proc_path(pid):
-    k32 = ctypes.windll.kernel32
-    h = k32.OpenProcess(0x1000, False, pid)     # QUERY_LIMITED_INFORMATION
-    if not h:
-        return None
-    try:
-        buf = ctypes.create_unicode_buffer(1024)
-        size = ctypes.wintypes.DWORD(1024)
-        if k32.QueryFullProcessImageNameW(h, 0, buf, ctypes.byref(size)):
-            return buf.value
-        return None
-    finally:
-        k32.CloseHandle(h)
-
-
-class _UNICODE_STRING(ctypes.Structure):
-    _fields_ = [("Length", ctypes.wintypes.USHORT),
-                ("MaximumLength", ctypes.wintypes.USHORT),
-                ("Buffer", ctypes.c_void_p)]
-
-
-class _PROCESS_BASIC_INFORMATION(ctypes.Structure):
-    _fields_ = [("Reserved1", ctypes.c_void_p),
-                ("PebBaseAddress", ctypes.c_void_p),
-                ("Reserved2", ctypes.c_void_p * 2),
-                ("UniqueProcessId", ctypes.c_void_p),
-                ("Reserved3", ctypes.c_void_p)]
-
-
-def _proc_cmdline(pid):
-    """读目标进程命令行(走 PEB)。读不到返回 None。"""
-    k32 = ctypes.windll.kernel32
-    ntd = ctypes.windll.ntdll
-    h = k32.OpenProcess(0x0400 | 0x0010, False, pid)   # QUERY_INFORMATION|VM_READ
-    if not h:
-        return None
-    try:
-        pbi = _PROCESS_BASIC_INFORMATION()
-        ret = ctypes.c_ulong()
-        if ntd.NtQueryInformationProcess(h, 0, ctypes.byref(pbi),
-                                         ctypes.sizeof(pbi),
-                                         ctypes.byref(ret)) != 0:
-            return None
-        pp = ctypes.c_void_p()
-        if not k32.ReadProcessMemory(h, ctypes.c_void_p(
-                pbi.PebBaseAddress + 0x20), ctypes.byref(pp),
-                ctypes.sizeof(pp), None):
-            return None
-        us = _UNICODE_STRING()
-        if not k32.ReadProcessMemory(h, ctypes.c_void_p(pp.value + 0x70),
-                                     ctypes.byref(us), ctypes.sizeof(us), None):
-            return None
-        if not us.Length:
-            return ""
-        buf = ctypes.create_unicode_buffer(us.Length // 2 + 1)
-        if not k32.ReadProcessMemory(h, ctypes.c_void_p(us.Buffer),
-                                     buf, us.Length, None):
-            return None
-        return buf.value
-    except Exception:
-        return None
-    finally:
-        k32.CloseHandle(h)
-
-
-def _pid_is_admin(pid):
-    """判断 PID 的进程是否以提权令牌在跑。失败返回 None(未知)。"""
-    try:
-        import ctypes.wintypes as wt
-        k32 = ctypes.windll.kernel32
-        adv = ctypes.windll.advapi32
-        h = k32.OpenProcess(0x1000, False, pid)
-        if not h:
-            return None
-        try:
-            tok = wt.HANDLE()
-            if not adv.OpenProcessToken(h, 0x0008, ctypes.byref(tok)):
-                return None
-            try:
-                elev = wt.DWORD(0)
-                ret = wt.DWORD(0)
-                if not adv.GetTokenInformation(
-                        tok, 20, ctypes.byref(elev), ctypes.sizeof(elev),
-                        ctypes.byref(ret)):
-                    return None
-                return bool(elev.value)
-            finally:
-                k32.CloseHandle(tok)
-        finally:
-            k32.CloseHandle(h)
-    except Exception:
-        return None
-
-
-def run_exe_admin(exe, workdir=""):
-    """以管理员权限启动一个 exe, 返回 (ok, msg)。
-
-    v1.5.66 关键改动 —— 用户实测「手动双击 Launcher.exe 一切正常; 用管理器
-    "一键启动"则脚本菜单能呼出、功能全废」。诊断证实两种方式的脚本进程
-    (权限/路径/命令行) **完全一致**, 唯一差别是**父进程**:
-        手动双击 -> 父进程 = explorer.exe
-        管理器起 -> 父进程 = ZZMI-Mod-Manager.exe
-    很多注入器会检查/依赖启动来源(甚至只认 explorer 起的进程)。所以这里改成:
-        **让 explorer.exe 去启动脚本** —— 父进程与手动双击完全一致。
-    explorer 本身非提权, 但 Launcher.exe 自带 requireAdministrator 清单,
-    系统会为它弹 UAC 提权(用户已是管理员时静默同意), 效果等同手动双击。
-
-    兜底: 若 explorer 方式失败, 回落到原来的 ShellExecuteW runas。
-    """
-    if not os.path.isfile(exe):
-        return False, "找不到文件: %s" % exe
-    parent_admin = _am_i_admin()
-    wd = workdir or os.path.dirname(exe)
-    if os.name == "nt":
-        # —— 方式一(首选): 交给 explorer.exe 启动, 父进程 = explorer ——
-        try:
-            import ctypes
-            # explorer.exe "<exe>"  —— 用资源管理器的 ShellExecute 语义打开
-            # 注意不要传 runas, 让目标 exe 自己的清单去决定是否提权(与双击一致)
-            rc = ctypes.windll.shell32.ShellExecuteW(
-                None, "open", "explorer.exe", '"%s"' % exe, wd, 0)
-            log("[脚本启动] explorer 方式 rc=%s parent_admin=%s exe=%s"
-                % (rc, parent_admin, exe))
-            if rc > 32:
-                try:
-                    _zzz_diag_launcher(exe, "explorer")
-                except Exception as ex:
-                    log("[诊断] 采集失败:", ex)
-                return True, ("已通过资源管理器启动脚本(与手动双击同一条路), "
-                              "若弹 UAC 请点「是」")
-        except Exception as ex:
-            log("[脚本启动] explorer 方式异常, 回落 runas:", ex)
-        # —— 方式二(兜底): 原来的 runas ——
-        try:
-            import ctypes
-            rc = ctypes.windll.shell32.ShellExecuteW(
-                None, "runas", exe, None, wd, 1)
-            log("[脚本启动] runas(兜底) rc=%s parent_admin=%s exe=%s wd=%s"
-                % (rc, parent_admin, exe, wd))
-            if rc > 32:
-                # v1.5.64 诊断: 启动后去查【实际跑起来的进程】到底什么状态。
-                # 用户实测「管理器启动 -> 脚本菜单能出但功能全废; 手动双击 -> 正常」,
-                # 光看 runas 返回值(必然成功)找不出差异, 必须看真进程。
-                try:
-                    _zzz_diag_launcher(exe, "runas")
-                except Exception as ex:
-                    log("[诊断] 采集失败:", ex)
-                if parent_admin:
-                    return True, ("已以管理员身份启动脚本(本程序已是管理员, "
-                                  "系统静默提权、不会再弹 UAC)")
-                return True, "已请求管理员权限 —— 请在 UAC 弹窗点「是」"
-            if rc == 5:
-                return False, "你取消了管理员授权, 没有启动(请再点一次并选「是」)"
-            if rc == 2:
-                return False, "找不到启动器文件"
-            if rc == 0:
-                return False, "系统内存不足, 启动被拒绝"
-            return False, "启动被系统拒绝 (错误码 %d)" % rc
-        except Exception as ex:
-            # 不再回落到非提权启动 —— 见函数头 v1.5.60 说明
-            log("[脚本启动] runas 抛异常(RC 未拿到), 不再降权启动:", ex)
-            return False, ("提权启动失败: %s\n"
-                           "请右键本程序「以管理员身份运行」后重试" % ex)
-    # 非 Windows(理论上到不了这里) —— 普通方式
-    try:
-        subprocess.Popen([exe], cwd=workdir or os.path.dirname(exe), close_fds=True)
-        return True, "已启动(非 Windows 环境, 未提权)"
-    except Exception as ex:
-        return False, "启动失败: %s" % ex
+# ===========================================================================
+# v1.5.67: 脚本启动相关的全部进程探测/提权启动代码已按用户要求删除。
+# (run_exe_admin / _kill_proc_by_name / _zzz_diag_launcher / _zzz_diag_game /
+#  _enum_processes / _proc_path / _proc_cmdline / _pid_is_admin / _am_i_admin)
+# 只保留下面的「国服 ⇄ 国际服 文件替换」功能。
+# ===========================================================================
 
 
 # ===========================================================================
@@ -5017,8 +4720,8 @@ _ZZZ_SKIP_DIRS = {
 }
 
 
-def _zzz_scan_root(root, deadline, tool_hits, dll_hits, seen, max_depth=4):
-    """在 root 下(限深)找: 注入器文件夹 / 含 GameAssembly.dll 的文件夹。"""
+def _zzz_scan_root(root, deadline, dll_hits, seen, max_depth=4):
+    """在 root 下(限深)找: 含 GameAssembly.dll 的文件夹(国服/国际服包)。"""
     # ⚠ 必须用 normpath 而不是 rstrip: 对 "F:\\" 这种盘根, rstrip 会变成 "F:" ——
     # 那是个"该盘的当前目录"相对路径, os.walk 出来的 dp 会缺分隔符(实测出现
     # `F:11aa快捷方式\...` 这种畸形路径)。
@@ -5036,10 +4739,6 @@ def _zzz_scan_root(root, deadline, tool_hits, dll_hits, seen, max_depth=4):
             if dp.rstrip("\\/").count(os.sep) - base_depth >= max_depth:
                 dns[:] = []
             low = {f.lower() for f in fns}
-            if "launcher.exe" in low and "cheat.dll" in low:
-                if dp not in seen:
-                    tool_hits.append(dp)
-                    seen.add(dp)
             if "gameassembly.dll" in low:
                 if dp not in seen:
                     dll_hits.append(dp)
@@ -5098,19 +4797,13 @@ def _zzz_pick_best(hits, prefer, keys):
     return sorted(hits, key=lambda h: (-score(h), h.count(os.sep), len(h)))[0]
 
 
-def _zzz_ok_tool(d):
-    return bool(d) and os.path.isfile(os.path.join(d, "Launcher.exe"))
-
-
 def _zzz_ok_src(d):
     return bool(d) and _zzz_src_dll_size(_zzz_resolve_source(d)) > 0
 
 
 def _zzz_need_scan(cfg):
-    """三个路径是不是都还活着 —— 有一个空的/失效的就得扫。"""
+    """两个路径是不是都还活着 —— 有一个空的/失效的就得扫。"""
     cfg = cfg or {}
-    if not _zzz_ok_tool((cfg.get("zzz_tool_dir") or "").strip()):
-        return True
     for key in ("cn_files_dir", "intl_files_dir"):
         if not _zzz_ok_src((cfg.get(key) or "").strip()):
             return True
@@ -5118,26 +4811,25 @@ def _zzz_need_scan(cfg):
 
 
 def _zzz_autodetect(cfg, budget=5.0, force=False):
-    """自动扫描并校准三个文件夹。返回 dict。
+    """自动扫描并校准两个文件夹(国服原文件 / 国际服替换)。返回 dict。
 
     分两阶段: ① 上次配过的路径 + 它的父/祖父目录(最可能, 也最快);
-              ② 桌面/下载/文档 + 各盘根(限深 3 层)。
+              ② 桌面/下载/文档 + 各盘根(限深 4 层)。
     总时长封顶 budget 秒, 到点就返回已经找到的, 不让界面干等。
     """
     t0 = time.time()
     deadline = t0 + budget
     cfg = cfg or {}
-    tool_hits, dll_hits, seen = [], [], set()
+    dll_hits, seen = [], set()
 
     if not force and not _zzz_need_scan(cfg):
         return {"skipped": True, "elapsed": 0.0,
-                "tool": cfg.get("zzz_tool_dir") or "",
                 "cn": cfg.get("cn_files_dir") or "",
                 "intl": cfg.get("intl_files_dir") or ""}
 
     home = os.path.expanduser("~")
     stage1 = []
-    for key in ("zzz_tool_dir", "cn_files_dir", "intl_files_dir"):
+    for key in ("cn_files_dir", "intl_files_dir"):
         d = (cfg.get(key) or "").strip()
         if d and os.path.isdir(d):
             stage1.append(d)
@@ -5159,13 +4851,11 @@ def _zzz_autodetect(cfg, budget=5.0, force=False):
     for r in uniq:
         if time.time() > deadline:
             break
-        _zzz_scan_root(r, deadline, tool_hits, dll_hits, seen, max_depth=4)
+        _zzz_scan_root(r, deadline, dll_hits, seen, max_depth=4)
 
     cn_hits, intl_hits = _zzz_split_dlls(dll_hits)
 
-    def _incomplete():
-        return not (tool_hits and cn_hits and intl_hits)
-    if _incomplete():
+    if not (cn_hits and intl_hits):
         stage2 = []
         for n in ("Desktop", "Downloads", "Documents", "OneDrive\\Desktop"):
             p = os.path.join(home, n)
@@ -5178,18 +4868,15 @@ def _zzz_autodetect(cfg, budget=5.0, force=False):
         for r in stage2:
             if time.time() > deadline:
                 break
-            _zzz_scan_root(r, deadline, tool_hits, dll_hits, seen, max_depth=4)
+            _zzz_scan_root(r, deadline, dll_hits, seen, max_depth=4)
         cn_hits, intl_hits = _zzz_split_dlls(dll_hits)
 
     res = {
         "skipped": False,
-        "tool": _zzz_pick_best(tool_hits, cfg.get("zzz_tool_dir"),
-                               ("zzz", "脚本", "launcher")),
         "cn": _zzz_pick_best(cn_hits, cfg.get("cn_files_dir"),
                              ("国服", "原文件", "cn")),
         "intl": _zzz_pick_best(intl_hits, cfg.get("intl_files_dir"),
                                ("国际", "替换", "intl")),
-        "tool_hits": tool_hits[:10],
         "dll_hits": dll_hits[:16],
         "elapsed": round(time.time() - t0, 2),
         "timed_out": time.time() > deadline,
@@ -5316,19 +5003,6 @@ def zzz_swap_run(cfg, side):
     cfg["patch_side"] = want
     return True, "%s。现在装的是【%s】" \
         % (msg, "国服" if want == "cn" else "国际服"), want
-
-
-def _find_readme(d):
-    """在文件夹里找使用说明.txt(兼容 使用说明*.txt / 任意 .txt)。"""
-    try:
-        names = os.listdir(d)
-    except Exception:
-        return ""
-    for n in names:
-        if n.lower().startswith("使用说明") and n.lower().endswith(".txt"):
-            return os.path.join(d, n)
-    txts = [n for n in names if n.lower().endswith(".txt")]
-    return os.path.join(d, txts[0]) if txts else ""
 
 
 BROWSER_CANDIDATES = [
@@ -8310,105 +7984,15 @@ class Handler(BaseHTTPRequestHandler):
                                    "show_translated":
                                        bool(app.cfg.get("show_translated"))})
 
-            # ---- 注入器(脚本启动): 不打包, 用户自选文件夹 ----
-            # 点一下 = ① 打开脚本(Launcher.exe, 管理员) ② 打开使用说明.txt ③ 启动游戏
-            if act == "zzz_tool":
-                d = (app.cfg.get("zzz_tool_dir") or "").strip()
-                if not d or not os.path.isdir(d):
-                    return self._json({"ok": False, "need_pick": True,
-                                       "msg": "请先选择注入器文件夹"})
-                launcher = os.path.join(d, "Launcher.exe")
-                if not os.path.isfile(launcher):
-                    return self._json({"ok": False, "need_pick": True,
-                                       "msg": "该文件夹里找不到 Launcher.exe, 请重新选择"})
-                log("[脚本启动] 开始 | 文件夹=%s | 管理器管理员=%s"
-                    % (d, _am_i_admin()))
-                steps = []
-                # ⓪ v1.5.66: 先清掉上一次残留的脚本进程!
-                # 两个 Launcher.exe 同时活着 = 两个注入器抢着往游戏里注入,
-                # 实测表现正是「菜单能呼出、功能全废」。用户手动双击时只有一个
-                # 脚本实例, 所以正常 —— 这就是两种方式结果不同的真正原因。
-                killed = _kill_proc_by_name(("Launcher.exe",))
-                if killed:
-                    steps.append("⓪ 已清掉残留脚本 %d 个" % len(killed))
-                    time.sleep(1.2)      # 等它彻底退干净
-                # ① 打开脚本(注入器, 管理员)
-                ok_l, msg_l = run_exe_admin(launcher, d)
-                steps.append("① 脚本 " + ("已启动" if ok_l else "失败: " + msg_l))
-                # ② 打开使用说明.txt
-                rd = _find_readme(d)
-                opened_rd = False
-                if rd:
-                    try:
-                        _shell_execute(rd)
-                        opened_rd = True
-                    except Exception as ex:
-                        log("打开使用说明失败:", ex)
-                steps.append("② 说明 " + ("已打开" if opened_rd else "未找到 txt"))
-                # ③ 最后启动游戏。
-                # ⚠ 必须留缓冲期: 注入器(Launcher.exe)启动后要几秒才能真正挂上,
-                #   紧接着拉游戏会注入失败(表现: 进游戏脚本用不了)。实测 1.5s 不够, 用 3s。
-                log("[脚本启动] 等待 %ss 缓冲期, 再启动游戏…" % _ZZZ_TOOL_GAME_DELAY)
-                time.sleep(_ZZZ_TOOL_GAME_DELAY)
-                ok_g, msg_g = launch_game(app.cfg)
-                steps.append("③ 游戏 等%s秒脚本挂上后 " % int(_ZZZ_TOOL_GAME_DELAY)
-                             + ("已请求启动(请在 UAC 点是)" if ok_g else msg_g))
-                # v1.5.66 诊断: 游戏启动后再采一次(后台跑, 不阻塞按钮响应)。
-                # 用户实测脚本进程两种方式完全一致, 差异只可能在"游戏怎么起"上。
-                def _bg_gamediag():
-                    try:
-                        time.sleep(8.0)
-                        _zzz_diag_game("启动后")
-                    except Exception as ex:
-                        log("[诊断][启动后] 采集失败:", ex)
-                try:
-                    threading.Thread(target=_bg_gamediag, daemon=True).start()
-                except Exception:
-                    pass
-                cheat = os.path.join(d, "Cheat.dll")
-                warn = "" if os.path.isfile(cheat) else \
-                    "（提醒: 文件夹里没有 Cheat.dll, 可能注入失败）"
-                log("[脚本启动] 结果 | ① %s | ② %s | ③ %s%s"
-                    % ("ok" if ok_l else msg_l,
-                       "ok" if opened_rd else "无txt",
-                       "ok" if ok_g else msg_g, warn))
-                return self._json({"ok": ok_l, "msg": "；".join(steps) + warn})
-
-            if act == "zzz_tool_pick":
-                hwnd = None
-                try:
-                    hwnd = find_manager_window()
-                    if hwnd:
-                        _bring_to_front(hwnd)
-                except Exception:
-                    hwnd = None
-                p = pick_folder(
-                    initial=(app.cfg.get("zzz_tool_dir") or ""),
-                    owner=hwnd,
-                    title="选择注入器文件夹(里面要有 Launcher.exe / Cheat.dll / 使用说明.txt)")
-                if not p:
-                    return self._json({"ok": False, "msg": "没选文件夹(或系统选择框不可用)"})
-                app.cfg["zzz_tool_dir"] = p
-                app.save_config()
-                hard = [n for n in ("Launcher.exe", "Cheat.dll")
-                        if not os.path.isfile(os.path.join(p, n))]
-                rd = _find_readme(p)
-                extra = ""
-                if hard:
-                    extra = "；但缺少: %s（注入可能不完整）" % "、".join(hard)
-                elif not rd:
-                    extra = "；未找到使用说明.txt"
-                return self._json({"ok": True, "path": p,
-                                   "msg": "已记住注入器文件夹: %s%s" % (p, extra)})
-
             # ---- v1.5.61: 国服/国际服 文件互转 ----
+            # v1.5.67: 「脚本启动 / 一键启动脚本+游戏」功能已按用户要求整体移除,
+            # 只保留文件替换(用户手动启动脚本即可, 不需要管理器代劳)。
             if act == "zzz_swap_status":
                 side, cur, cn, intl = _zzz_current_side(app.cfg)
                 name = {"cn": "国服", "intl": "国际服"}.get(side, "未知")
                 return self._json({
                     "ok": True, "side": side, "side_name": name,
                     "cur_size": cur, "cn_size": cn, "intl_size": intl,
-                    "tool_dir": app.cfg.get("zzz_tool_dir") or "",
                     "cn_dir": app.cfg.get("cn_files_dir") or "",
                     "intl_dir": app.cfg.get("intl_files_dir") or "",
                     "game_root": _zzz_game_root(app.cfg),
@@ -8459,16 +8043,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, "path": p,
                                    "msg": "已记住「%s」: %s" % (label, p)})
 
-            # ---- v1.5.63: 自动扫描并校准三个文件夹 ----
+            # ---- v1.5.63: 自动扫描并校准两个文件夹(国服/国际服) ----
             if act == "zzz_autodetect":
                 force = bool(body.get("force"))
                 res = _zzz_autodetect(app.cfg, force=force)
                 changed = []
                 # 只填"空着的 / 已经失效的", 不覆盖用户有效的手动选择
-                if res.get("tool") and not _zzz_ok_tool(app.cfg.get("zzz_tool_dir")):
-                    if res["tool"] != app.cfg.get("zzz_tool_dir"):
-                        app.cfg["zzz_tool_dir"] = res["tool"]
-                        changed.append("注入器")
                 if res.get("cn") and not _zzz_ok_src(app.cfg.get("cn_files_dir")):
                     if res["cn"] != app.cfg.get("cn_files_dir"):
                         app.cfg["cn_files_dir"] = res["cn"]
@@ -8479,8 +8059,8 @@ class Handler(BaseHTTPRequestHandler):
                         changed.append("国际服替换")
                 if changed:
                     app.save_config()
-                log("[自动扫描] 用时%.2fs | 注入器=%s | 国服=%s | 国际=%s | 新填=%s"
-                    % (res.get("elapsed", 0), res.get("tool") or "-",
+                log("[自动扫描] 用时%.2fs | 国服=%s | 国际=%s | 新填=%s"
+                    % (res.get("elapsed", 0),
                        res.get("cn") or "-", res.get("intl") or "-",
                        "、".join(changed) or "无"))
                 out = {"ok": True, "changed": changed, "force": force}
@@ -8490,17 +8070,6 @@ class Handler(BaseHTTPRequestHandler):
             if act == "launch":
                 ok, msg = launch_game(app.cfg)
                 return self._json({"ok": ok, "msg": msg})
-
-            # v1.5.64 诊断: 采集当前 Launcher.exe 进程的真实状态(手动双击后对照用)
-            if act == "zzz_diag":
-                d = (app.cfg.get("zzz_tool_dir") or "").strip()
-                exe = os.path.join(d, "Launcher.exe") if d else "Launcher.exe"
-                try:
-                    _zzz_diag_launcher(exe, "手动")
-                    return self._json({"ok": True,
-                                       "msg": "已采集, 请把 zzmi.log 里 [诊断][手动] 那几行发我"})
-                except Exception as ex:
-                    return self._json({"ok": False, "msg": "采集失败: %s" % ex})
 
             if act == "quit":
                 self._json({"ok": True, "msg": "bye"})
