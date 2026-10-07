@@ -73,3 +73,6 @@ screenshots/preview-censored.png
 
 # 测试期改动清单(本地留存, 不入库)
 更新名单.md
+
+# Windows 保留设备名 stray 文件(重定向事故产物, 无法删除也无法入库)
+/nul

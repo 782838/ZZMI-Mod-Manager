@@ -31,7 +31,17 @@ try:
     wf(os.path.join(sub, "il2cpp_data", "Metadata", "global-metadata.dat"), "INTL")
 
     # 用真 App + 真 Handler, 起真 ThreadingHTTPServer
+    # ⚠⚠ 必须同时隔离 DATA_DIR 和 CONFIG_PATH!
+    # 原来只改了 DATA_DIR, 但 CONFIG_PATH 是 import 时就定死的模块级常量,
+    # 于是测试里 app.save_config() 会写到**用户真实的** %USERPROFILE%\.zzmi-manager\
+    # config.json —— 实测把用户的收藏/封面/统计全盖成空值。血的教训。
     zm.DATA_DIR = work
+    zm.CONFIG_PATH = os.path.join(work, "config.json")
+    assert os.path.dirname(os.path.abspath(zm.CONFIG_PATH)) == os.path.abspath(work), \
+        "测试没有隔离 CONFIG_PATH, 会写坏用户真实配置!"
+    assert os.path.abspath(work).lower().startswith(
+        os.path.abspath(tempfile.gettempdir()).lower()), \
+        "测试工作目录必须在系统临时目录下"
     os.makedirs(os.path.join(work, "downloads"), exist_ok=True)
     app = zm.App()
     app.cfg["game_exe"] = os.path.join(game, "ZenlessZoneZero.exe")

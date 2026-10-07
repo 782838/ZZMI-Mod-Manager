@@ -409,6 +409,14 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
 .zwhy b{color:var(--txt)}
 .zwhy-key{margin-top:7px;padding-top:7px;border-top:1px dashed var(--line2);
   font-weight:600;color:var(--txt)}
+.zscan{display:flex;align-items:center;gap:9px;padding:9px 12px;margin-bottom:13px;
+  border-radius:var(--r2);background:var(--panel2);border:1px solid var(--line)}
+.zscan-ico{font-size:14px;flex:0 0 auto}
+.zscan-msg{flex:1 1 auto;min-width:0;line-height:1.5}
+.zscan.done{background:rgba(52,211,153,.10);border-color:rgba(52,211,153,.30)}
+.zscan.busy .zscan-ico{animation:zspin 1.1s linear infinite;display:inline-block}
+.zscan.warn{background:rgba(245,197,24,.10);border-color:rgba(245,197,24,.30)}
+@keyframes zspin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 
 /* v1.5.12: GameBanana 下载区 */
 .gbmodal{width:min(1140px,96vw);max-height:92vh}
@@ -1202,16 +1210,23 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
   <div class="dh"><h3>📂 脚本启动 &amp; 文件替换</h3>
     <button class="xbtn" id="zsCloseX">✕</button></div>
   <div class="dbody">
+    <!-- v1.5.63: 自动扫描条 -->
+    <div class="zscan" id="zsScanBar">
+      <span class="zscan-ico">🔍</span>
+      <span class="zscan-msg hint" id="zsScanMsg">正在自动扫描文件夹…</span>
+      <button class="btn mini3" id="zsRescan" title="重新在常见位置找一遍三个文件夹">重新扫描</button>
+    </div>
+
     <!-- 一、脚本启动 -->
     <div class="zsec">
-      <div class="zsec-t">① 脚本启动（注入器）</div>
-      <div class="zsec-d">一键：以管理员打开 <code>Launcher.exe</code> → 打开 <code>使用说明.txt</code> → 启动游戏。</div>
+      <div class="zsec-t">① 脚本启动（注入器 + 游戏）</div>
+      <div class="zsec-d">一键：以<b>管理员</b>打开 <code>Launcher.exe</code> → 打开 <code>使用说明.txt</code> → 启动游戏。</div>
       <div class="zrow">
-        <input class="inp zpath" id="zsToolDir" type="text" readonly placeholder="尚未选择注入器文件夹" />
+        <input class="inp zpath" id="zsToolDir" type="text" readonly placeholder="尚未找到注入器文件夹（可点📁手动选）" />
         <button class="btn mini3" id="zsToolPick">📁 选择</button>
       </div>
       <div class="zrow zrow-act">
-        <button class="btn primary" id="zsToolRun">🚀 一键启动脚本</button>
+        <button class="btn primary" id="zsToolRun">🚀 一键启动脚本+游戏</button>
         <span class="hint" id="zsToolInfo"></span>
       </div>
     </div>
@@ -1227,12 +1242,12 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
 
       <div class="zrow">
         <label class="zlab">国服原文件</label>
-        <input class="inp zpath" id="zsCnDir" type="text" readonly placeholder="尚未选择" />
+        <input class="inp zpath" id="zsCnDir" type="text" readonly placeholder="尚未找到（可点📁手动选）" />
         <button class="btn mini3" id="zsCnPick">📁</button>
       </div>
       <div class="zrow">
         <label class="zlab">国际服替换</label>
-        <input class="inp zpath" id="zsIntlDir" type="text" readonly placeholder="尚未选择" />
+        <input class="inp zpath" id="zsIntlDir" type="text" readonly placeholder="尚未找到（可点📁手动选）" />
         <button class="btn mini3" id="zsIntlPick">📁</button>
       </div>
 
@@ -1241,13 +1256,15 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
       </div>
 
       <div class="zwhy">
-        <div class="zwhy-t">💡 为什么要换？什么时候换？</div>
+        <div class="zwhy-t">💡 什么时候才需要换？</div>
         <ul>
-          <li><b>开脚本（注入器）要用国际服文件</b> —— 挂着 mod / 脚本玩的时候，必须换成 <b>国际服</b>。</li>
-          <li><b>更新游戏要用国服文件</b> —— 官方启动器更新会校验文件，<b>必须换回国服</b>，
-              否则会报错 / 更新失败 / 无限修复。</li>
+          <li><b>用脚本（注入器）→ 必须【国际服】</b> —— 只有开脚本玩才要换。</li>
+          <li><b>只挂 mod（XXMI / ZZMI）→ 不用换</b> —— 国服、国际服都能正常挂 mod，
+              不需要动文件。</li>
+          <li><b>更新游戏 → 必须【国服】</b> —— 官方启动器更新会校验文件，不换回国服会
+              报错 / 更新失败 / 无限修复。</li>
         </ul>
-        <div class="zwhy-key">⚠ 每次更新游戏前：先点「一键互转」换回<b>国服</b> → 再打开官方启动器更新 → 更新完再点一次换回<b>国际服</b>。</div>
+        <div class="zwhy-key">⚠ 每次更新游戏前：先点「一键互转」换回<b>国服</b> → 再打开官方启动器更新 → 更新完再点一次换回<b>国际服</b>（要开脚本的话）。</div>
       </div>
 
       <div class="zhint2 hint">提示：替换前请<strong>先关掉游戏</strong>（游戏开着时 GameAssembly.dll 被占用，替换会失败）。</div>
@@ -4100,7 +4117,46 @@ function zsShow(on){
   m.classList.toggle("on", on);
   if (mk) mk.classList.toggle("on", on);
 }
-function zsOpen(){ zsShow(true); zsRefresh(); }
+function zsOpen(){
+  zsShow(true);
+  zsAutoScan(false);        // 打开面板先自动扫描/校准(只在有失效项时才真扫)
+}
+function zsScanState(kind, msg){
+  const bar = $("#zsScanBar");
+  if (!bar) return;
+  bar.className = "zscan" + (kind ? " " + kind : "");
+  if ($("#zsScanMsg")) $("#zsScanMsg").textContent = msg;
+}
+async function zsAutoScan(force){
+  zsScanState("busy", force ? "正在重新扫描…" : "正在自动扫描文件夹…");
+  try{
+    const r = await api("/api/zzz_autodetect", {force: !!force});
+    if (r.skipped){
+      zsScanState("done", "✓ 三个文件夹都正常");
+    } else {
+      const got = [];
+      if (r.tool) got.push("注入器");
+      if (r.cn) got.push("国服原文件");
+      if (r.intl) got.push("国际服替换");
+      const miss = [];
+      if (!r.tool) miss.push("注入器");
+      if (!r.cn) miss.push("国服原文件");
+      if (!r.intl) miss.push("国际服替换");
+      if (miss.length){
+        zsScanState("warn", "扫描完成（" + r.elapsed + "s）：找到 " +
+          (got.join("、") || "无") + "；没找到 " + miss.join("、") + "，请点 📁 手动选");
+      } else {
+        zsScanState("done", "✓ 已自动找到全部 3 个文件夹（" + r.elapsed + "s）");
+      }
+      if (r.changed && r.changed.length)
+        toast("已自动填好：" + r.changed.join("、"), "", 5000);
+    }
+    await zsRefresh();
+  }catch(e){
+    zsScanState("warn", "扫描失败: " + e.message + "（可点 📁 手动选）");
+    await zsRefresh();
+  }
+}
 async function zsRefresh(){
   try{
     const r = await api("/api/zzz_swap_status", {});
@@ -4114,8 +4170,8 @@ async function zsRefresh(){
       cls = r.side === "cn" ? "ok-cn" : "ok-intl";
       big = "当前装的是：" + nameMap[r.side];
       sm = r.side === "cn"
-        ? "✓ 可直接更新游戏；要挂脚本玩请点「一键互转」换成国际服"
-        : "✓ 可挂脚本玩；要更新游戏请点「一键互转」先换回国服";
+        ? "✓ 可直接更新游戏；要开脚本玩请点「一键互转」换成国际服"
+        : "✓ 可开脚本玩；要更新游戏请点「一键互转」先换回国服";
     } else if (r.cur_size > 0){
       sm = "文件像是被其他工具改过，认不出属于哪一套。可点「一键互转」试一次";
     } else {
@@ -4131,7 +4187,7 @@ async function zsRefresh(){
     if (!r.has_cn) miss.push("国服文件");
     if (!r.has_intl) miss.push("国际服文件");
     if ($("#zsFoot")) $("#zsFoot").textContent =
-      miss.length ? ("⚠ 还没配好：" + miss.join("、") + "（请点 📁 选择文件夹）") : "";
+      miss.length ? ("⚠ 还没配好：" + miss.join("、") + "（点上面「重新扫描」或 📁 手动选）") : "";
   }catch(e){
     if ($("#zsSide")) $("#zsSide").innerHTML =
       '<span class="hint">检测失败: ' + esc(e.message) + '</span>';
@@ -4152,7 +4208,7 @@ async function zsSwapPick(which){
   }catch(e){ toast("出错了: " + e.message, "err", 8000); }
 }
 async function zsToolRun(){
-  toast("正在启动脚本（①脚本 ②说明 ③游戏）…", "", 4000);
+  toast("正在启动脚本+游戏（①脚本 ②说明 ③游戏）…", "", 4000);
   try{
     let r = await api("/api/zzz_tool", {});
     if (r.need_pick){
@@ -4182,6 +4238,7 @@ if ($("#zsCloseX")) $("#zsCloseX").onclick = () => zsShow(false);
 if ($("#zsCloseF")) $("#zsCloseF").onclick = () => zsShow(false);
 if ($("#zsMask")) $("#zsMask").onclick = () => zsShow(false);
 if ($("#zsToolPick")) $("#zsToolPick").onclick = zsToolPick;
+if ($("#zsRescan")) $("#zsRescan").onclick = () => zsAutoScan(true);
 if ($("#zsToolRun")) $("#zsToolRun").onclick = zsToolRun;
 if ($("#zsCnPick")) $("#zsCnPick").onclick = () => zsSwapPick("cn");
 if ($("#zsIntlPick")) $("#zsIntlPick").onclick = () => zsSwapPick("intl");

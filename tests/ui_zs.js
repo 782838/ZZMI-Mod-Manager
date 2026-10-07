@@ -42,6 +42,12 @@ const dom = new JSDOM(UI.replace('__BOOT__', JSON.stringify(BOOT)), {
         payload = { stats: { total: 0, chars: 0, categories: [] }, entries: [],
                     theme: 'dark', mods_dir: '', hotkey: 'F9', downloads_dir: 'C:/dl',
                     categories: [], chars: [], game_exe: STATUS.game_root + '\\ZenlessZoneZero.exe' };
+      } else if (url.includes('/api/zzz_autodetect')) {
+        payload = { ok: true, skipped: false, elapsed: 0.42,
+                    tool: 'F:\\11aa快捷方式\\zzz_0.6.3(3)',
+                    cn: 'F:\\11aa快捷方式\\外挂前置\\国服原文件',
+                    intl: 'F:\\11aa快捷方式\\外挂前置\\国际服替换文件3.2(1)',
+                    changed: ['注入器', '国服原文件', '国际服替换'] };
       } else if (url.includes('/api/zzz_swap_status')) {
         payload = STATUS;
       } else if (url.includes('/api/zzz_swap_pick')) {
@@ -71,10 +77,31 @@ setTimeout(() => {
   $('#btnZZZTool').click();
   ck('点按钮后面板打开', $('#mZS').classList.contains('on'));
   ck('点按钮后遮罩打开', $('#zsMask').classList.contains('on'));
-  ck('打开时请求了 swap_status',
-     calls.some(c => c.url.includes('/api/zzz_swap_status')));
+  ck('打开时自动触发了扫描',
+     calls.some(c => c.url.includes('/api/zzz_autodetect')));
+  ck('自动扫描不是 force',
+     (calls.find(c => c.url.includes('/api/zzz_autodetect')) || {}).body
+       && calls.find(c => c.url.includes('/api/zzz_autodetect')).body.force === false);
 
   setTimeout(() => {
+    // ---- 2a. 扫描完成后才去读状态(顺序: 先扫描校准, 再刷新显示) ----
+    ck('扫描后请求了 swap_status',
+       calls.some(c => c.url.includes('/api/zzz_swap_status')));
+    // ---- 2b. 扫描条状态 ----
+    ck('扫描条显示已找到 3 个', /已自动找到全部 3 个文件夹/.test($('#zsScanMsg').textContent),
+       $('#zsScanMsg').textContent);
+    ck('扫描条带 done 样式', ($('#zsScanBar').className || '').includes('done'),
+       $('#zsScanBar').className);
+    // ---- 2c. 重新扫描按钮 ----
+    (function(){
+      const b = calls.length;
+      $('#zsRescan').click();
+      setTimeout(() => {
+        const f = calls.slice(b).find(c => c.url.includes('/api/zzz_autodetect'));
+        ck('点「重新扫描」发 force=true', !!(f && f.body && f.body.force === true),
+           JSON.stringify(f && f.body));
+      }, 100);
+    })();
     // ---- 3. 状态正确渲染 ----
     const side = $('#zsSide');
     ck('侧栏显示「当前装的是：国际服」', /当前装的是：国际服/.test(side.textContent),
@@ -112,8 +139,13 @@ setTimeout(() => {
         ck('页面已无「换成国际服」按钮', !$('#zsToIntl'));
         // ---- 5b. 说明区存在 ----
         ck('有「为什么要换」说明区', !!$('.zwhy'));
-        ck('说明里提到「更新要用国服文件」',
-           /更新游戏要用国服文件/.test($('.zwhy') ? $('.zwhy').textContent : ''));
+        ck('说明里提到「更新游戏要用国服」',
+           /更新游戏[\s\S]{0,20}必须【国服】/.test($('.zwhy') ? $('.zwhy').textContent : ''),
+           ($('.zwhy') ? $('.zwhy').textContent : '').replace(/\s+/g,'').slice(0, 120));
+        ck('说明里提到「只挂 mod 不用换」',
+           /只挂 mod（XXMI \/ ZZMI）→ 不用换/.test($('.zwhy') ? $('.zwhy').textContent : ''));
+        ck('说明里提到「开脚本要用国际服」',
+           /用脚本（注入器）→ 必须【国际服】/.test($('.zwhy') ? $('.zwhy').textContent : ''));
         ck('说明里提到「开脚本要用国际服文件」',
            /开脚本/.test($('.zwhy') ? $('.zwhy').textContent : ''));
         // ---- 5c. 侧栏提示随版本变化 ----

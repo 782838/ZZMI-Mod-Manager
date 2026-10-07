@@ -5,6 +5,23 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.63 更新
+-----------
+* **新: 三个文件夹全自动扫描, 不用再手动选**(用户要求)。打开面板时自动找:
+  注入器文件夹(`Launcher.exe`+`Cheat.dll`)、国服原文件、国际服替换文件。
+  · 分两阶段扫: ① 上次配过的路径 + 它的父/祖父目录(最可能, 也最快, 实测 0.04s);
+    ② 桌面/下载/文档 + 各盘根(限深 4 层, 总时长封顶 5 秒)。
+  · **只在"空着的 / 已经失效的"时候才覆盖** —— 你手动选的有效路径不会被顶掉。
+  · 找不到才让你点 📁 手动选; 面板顶部有「重新扫描」按钮可随时重扫。
+  · 分享包多套一层(`<包>/替换文件/`)会自动上提成包根目录。
+  · 游戏目录自己也含 `GameAssembly.dll`, 靠目录名规则天然排除, 不会认错。
+* **改: 按钮「🚀 一键启动脚本」→「🚀 一键启动脚本+游戏」**(用户要求), 更明确它会连游戏一起拉。
+  仍是以**管理员权限**启动脚本(走 UAC runas, v1.5.60 起失败即明确报错、绝不偷偷降权)。
+* **改: 面板说明按用户实测的规律重写** —— 分清三件事:
+  · **用脚本(注入器) → 必须【国际服】**(只有开脚本玩才要换);
+  · **只挂 mod(XXMI / ZZMI) → 不用换**(国服、国际服都能正常挂 mod);
+  · **更新游戏 → 必须【国服】**(不换回国服会报错/更新失败/无限修复)。
+
 v1.5.62 更新
 -----------
 * **修: 文件替换遇到"游戏还开着"时给出人话提示**(用户实测踩到)。
@@ -784,7 +801,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.62"
+VERSION = "1.5.63"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -4707,6 +4724,202 @@ def _zzz_src_dll_size(src_root):
         return -1
 
 
+# ---------------------------------------------------------------------------
+# v1.5.63: 自动扫描 —— 不用用户手动选, 自己把三个文件夹找出来
+# ---------------------------------------------------------------------------
+
+# 扫描时跳过的目录名(小写): 系统/缓存/无关的大目录, 免得扫描又慢又没意义
+_ZZZ_SKIP_DIRS = {
+    "$recycle.bin", "system volume information", "windows", "program files",
+    "program files (x86)", "programdata", "appdata", "node_modules", ".git",
+    "__pycache__", "browser-profile", ".cache", "temp", "tmp", "$windows.~bt",
+    "recovery", "perflogs", "msocache", "intel", "amd", "nvidia", "drivers",
+    "assembly", "servicing", "winsxs", "installer", "softwaredistribution",
+    "onedrivetemp", ".workbuddy-ai", ".workbuddy", "anaconda3", "miniconda3",
+    "site-packages", "lib", "libs", "include", "scripts", "docs", "locale",
+}
+
+
+def _zzz_scan_root(root, deadline, tool_hits, dll_hits, seen, max_depth=4):
+    """在 root 下(限深)找: 注入器文件夹 / 含 GameAssembly.dll 的文件夹。"""
+    # ⚠ 必须用 normpath 而不是 rstrip: 对 "F:\\" 这种盘根, rstrip 会变成 "F:" ——
+    # 那是个"该盘的当前目录"相对路径, os.walk 出来的 dp 会缺分隔符(实测出现
+    # `F:11aa快捷方式\...` 这种畸形路径)。
+    base = os.path.normpath(root) if root else ""
+    if not base or not os.path.isdir(base):
+        return
+    base_depth = base.count(os.sep)
+    try:
+        for dp, dns, fns in os.walk(base):
+            if time.time() > deadline:
+                return
+            dns[:] = [d for d in dns
+                      if d.lower() not in _ZZZ_SKIP_DIRS
+                      and not d.startswith("$") and not d.startswith(".")]
+            if dp.rstrip("\\/").count(os.sep) - base_depth >= max_depth:
+                dns[:] = []
+            low = {f.lower() for f in fns}
+            if "launcher.exe" in low and "cheat.dll" in low:
+                if dp not in seen:
+                    tool_hits.append(dp)
+                    seen.add(dp)
+            if "gameassembly.dll" in low:
+                if dp not in seen:
+                    dll_hits.append(dp)
+                    seen.add(dp)
+    except Exception:
+        pass
+
+
+def _zzz_prefer_root(d):
+    """dll 所在的目录名如果是通用的(替换文件/文件/files), 就上提到父目录。
+
+    因为 `_zzz_resolve_source` 会自动往下钻一层, 所以父目录同样能用, 而且
+    展示给用户看更像"这个包"。实测国际服包就是 `<包>/替换文件/GameAssembly.dll`。
+    """
+    name = os.path.basename(d)
+    pname = os.path.basename(os.path.dirname(d))
+    generic = ("替换文件", "文件", "files", "file", "patch", "new", "mod")
+    strong = ("国服", "国际", "原文件", "cn服", "china", "intl", "global", "oversea")
+    if name.lower() in generic and any(k in pname.lower() for k in strong):
+        return os.path.dirname(d)
+    return d
+
+
+def _zzz_split_dlls(dll_hits):
+    """把含 GameAssembly.dll 的目录分成 国服 / 国际服 两堆(靠目录名)。
+
+    名字认不出归属的**不猜**, 直接丢掉 —— 宁可让用户手动选, 也不自动填错。
+    (游戏目录自己也含 GameAssembly.dll, 靠这条规则天然被排除。)
+    """
+    cn, intl = [], []
+    for d in dll_hits:
+        root = _zzz_prefer_root(d)
+        s = (os.path.basename(d) + "/" + os.path.basename(os.path.dirname(d))).lower()
+        if any(k in s for k in ("国服", "原文件", "cn服", "china")):
+            if root not in cn:
+                cn.append(root)
+        elif any(k in s for k in ("国际", "替换", "intl", "global", "oversea", "世界")):
+            if root not in intl:
+                intl.append(root)
+    return cn, intl
+
+
+def _zzz_pick_best(hits, prefer, keys):
+    """从候选里挑一个: 优先"上次配过的那个", 否则按名字关键词 + 路径浅打分。"""
+    if not hits:
+        return ""
+    if prefer and os.path.isdir(prefer):
+        np = os.path.normcase(os.path.abspath(prefer))
+        for h in hits:
+            if os.path.normcase(os.path.abspath(h)) == np:
+                return h
+    def score(h):
+        s = h.lower()
+        return sum(1 for k in keys if k in s)
+    # 同分时选路径更浅的 —— "备份/外挂备份/xxx" 那种副本层级更深, 天然排后
+    return sorted(hits, key=lambda h: (-score(h), h.count(os.sep), len(h)))[0]
+
+
+def _zzz_ok_tool(d):
+    return bool(d) and os.path.isfile(os.path.join(d, "Launcher.exe"))
+
+
+def _zzz_ok_src(d):
+    return bool(d) and _zzz_src_dll_size(_zzz_resolve_source(d)) > 0
+
+
+def _zzz_need_scan(cfg):
+    """三个路径是不是都还活着 —— 有一个空的/失效的就得扫。"""
+    cfg = cfg or {}
+    if not _zzz_ok_tool((cfg.get("zzz_tool_dir") or "").strip()):
+        return True
+    for key in ("cn_files_dir", "intl_files_dir"):
+        if not _zzz_ok_src((cfg.get(key) or "").strip()):
+            return True
+    return False
+
+
+def _zzz_autodetect(cfg, budget=5.0, force=False):
+    """自动扫描并校准三个文件夹。返回 dict。
+
+    分两阶段: ① 上次配过的路径 + 它的父/祖父目录(最可能, 也最快);
+              ② 桌面/下载/文档 + 各盘根(限深 3 层)。
+    总时长封顶 budget 秒, 到点就返回已经找到的, 不让界面干等。
+    """
+    t0 = time.time()
+    deadline = t0 + budget
+    cfg = cfg or {}
+    tool_hits, dll_hits, seen = [], [], set()
+
+    if not force and not _zzz_need_scan(cfg):
+        return {"skipped": True, "elapsed": 0.0,
+                "tool": cfg.get("zzz_tool_dir") or "",
+                "cn": cfg.get("cn_files_dir") or "",
+                "intl": cfg.get("intl_files_dir") or ""}
+
+    home = os.path.expanduser("~")
+    stage1 = []
+    for key in ("zzz_tool_dir", "cn_files_dir", "intl_files_dir"):
+        d = (cfg.get(key) or "").strip()
+        if d and os.path.isdir(d):
+            stage1.append(d)
+            p1 = os.path.dirname(d.rstrip("\\/"))
+            if os.path.isdir(p1):
+                stage1.append(p1)
+                p2 = os.path.dirname(p1)
+                if os.path.isdir(p2):
+                    stage1.append(p2)
+    gr = _zzz_game_root(cfg)
+    if gr:
+        gp = os.path.dirname(gr.rstrip("\\/"))
+        if os.path.isdir(gp):
+            stage1.append(gp)
+    uniq = []
+    for r in stage1:
+        if r not in uniq:
+            uniq.append(r)
+    for r in uniq:
+        if time.time() > deadline:
+            break
+        _zzz_scan_root(r, deadline, tool_hits, dll_hits, seen, max_depth=4)
+
+    cn_hits, intl_hits = _zzz_split_dlls(dll_hits)
+
+    def _incomplete():
+        return not (tool_hits and cn_hits and intl_hits)
+    if _incomplete():
+        stage2 = []
+        for n in ("Desktop", "Downloads", "Documents", "OneDrive\\Desktop"):
+            p = os.path.join(home, n)
+            if os.path.isdir(p):
+                stage2.append(p)
+        for drv in "CDEFGH":
+            p = drv + ":\\"
+            if os.path.isdir(p):
+                stage2.append(p)
+        for r in stage2:
+            if time.time() > deadline:
+                break
+            _zzz_scan_root(r, deadline, tool_hits, dll_hits, seen, max_depth=4)
+        cn_hits, intl_hits = _zzz_split_dlls(dll_hits)
+
+    res = {
+        "skipped": False,
+        "tool": _zzz_pick_best(tool_hits, cfg.get("zzz_tool_dir"),
+                               ("zzz", "脚本", "launcher")),
+        "cn": _zzz_pick_best(cn_hits, cfg.get("cn_files_dir"),
+                             ("国服", "原文件", "cn")),
+        "intl": _zzz_pick_best(intl_hits, cfg.get("intl_files_dir"),
+                               ("国际", "替换", "intl")),
+        "tool_hits": tool_hits[:10],
+        "dll_hits": dll_hits[:16],
+        "elapsed": round(time.time() - t0, 2),
+        "timed_out": time.time() > deadline,
+    }
+    return res
+
+
 def _zzz_current_side(cfg):
     """当前游戏装的是哪一套 —— 和两套源比 GameAssembly.dll 大小。
 
@@ -7944,6 +8157,34 @@ class Handler(BaseHTTPRequestHandler):
                                               "请确认选对了文件夹" % (label, p)})
                 return self._json({"ok": True, "path": p,
                                    "msg": "已记住「%s」: %s" % (label, p)})
+
+            # ---- v1.5.63: 自动扫描并校准三个文件夹 ----
+            if act == "zzz_autodetect":
+                force = bool(body.get("force"))
+                res = _zzz_autodetect(app.cfg, force=force)
+                changed = []
+                # 只填"空着的 / 已经失效的", 不覆盖用户有效的手动选择
+                if res.get("tool") and not _zzz_ok_tool(app.cfg.get("zzz_tool_dir")):
+                    if res["tool"] != app.cfg.get("zzz_tool_dir"):
+                        app.cfg["zzz_tool_dir"] = res["tool"]
+                        changed.append("注入器")
+                if res.get("cn") and not _zzz_ok_src(app.cfg.get("cn_files_dir")):
+                    if res["cn"] != app.cfg.get("cn_files_dir"):
+                        app.cfg["cn_files_dir"] = res["cn"]
+                        changed.append("国服原文件")
+                if res.get("intl") and not _zzz_ok_src(app.cfg.get("intl_files_dir")):
+                    if res["intl"] != app.cfg.get("intl_files_dir"):
+                        app.cfg["intl_files_dir"] = res["intl"]
+                        changed.append("国际服替换")
+                if changed:
+                    app.save_config()
+                log("[自动扫描] 用时%.2fs | 注入器=%s | 国服=%s | 国际=%s | 新填=%s"
+                    % (res.get("elapsed", 0), res.get("tool") or "-",
+                       res.get("cn") or "-", res.get("intl") or "-",
+                       "、".join(changed) or "无"))
+                out = {"ok": True, "changed": changed, "force": force}
+                out.update(res)
+                return self._json(out)
 
             if act == "launch":
                 ok, msg = launch_game(app.cfg)
