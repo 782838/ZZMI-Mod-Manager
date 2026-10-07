@@ -801,7 +801,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.63"
+VERSION = "1.5.64"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -4725,6 +4725,14 @@ def _zzz_src_dll_size(src_root):
 
 
 # ---------------------------------------------------------------------------
+# v1.5.64: 「一键启动脚本+游戏」的缓冲期
+# ---------------------------------------------------------------------------
+# 注入器(Launcher.exe)启动后需要几秒才能真正挂上; 紧接着拉游戏会注入失败,
+# 表现为「进游戏后脚本不起作用」。实测 1.5s 不够, 3s 稳定。改这里即可调。
+_ZZZ_TOOL_GAME_DELAY = 3.0
+
+
+# ---------------------------------------------------------------------------
 # v1.5.63: 自动扫描 —— 不用用户手动选, 自己把三个文件夹找出来
 # ---------------------------------------------------------------------------
 
@@ -8060,10 +8068,14 @@ class Handler(BaseHTTPRequestHandler):
                     except Exception as ex:
                         log("打开使用说明失败:", ex)
                 steps.append("② 说明 " + ("已打开" if opened_rd else "未找到 txt"))
-                # ③ 最后启动游戏(先等注入器起来, 再拉游戏)
-                time.sleep(1.5)
+                # ③ 最后启动游戏。
+                # ⚠ 必须留缓冲期: 注入器(Launcher.exe)启动后要几秒才能真正挂上,
+                #   紧接着拉游戏会注入失败(表现: 进游戏脚本用不了)。实测 1.5s 不够, 用 3s。
+                log("[脚本启动] 等待 %ss 缓冲期, 再启动游戏…" % _ZZZ_TOOL_GAME_DELAY)
+                time.sleep(_ZZZ_TOOL_GAME_DELAY)
                 ok_g, msg_g = launch_game(app.cfg)
-                steps.append("③ 游戏 " + ("已请求启动(请在 UAC 点是)" if ok_g else msg_g))
+                steps.append("③ 游戏 等%s秒脚本挂上后 " % int(_ZZZ_TOOL_GAME_DELAY)
+                             + ("已请求启动(请在 UAC 点是)" if ok_g else msg_g))
                 cheat = os.path.join(d, "Cheat.dll")
                 warn = "" if os.path.isfile(cheat) else \
                     "（提醒: 文件夹里没有 Cheat.dll, 可能注入失败）"

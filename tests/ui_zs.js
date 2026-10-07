@@ -168,9 +168,18 @@ setTimeout(() => {
           // ---- 7. 一键启动脚本 ----
           const b4 = calls.length;
           $('#zsToolRun').click();
+          // 点下去立刻进入「启动中」禁用态(缓冲期防连点)
+          ck('点一键启动后按钮进入禁用态',
+             $('#zsToolRun').disabled === true &&
+             /启动中/.test($('#zsToolRun').textContent),
+             $('#zsToolRun').textContent + ' disabled=' + $('#zsToolRun').disabled);
           setTimeout(() => {
             const c4 = calls.slice(b4).filter(c => c.url.includes('/api/zzz_tool'));
             ck('一键启动脚本发出 zzz_tool', c4.length >= 1, JSON.stringify(c4.length));
+            ck('启动完成后按钮恢复可用',
+               $('#zsToolRun').disabled === false &&
+               /一键启动脚本\+游戏/.test($('#zsToolRun').textContent),
+               $('#zsToolRun').textContent + ' disabled=' + $('#zsToolRun').disabled);
 
             // ---- 8. 关闭 ----
             $('#zsCloseF').click();
