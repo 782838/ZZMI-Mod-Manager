@@ -5,6 +5,27 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.62 更新
+-----------
+* **修: 文件替换遇到"游戏还开着"时给出人话提示**(用户实测踩到)。
+  日志实锤: 游戏在跑时 `GameAssembly.dll` 被系统独占, 替换会 `WinError 32`, 报的却是
+  一串 Python 异常。现在单拎出来: 「替换失败: 游戏还开着, 这些文件被占用 ——
+  GameAssembly.dll。请先关掉绝区零(以及 XXMI / 官方启动器), 再点一次」。
+  部分成功也会说清楚: 「已替换 N 个；被占用 M 个(哪些) —— 请关掉游戏后重试」。
+* **修: 防止"空配置"盖掉好配置**(用户实测「管理器缓存全没了」)。
+  日志实锤: v1.5.61 某次启动 `load_config` 读到 None(文件被占/半写) → 走默认值分支 →
+  之后任一次 `save_config()` 把「默认空值」整份盖回 → 收藏/角色分类/使用统计/下载目录/
+  照片目录 全没(而 thumbs / 方案 / 日志这些不在 config 的文件反而安然无恙)。
+  现在 `save_config()` 落盘前会比对用户数据密度, **发现要写的那份明显更空, 先把磁盘那份
+  备份成 `config.bak-*.json`**, 留一条可回滚的线索。
+* **删: 文件替换面板里的「换成国服」「换成国际服」两个按钮**(用户: "都有了一键转会
+  剩下两个按钮实际作用不大删了吧")。保留「🔄 一键互转」, 认不出当前版本时才引导手动处理。
+* **改: 文件替换面板加了「为什么要换 / 什么时候换」说明块**, 写清用户实测出来的规律 ——
+  **开脚本(注入器)要用国际服文件; 更新游戏要用国服文件**。
+  正解: 更新前先「一键互转」换回国服 → 官方启动器更新 → 更新完再换回国际服。
+* **改: 面板顶部状态提示更明确** —— 国服时说"可直接更新游戏；要挂脚本玩请换成国际服",
+  国际服时说"可挂脚本玩；要更新游戏请先换回国服"。
+
 v1.5.61 更新
 -----------
 * **新: 「📂 脚本启动」改成弹出一个面板**(不再是点了直接执行), 面板里同时管两件事:
@@ -763,7 +784,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.61"
+VERSION = "1.5.62"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -4740,17 +4761,34 @@ def _zzz_copy_swap(cfg, src_dir, label):
     if not jobs:
         return False, "「%s」里没找到可替换的文件" % label, []
 
-    copied, failed = [], []
+    copied, failed, locked = [], [], []
     for s, d in jobs:
         try:
             os.makedirs(os.path.dirname(d), exist_ok=True)
             shutil.copy2(s, d)
             copied.append(os.path.basename(d))
         except Exception as ex:
-            failed.append("%s (%s)" % (os.path.basename(d), ex))
-    if failed:
-        return False, ("替换了 %d 个, 但有 %d 个失败: %s"
-                       % (len(copied), len(failed), "；".join(failed[:3]))), copied
+            # v1.5.62: WinError 32 = 文件被占用(游戏还开着)。这几乎是 100% 会遇到的场景,
+            # 单拎出来给一句能照做的提示, 别丢一串 Python 异常吓人。
+            if getattr(ex, "winerror", None) == 32 or "另一个程序正在使用此文件" in str(ex) \
+                    or "being used by another process" in str(ex):
+                locked.append(os.path.basename(d))
+            else:
+                failed.append("%s (%s)" % (os.path.basename(d), ex))
+    if locked and not failed and len(locked) == len(jobs):
+        return False, ("替换失败: 游戏还开着, 这些文件被占用 —— %s\n"
+                       "请先关掉绝区零(以及 XXMI / 官方启动器), 再点一次"
+                       % "、".join(locked[:4])), []
+    if locked or failed:
+        parts = []
+        if copied:
+            parts.append("已替换 %d 个" % len(copied))
+        if locked:
+            parts.append("被占用 %d 个(%s) —— 请关掉游戏后重试"
+                         % (len(locked), "、".join(locked[:3])))
+        if failed:
+            parts.append("失败 %d 个(%s)" % (len(failed), "；".join(failed[:2])))
+        return False, "；".join(parts), copied
     return True, "已替换 %d 个文件" % len(copied), copied
 
 
@@ -4769,8 +4807,9 @@ def zzz_swap_run(cfg, side):
         elif cur_side == "intl":
             side = "cn"
         else:
-            return False, ("认不出当前是哪一套(可能文件被其他工具改过)。"
-                           "请手动点「换成国服」或「换成国际服」"), ""
+            return False, ("认不出当前是哪一套(可能文件被其他工具改过)。\n"
+                           "请先手动把游戏目录换成标准的一套(用另一套源覆盖一次)，"
+                           "之后就能一键互转了"), ""
     if side == "cn":
         src_dir = (cfg or {}).get("cn_files_dir") or ""
         label = "国服原文件"
@@ -6088,6 +6127,14 @@ class App(object):
                     pass
             return False
         cfg = dict(DEFAULT_CONFIG)
+        # v1.5.62 关键修正: 原来这里是
+        #     cfg.update({k: v for k, v in raw.items() if k in DEFAULT_CONFIG})
+        # —— 只要 config 里**存在**某个键就会被收下。但用户实测「管理器缓存全没了」:
+        # 某次启动 load_config 读到 None(文件被占/半写), 走默认值分支, 之后任一次
+        # save_config() 就把「默认空值」整份盖回去 —— 收藏/角色分类/使用统计/下载
+        # 目录/照片目录 全被清空, 而 thumbs/方案/日志这些文件反而没事(它们不在 config)。
+        # 现在: (1) 读取失败时不静默吞掉, 记日志; (2) 保存前若发现内存里的 cfg
+        # 比磁盘上"更空", 先备份磁盘那份, 留一条回滚线索。
         cfg.update({k: v for k, v in raw.items() if k in DEFAULT_CONFIG})
         # 一次性迁移: 旧版本写进配置里的默认呼出键 Ctrl+Alt+K -> 新的默认 F9
         if str(cfg.get("hotkey") or "").replace(" ", "").lower() == "ctrl+alt+k":
@@ -6103,6 +6150,23 @@ class App(object):
 
     def save_config(self):
         apply_photo_dir(self.cfg)     # v1.5.34: 存盘前先同步一次生效目录
+        # v1.5.62: 防"空配置盖掉好配置"。比较几项用户数据, 若磁盘上那份明显更丰富,
+        # 先把磁盘那份留个备份(带时间戳), 这样即使真被覆盖也能捞回来。
+        try:
+            old = read_json(CONFIG_PATH, None)
+            if isinstance(old, dict) and "zzmi_root" in old:
+                def _weight(c):
+                    return sum(len(c.get(k) or []) if isinstance(c.get(k), (list, dict))
+                               else (1 if c.get(k) else 0)
+                               for k in ("char_overrides", "thumb_overrides",
+                                         "pinned_mods", "pinned_cats", "usage",
+                                         "libraries", "custom_dirs"))
+                if _weight(old) > _weight(self.cfg) + 3:
+                    shutil.copyfile(CONFIG_PATH, os.path.join(
+                        DATA_DIR, "config.bak-%s.json" % time.strftime("%Y%m%d-%H%M%S")))
+                    log("⚠ 保存的配置比磁盘上那份更空, 已把旧配置备份为 config.bak-*.json")
+        except Exception:
+            pass
         write_json(CONFIG_PATH, self.cfg)
 
     # ---- v1.5.10: 界面关闭 -> 自动退出 ---------------------------------

@@ -80,7 +80,7 @@ setTimeout(() => {
     ck('侧栏显示「当前装的是：国际服」', /当前装的是：国际服/.test(side.textContent),
        side.textContent.trim().slice(0, 40));
     ck('侧栏带 ok-intl 样式类', side.className.includes('ok-intl'), side.className);
-    ck('提示可切到国服', /切到国服/.test(side.textContent));
+    ck('提示更新前先换回国服', /要更新游戏请点/.test(side.textContent), side.textContent.trim().slice(0, 60));
     ck('国服路径框已回填', ($('#zsCnDir').value || '').includes('国服原文件'),
        $('#zsCnDir').value);
     ck('国际服路径框已回填', ($('#zsIntlDir').value || '').includes('国际服替换文件'),
@@ -107,55 +107,60 @@ setTimeout(() => {
         ck('互转后侧栏更新为国服', /当前装的是：国服/.test($('#zsSide').textContent),
            $('#zsSide').textContent.trim().slice(0, 40));
 
-        // ---- 5. 强制指定方向 ----
-        const b2 = calls.length;
-        $('#zsToIntl').click();
+        // ---- 5. 手动按钮已删除(v1.5.62), 确认页面上不再有 zsToCn/zsToIntl ----
+        ck('页面已无「换成国服」按钮', !$('#zsToCn'));
+        ck('页面已无「换成国际服」按钮', !$('#zsToIntl'));
+        // ---- 5b. 说明区存在 ----
+        ck('有「为什么要换」说明区', !!$('.zwhy'));
+        ck('说明里提到「更新要用国服文件」',
+           /更新游戏要用国服文件/.test($('.zwhy') ? $('.zwhy').textContent : ''));
+        ck('说明里提到「开脚本要用国际服文件」',
+           /开脚本/.test($('.zwhy') ? $('.zwhy').textContent : ''));
+        // ---- 5c. 侧栏提示随版本变化 ----
+        (function(){
+          // 当前 STATUS.side 已被改成 cn(上面互转测试改的)
+          const t = $('#zsSide').textContent;
+          ck('国服时提示「可直接更新游戏」', /可直接更新游戏/.test(t), t.slice(0, 60));
+        })();
+
+        // ---- 6. 选文件夹 ----
+        const b3 = calls.length;
+        $('#zsCnPick').click();
         setTimeout(() => {
-          const c2 = calls.slice(b2)
-            .filter(c => c.url.includes('/api/zzz_swap?'));
-          ck('「换成国际服」side=intl',
-             c2.length === 1 && c2[0].body && c2[0].body.side === 'intl',
-             JSON.stringify(c2.map(c => c.body)));
+          const c3 = calls.slice(b3).filter(c => c.url.includes('/api/zzz_swap_pick'));
+          ck('点📁发出 swap_pick', c3.length === 1, JSON.stringify(c3.map(c => c.body)));
+          ck('swap_pick which=cn',
+             c3.length === 1 && c3[0].body && c3[0].body.which === 'cn',
+             JSON.stringify(c3[0] && c3[0].body));
 
-          // ---- 6. 选文件夹 ----
-          const b3 = calls.length;
-          $('#zsCnPick').click();
+          // ---- 7. 一键启动脚本 ----
+          const b4 = calls.length;
+          $('#zsToolRun').click();
           setTimeout(() => {
-            const c3 = calls.slice(b3).filter(c => c.url.includes('/api/zzz_swap_pick'));
-            ck('点📁发出 swap_pick', c3.length === 1, JSON.stringify(c3.map(c => c.body)));
-            ck('swap_pick which=cn',
-               c3.length === 1 && c3[0].body && c3[0].body.which === 'cn',
-               JSON.stringify(c3[0] && c3[0].body));
+            const c4 = calls.slice(b4).filter(c => c.url.includes('/api/zzz_tool'));
+            ck('一键启动脚本发出 zzz_tool', c4.length >= 1, JSON.stringify(c4.length));
 
-            // ---- 7. 一键启动脚本 ----
-            const b4 = calls.length;
-            $('#zsToolRun').click();
+            // ---- 8. 关闭 ----
+            $('#zsCloseF').click();
+            ck('点关闭后面板隐藏', !$('#mZS').classList.contains('on'));
+            $('#btnZZZTool').click();
+            ck('可重新打开', $('#mZS').classList.contains('on'));
+            $('#zsMask').click();
+            ck('点遮罩也能关', !$('#mZS').classList.contains('on'));
+
+            // ---- 9. 文件缺失时的警告 ----
+            STATUS.has_cn = false;
+            $('#btnZZZTool').click();
             setTimeout(() => {
-              const c4 = calls.slice(b4).filter(c => c.url.includes('/api/zzz_tool'));
-              ck('一键启动脚本发出 zzz_tool', c4.length >= 1, JSON.stringify(c4.length));
+              ck('缺国服文件时底部有警告',
+                 /还没配好/.test($('#zsFoot').textContent) &&
+                 /国服文件/.test($('#zsFoot').textContent),
+                 $('#zsFoot').textContent);
 
-              // ---- 8. 关闭 ----
-              $('#zsCloseF').click();
-              ck('点关闭后面板隐藏', !$('#mZS').classList.contains('on'));
-              $('#btnZZZTool').click();
-              ck('可重新打开', $('#mZS').classList.contains('on'));
-              $('#zsMask').click();
-              ck('点遮罩也能关', !$('#mZS').classList.contains('on'));
-
-              // ---- 9. 文件缺失时的警告 ----
-              STATUS.has_cn = false;
-              $('#btnZZZTool').click();
-              setTimeout(() => {
-                ck('缺国服文件时底部有警告',
-                   /还没配好/.test($('#zsFoot').textContent) &&
-                   /国服文件/.test($('#zsFoot').textContent),
-                   $('#zsFoot').textContent);
-
-                console.log('\n==== 结果: ' + PASS.length + ' 通过, ' +
-                            FAIL.length + ' 失败 ====');
-                if (FAIL.length) { console.log('失败项:', FAIL); process.exit(1); }
-                process.exit(0);
-              }, 150);
+              console.log('\n==== 结果: ' + PASS.length + ' 通过, ' +
+                          FAIL.length + ' 失败 ====');
+              if (FAIL.length) { console.log('失败项:', FAIL); process.exit(1); }
+              process.exit(0);
             }, 150);
           }, 150);
         }, 150);

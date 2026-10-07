@@ -401,6 +401,14 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
 .zside.ok-intl{background:rgba(96,165,250,.12);border-color:rgba(96,165,250,.35)}
 .zside.ok-unk{background:rgba(245,197,24,.10);border-color:rgba(245,197,24,.30)}
 .zhint2{margin-top:10px;font-size:11.5px;line-height:1.6}
+.zwhy{margin-top:12px;padding:11px 13px;border-radius:var(--r2);
+  background:var(--acs);border:1px solid var(--acring);font-size:12px;line-height:1.7}
+.zwhy-t{font-weight:700;margin-bottom:6px;color:var(--accent)}
+.zwhy ul{margin:0;padding-left:18px}
+.zwhy li{margin-bottom:3px}
+.zwhy b{color:var(--txt)}
+.zwhy-key{margin-top:7px;padding-top:7px;border-top:1px dashed var(--line2);
+  font-weight:600;color:var(--txt)}
 
 /* v1.5.12: GameBanana 下载区 */
 .gbmodal{width:min(1140px,96vw);max-height:92vh}
@@ -1211,7 +1219,7 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
     <!-- 二、文件互转 -->
     <div class="zsec">
       <div class="zsec-t">② 国服 ⇄ 国际服 文件替换</div>
-      <div class="zsec-d">两套文件各存一份，互相覆盖即可（不用备份）。点一下按钮自动切到另一边。</div>
+      <div class="zsec-d">点下面的按钮，自动在国服 / 国际服两套文件之间切换（两套各存一份，互相覆盖，不用备份）。</div>
 
       <div class="zside" id="zsSide">
         <span class="hint">正在检测当前版本…</span>
@@ -1230,10 +1238,19 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
 
       <div class="zrow zrow-act">
         <button class="btn primary" id="zsSwap">🔄 一键互转</button>
-        <button class="btn ghost" id="zsToCn" title="强制换成国服文件">换成国服</button>
-        <button class="btn ghost" id="zsToIntl" title="强制换成国际服文件">换成国际服</button>
       </div>
-      <div class="zhint2 hint">提示：替换前请<strong>先关掉游戏</strong>。换完直接启动游戏即可生效。</div>
+
+      <div class="zwhy">
+        <div class="zwhy-t">💡 为什么要换？什么时候换？</div>
+        <ul>
+          <li><b>开脚本（注入器）要用国际服文件</b> —— 挂着 mod / 脚本玩的时候，必须换成 <b>国际服</b>。</li>
+          <li><b>更新游戏要用国服文件</b> —— 官方启动器更新会校验文件，<b>必须换回国服</b>，
+              否则会报错 / 更新失败 / 无限修复。</li>
+        </ul>
+        <div class="zwhy-key">⚠ 每次更新游戏前：先点「一键互转」换回<b>国服</b> → 再打开官方启动器更新 → 更新完再点一次换回<b>国际服</b>。</div>
+      </div>
+
+      <div class="zhint2 hint">提示：替换前请<strong>先关掉游戏</strong>（游戏开着时 GameAssembly.dll 被占用，替换会失败）。</div>
     </div>
   </div>
   <div class="dfoot">
@@ -4096,9 +4113,11 @@ async function zsRefresh(){
     if (r.side === "cn" || r.side === "intl"){
       cls = r.side === "cn" ? "ok-cn" : "ok-intl";
       big = "当前装的是：" + nameMap[r.side];
-      sm = "点下面「一键互转」可切到" + (r.side === "cn" ? "国际服" : "国服");
+      sm = r.side === "cn"
+        ? "✓ 可直接更新游戏；要挂脚本玩请点「一键互转」换成国际服"
+        : "✓ 可挂脚本玩；要更新游戏请点「一键互转」先换回国服";
     } else if (r.cur_size > 0){
-      sm = "文件像是被其他工具改过。可手动点「换成国服 / 换成国际服」";
+      sm = "文件像是被其他工具改过，认不出属于哪一套。可点「一键互转」试一次";
     } else {
       sm = "游戏目录里没找到 GameAssembly.dll" +
            (r.game_root ? "（目录：" + r.game_root + "）" : "，请先在设置里配好游戏路径");
@@ -4148,7 +4167,7 @@ async function zsToolRun(){
 }
 async function zsDoSwap(side){
   const label = side === "auto" ? "一键互转" : (side === "cn" ? "换成国服" : "换成国际服");
-  const btn = side === "auto" ? $("#zsSwap") : (side === "cn" ? $("#zsToCn") : $("#zsToIntl"));
+  const btn = $("#zsSwap");
   const old = btn ? btn.textContent : "";
   if (btn){ btn.disabled = true; btn.textContent = "⏳ 替换中…"; }
   toast("正在" + label + "…文件较大，稍等几秒", "", 5000);
@@ -4167,8 +4186,6 @@ if ($("#zsToolRun")) $("#zsToolRun").onclick = zsToolRun;
 if ($("#zsCnPick")) $("#zsCnPick").onclick = () => zsSwapPick("cn");
 if ($("#zsIntlPick")) $("#zsIntlPick").onclick = () => zsSwapPick("intl");
 if ($("#zsSwap")) $("#zsSwap").onclick = () => zsDoSwap("auto");
-if ($("#zsToCn")) $("#zsToCn").onclick = () => zsDoSwap("cn");
-if ($("#zsToIntl")) $("#zsToIntl").onclick = () => zsDoSwap("intl");
 if ($("#gbCloseX")) $("#gbCloseX").onclick = gbClose;
 if ($("#gbCloseF")) $("#gbCloseF").onclick = gbClose;
 if ($("#gbMask")) $("#gbMask").onclick = () => { gbCloseDl(); gbClose(); };
