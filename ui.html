@@ -4212,7 +4212,7 @@ async function zsToolRun(){
   const btn = $("#zsToolRun");
   const old = btn ? btn.textContent : "";
   if (btn){ btn.disabled = true; btn.textContent = "⏳ 启动中（等脚本挂上）…"; }
-  toast("① 正在启动脚本…（脚本要先挂上，等 3 秒后自动开游戏，别急）", "", 6000);
+  toast("① 正在启动脚本…（先清残留 → 经资源管理器启动，与手动双击同一条路；等 3 秒后自动开游戏）", "", 7000);
   try{
     let r = await api("/api/zzz_tool", {});
     if (r.need_pick){

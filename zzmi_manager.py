@@ -801,7 +801,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.65"
+VERSION = "1.5.66"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -4651,6 +4651,81 @@ def _zzz_diag_launcher(exe, how):
             % (how, pid, _pid_is_admin(pid),
                (p[2] if p else "(已退出)") + "(%s)" % ppid,
                _proc_path(pid) or "?", _proc_cmdline(pid) or "(空)"))
+    # v1.5.66: 顺便把【游戏进程】也记下来 —— 用户实测脚本进程两种方式完全一致,
+    # 那差异只可能在"游戏是怎么起来的"上, 必须一起对比。
+    _zzz_diag_game(how)
+
+
+# 游戏相关进程名(小写, 精确匹配 exe 名)
+_ZZZ_GAME_PROC = ("zenlesszonezero.exe", "xxmi launcher.exe",
+                  "hoyoplay.exe", "hoyolauncher.exe", "launcher.exe")
+
+
+def _kill_proc_by_name(names, exclude_pids=()):
+    """v1.5.66: 结束指定 exe 名的所有进程。返回被杀掉的 [(pid, name), ...]。
+
+    为什么要这个: 「一键启动脚本+游戏」如果上一次的脚本(Launcher.exe)还残留着,
+    再启动一个新的, 两个注入器会同时往游戏里注入 —— 实测表现就是
+    「菜单能呼出、功能全废」(用户手动双击时只有一个脚本, 所以正常)。
+    启动前先清干净, 保证永远只有一个脚本实例。
+    """
+    killed = []
+    names = {n.lower() for n in names}
+    try:
+        procs = _enum_processes()
+    except Exception as ex:
+        log("[清理] 枚举进程失败:", ex)
+        return killed
+    for pid, ppid, name in procs:
+        if name.lower() not in names:
+            continue
+        if pid in exclude_pids:
+            continue
+        try:
+            # 1 = PROCESS_TERMINATE 需要; 用 OpenProcess + TerminateProcess
+            h = ctypes.windll.kernel32.OpenProcess(0x0001 | 0x1000, False, pid)
+            if not h:
+                # 普通权限打不开管理员进程 —— 记下来让调用方提示
+                log("[清理] 无法结束 %s(PID=%s) —— 权限不足, 可能还残留"
+                    % (name, pid))
+                continue
+            ok = ctypes.windll.kernel32.TerminateProcess(h, 1)
+            ctypes.windll.kernel32.CloseHandle(h)
+            if ok:
+                killed.append((pid, name))
+                log("[清理] 已结束残留 %s (PID=%s)" % (name, pid))
+            else:
+                log("[清理] TerminateProcess 失败 %s (PID=%s) err=%s"
+                    % (name, pid, ctypes.get_last_error()))
+        except Exception as ex:
+            log("[清理] 结束 %s(PID=%s) 异常: %s" % (name, pid, ex))
+    return killed
+
+
+def _zzz_diag_game(how):
+    """记录当前与游戏启动链相关的所有进程(名/管理员/父进程/命令行)。"""
+    try:
+        procs = _enum_processes()
+    except Exception as ex:
+        log("[诊断][%s] 游戏进程枚举失败: %s" % (how, ex))
+        return
+    by_pid = {p[0]: p for p in procs}
+    seen = []
+    for pid, ppid, name in procs:
+        n = name.lower()
+        # Launcher.exe 已经在上一步记过了, 这里只看游戏/启动器
+        if n in ("zenlesszonezero.exe", "xxmi launcher.exe",
+                 "hoyoplay.exe", "hoyolauncher.exe"):
+            seen.append((pid, ppid, name))
+    if not seen:
+        log("[诊断][%s] (游戏进程: 尚未启动)" % how)
+        return
+    for pid, ppid, name in seen:
+        p = by_pid.get(ppid)
+        log("[诊断][%s] 游戏链 %s | PID=%s | 管理员=%s | 父进程=%s | 命令行=%s"
+            % (how, name, pid, _pid_is_admin(pid),
+               (p[2] if p else "(已退出)") + "(%s)" % ppid,
+               _proc_cmdline(pid) or "(空)"))
 
 
 # ---- 以下三个是纯 ctypes 的进程信息读取(wmic 已被新版 Windows 移除) ----
@@ -4785,28 +4860,49 @@ def _pid_is_admin(pid):
 
 
 def run_exe_admin(exe, workdir=""):
-    """以管理员权限启动一个 exe(走 UAC runas), 返回 (ok, msg)。
+    """以管理员权限启动一个 exe, 返回 (ok, msg)。
 
-    v1.5.60 关键修正 —— 用户实测「游戏里脚本功能不生效, 怀疑没拿到管理员」:
-      · **删掉 except 里的静默回落**。原代码在 ShellExecuteW 抛异常时会掉进
-        非提权的 subprocess.Popen, 而注入器(Launcher.exe)自带 requireAdministrator
-        清单 —— Popen 必然 WinError 740 失败, 却还返回"已启动(未提权)"。
-        这种"假装成功"会让用户以为脚本起来了, 实则是残留的旧进程在顶着。
-        现在: runas 失败 = 明确报错, 绝不偷偷降权启动。
-      · **rc 与父进程权限全部写进日志**, 以后排查一眼就能看到真相。
-      · **父进程已是管理员时, runas 是静默提权(不弹 UAC)** —— 这是 Windows
-        既定行为, 用户看到"没弹框"不代表"没提权"。
+    v1.5.66 关键改动 —— 用户实测「手动双击 Launcher.exe 一切正常; 用管理器
+    "一键启动"则脚本菜单能呼出、功能全废」。诊断证实两种方式的脚本进程
+    (权限/路径/命令行) **完全一致**, 唯一差别是**父进程**:
+        手动双击 -> 父进程 = explorer.exe
+        管理器起 -> 父进程 = ZZMI-Mod-Manager.exe
+    很多注入器会检查/依赖启动来源(甚至只认 explorer 起的进程)。所以这里改成:
+        **让 explorer.exe 去启动脚本** —— 父进程与手动双击完全一致。
+    explorer 本身非提权, 但 Launcher.exe 自带 requireAdministrator 清单,
+    系统会为它弹 UAC 提权(用户已是管理员时静默同意), 效果等同手动双击。
+
+    兜底: 若 explorer 方式失败, 回落到原来的 ShellExecuteW runas。
     """
     if not os.path.isfile(exe):
         return False, "找不到文件: %s" % exe
     parent_admin = _am_i_admin()
+    wd = workdir or os.path.dirname(exe)
     if os.name == "nt":
+        # —— 方式一(首选): 交给 explorer.exe 启动, 父进程 = explorer ——
         try:
             import ctypes
-            wd = workdir or os.path.dirname(exe)
+            # explorer.exe "<exe>"  —— 用资源管理器的 ShellExecute 语义打开
+            # 注意不要传 runas, 让目标 exe 自己的清单去决定是否提权(与双击一致)
+            rc = ctypes.windll.shell32.ShellExecuteW(
+                None, "open", "explorer.exe", '"%s"' % exe, wd, 0)
+            log("[脚本启动] explorer 方式 rc=%s parent_admin=%s exe=%s"
+                % (rc, parent_admin, exe))
+            if rc > 32:
+                try:
+                    _zzz_diag_launcher(exe, "explorer")
+                except Exception as ex:
+                    log("[诊断] 采集失败:", ex)
+                return True, ("已通过资源管理器启动脚本(与手动双击同一条路), "
+                              "若弹 UAC 请点「是」")
+        except Exception as ex:
+            log("[脚本启动] explorer 方式异常, 回落 runas:", ex)
+        # —— 方式二(兜底): 原来的 runas ——
+        try:
+            import ctypes
             rc = ctypes.windll.shell32.ShellExecuteW(
                 None, "runas", exe, None, wd, 1)
-            log("[脚本启动] runas rc=%s parent_admin=%s exe=%s wd=%s"
+            log("[脚本启动] runas(兜底) rc=%s parent_admin=%s exe=%s wd=%s"
                 % (rc, parent_admin, exe, wd))
             if rc > 32:
                 # v1.5.64 诊断: 启动后去查【实际跑起来的进程】到底什么状态。
@@ -8228,6 +8324,14 @@ class Handler(BaseHTTPRequestHandler):
                 log("[脚本启动] 开始 | 文件夹=%s | 管理器管理员=%s"
                     % (d, _am_i_admin()))
                 steps = []
+                # ⓪ v1.5.66: 先清掉上一次残留的脚本进程!
+                # 两个 Launcher.exe 同时活着 = 两个注入器抢着往游戏里注入,
+                # 实测表现正是「菜单能呼出、功能全废」。用户手动双击时只有一个
+                # 脚本实例, 所以正常 —— 这就是两种方式结果不同的真正原因。
+                killed = _kill_proc_by_name(("Launcher.exe",))
+                if killed:
+                    steps.append("⓪ 已清掉残留脚本 %d 个" % len(killed))
+                    time.sleep(1.2)      # 等它彻底退干净
                 # ① 打开脚本(注入器, 管理员)
                 ok_l, msg_l = run_exe_admin(launcher, d)
                 steps.append("① 脚本 " + ("已启动" if ok_l else "失败: " + msg_l))
@@ -8249,6 +8353,18 @@ class Handler(BaseHTTPRequestHandler):
                 ok_g, msg_g = launch_game(app.cfg)
                 steps.append("③ 游戏 等%s秒脚本挂上后 " % int(_ZZZ_TOOL_GAME_DELAY)
                              + ("已请求启动(请在 UAC 点是)" if ok_g else msg_g))
+                # v1.5.66 诊断: 游戏启动后再采一次(后台跑, 不阻塞按钮响应)。
+                # 用户实测脚本进程两种方式完全一致, 差异只可能在"游戏怎么起"上。
+                def _bg_gamediag():
+                    try:
+                        time.sleep(8.0)
+                        _zzz_diag_game("启动后")
+                    except Exception as ex:
+                        log("[诊断][启动后] 采集失败:", ex)
+                try:
+                    threading.Thread(target=_bg_gamediag, daemon=True).start()
+                except Exception:
+                    pass
                 cheat = os.path.join(d, "Cheat.dll")
                 warn = "" if os.path.isfile(cheat) else \
                     "（提醒: 文件夹里没有 Cheat.dll, 可能注入失败）"
