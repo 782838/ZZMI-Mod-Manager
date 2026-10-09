@@ -5,6 +5,24 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.68 更新
+-----------
+* **修: 连拍「截取不到画面」的真正原因 —— 安装包里没有图像库 Pillow**。
+  日志实锤 `ImportError: cannot import name 'ImageGrab' from 'PIL' (unknown location)`。
+  根因不在代码, 在**打包环境**: `buildenv` 是个手工 venv, 2026-10-07 16:35 重建时
+  只装了 pyinstaller、**漏装 Pillow** —— 此后(v1.5.59 起)所有安装包都不含 PIL,
+  而连拍是**唯一依赖第三方库的功能**(其余全是标准库), 所以只有连拍挂。
+  安装包体积从 13.26MB 掉到 9.90MB 就是这一库消失的证据。
+  · **修法**: 打包环境补装 Pillow + spec 显式 `hiddenimports`(含延迟导入的
+    `PIL.JpegImagePlugin`, 否则存 JPEG 会报 encoder jpeg not available)。
+  · **根治**: spec 里加了**构建前置断言** —— 打包环境缺 Pillow 就直接中止构建,
+    以后重建 buildenv 忘了装也绝不会再产出"连拍坏的包"。
+* **改: 连拍抓屏失败不再刷屏**。以前每帧都抛 ImportError + 写 traceback,
+  实测把日志刷到 150KB; 现在启动时探测一次 Pillow, 缺失只报一条明确日志。
+* **改: 挑帧页的空状态说真话**。缺 Pillow 时不再误导你去折腾"独占全屏/杀软白名单",
+  而是直接说明是安装包的问题、升级即可修复。
+* **新: `/api/state` 增加 `photo_ok`** —— 前端可据此提示连拍是否可用。
+
 v1.5.67 更新
 -----------
 * **删: 「脚本启动 / 一键启动脚本+游戏」功能整体移除**(用户明确要求: 自己手动启动脚本)。
@@ -818,7 +836,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.67"
+VERSION = "1.5.68"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -5370,6 +5388,21 @@ class BurstBuffer(object):
         self.thread = None
         self._stop = threading.Event()
         self.grab = None               # 惰性绑定的抓屏函数(测试可注入假帧)
+        # v1.5.68: 连拍必须依赖 Pillow 的 ImageGrab。打包环境(buildenv)重建时若
+        # 漏装 Pillow, 打出来的包就抓不到任何画面 —— 以前是**每帧**抛 ImportError
+        # 刷日志(实测 150KB), 用户只看到"截取不到画面"却毫无头绪。这里启动时探测
+        # 一次, 缺失就只报一条明确日志, 并把状态暴露给前端。
+        self._pil_ok = None            # None=没探测, True/False=探测结果
+        self._pil_err = ""
+        try:
+            from PIL import ImageGrab as _ig  # noqa: F401
+            self._pil_ok = True
+        except Exception as ex:
+            self._pil_ok = False
+            self._pil_err = "%s" % ex
+            log("[连拍] 不可用: 本安装包缺少图像库 Pillow (%s) —— "
+                "不是你的操作问题, 是打包失误, 请更新到 v1.5.68 或更高版本。"
+                % self._pil_err)
         # v1.5.35: 每次「按下抓拍键」都记一笔(成功/失败都记)。前端哨兵读到新序号
         # 就一定会弹出挑帧页 —— 抓到了就摊开挑, 没抓到就弹空状态把原因说清楚,
         # 不再出现"按了完全没反应"。
@@ -5547,6 +5580,10 @@ class BurstBuffer(object):
         rec["frames"].append(got)
 
     def _default_grab(self):
+        # v1.5.68: PIL 是否可用在 __init__ 里已探测并缓存(缺失时只报过一条日志),
+        # 这里只读缓存 —— 绝不每帧 import / 每帧写日志。
+        if not self._pil_ok:
+            return None
         from PIL import ImageGrab
         img = ImageGrab.grab(all_screens=False)
         if img.mode != "RGB":
@@ -5667,6 +5704,13 @@ class BurstBuffer(object):
         if not cfg.get("photo_on", True):
             return ("连拍缓冲是关着的 —— 去 设置 → 📸 连拍缓冲 → 后台录屏, "
                     "点一下「开启」再来。")
+        # v1.5.68: 本安装包缺少 Pillow 时, 下面的"屏幕捕获被拦住"是误导 ——
+        # 用户会白折腾全屏模式/杀软白名单。直接点明是安装包的问题。
+        # (纯读一个布尔值 + 拼字符串, 在钩子回调里也安全)
+        if self._pil_ok is False:
+            return ("连拍要用的图像库(Pillow)没被装进这个安装包, 所以抓不到画面 —— "
+                    "**这不是你的设置问题**, 更新到 v1.5.68 或更高版本即可修复。"
+                    "（若是 v1.5.68+ 还这样, 请把这条反馈给作者）")
         # v1.5.42: 新的默认触发条件 —— 先把"不是游戏在前台"这条原因说清楚,
         # 否则用户看到的还是"按了没反应"。_is_game_foreground / foreground_exe
         # 都是纯内核调用(0 子进程 / 0 文件 I/O), 在钩子回调里调也安全。
@@ -6593,6 +6637,10 @@ class App(object):
             "game_running": game, "launcher_running": launcher,
             # v1.5.31 连拍缓冲
             "photo_on": bool(self.cfg.get("photo_on", True)),
+            # v1.5.68: 连拍能不能用(依赖 Pillow)。只有明确探测到缺失才是 False,
+            # 没探测过(None)按可用算, 免得误报。
+            "photo_ok": (getattr(getattr(self, "burst", None),
+                                 "_pil_ok", True) is not False),
             "photo_hotkey": self.cfg.get("photo_hotkey", "Ctrl+Shift+C"),
             "photo_mouse_btn": int(self.cfg.get("photo_mouse_btn", 1) or 0),
             # v1.5.42: 连拍是否"只在绝区零前台时才触发"; 顺带把当前前台 exe
