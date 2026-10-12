@@ -23,6 +23,9 @@ tests/*.png
 # 本机数据与缩略图缓存
 thumbs/
 *.log
+# 打包前的整文件备份(一次性安全网, 不入库)
+*.bak_169full
+zzmi_manager.py.bak*
 
 # 可执行文件走 Releases 分发, 不进仓库
 *.exe
