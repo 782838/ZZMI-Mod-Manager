@@ -382,41 +382,7 @@ html[data-theme="light"] .iconbtn:hover{background:var(--accent);color:var(--ink
   border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:-2px}
 @keyframes sp{to{transform:rotate(360deg)}}
 
-/* v1.5.61: 脚本启动 / 文件互转 面板 */
-.zsec{border:1px solid var(--line);border-radius:var(--r2);padding:14px;margin-bottom:14px;
-  background:var(--panel2)}
-.zsec:last-child{margin-bottom:0}
-.zsec-t{font-size:14px;font-weight:700;margin-bottom:6px}
-.zsec-d{font-size:12px;color:var(--dim);line-height:1.6;margin-bottom:12px}
-.zsec-d code{background:var(--panel3);border-radius:4px;padding:1px 5px;font-size:11px}
-.zrow{display:flex;align-items:center;gap:8px;margin-bottom:9px}
-.zrow-act{margin-top:12px;margin-bottom:0;flex-wrap:wrap}
-.zrow .zlab{flex:0 0 78px;font-size:12px;color:var(--txt2);font-weight:600}
-.zpath{flex:1 1 auto;min-width:0;font-size:12px}
-.zside{display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:var(--r2);
-  background:var(--panel3);border:1px solid var(--line);margin-bottom:12px}
-.zside .zbig{font-size:15px;font-weight:700}
-.zside .zsm{font-size:11px;color:var(--dim);margin-top:2px}
-.zside.ok-cn{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.35)}
-.zside.ok-intl{background:rgba(96,165,250,.12);border-color:rgba(96,165,250,.35)}
-.zside.ok-unk{background:rgba(245,197,24,.10);border-color:rgba(245,197,24,.30)}
-.zhint2{margin-top:10px;font-size:11.5px;line-height:1.6}
-.zwhy{margin-top:12px;padding:11px 13px;border-radius:var(--r2);
-  background:var(--acs);border:1px solid var(--acring);font-size:12px;line-height:1.7}
-.zwhy-t{font-weight:700;margin-bottom:6px;color:var(--accent)}
-.zwhy ul{margin:0;padding-left:18px}
-.zwhy li{margin-bottom:3px}
-.zwhy b{color:var(--txt)}
-.zwhy-key{margin-top:7px;padding-top:7px;border-top:1px dashed var(--line2);
-  font-weight:600;color:var(--txt)}
-.zscan{display:flex;align-items:center;gap:9px;padding:9px 12px;margin-bottom:13px;
-  border-radius:var(--r2);background:var(--panel2);border:1px solid var(--line)}
-.zscan-ico{font-size:14px;flex:0 0 auto}
-.zscan-msg{flex:1 1 auto;min-width:0;line-height:1.5}
-.zscan.done{background:rgba(52,211,153,.10);border-color:rgba(52,211,153,.30)}
-.zscan.busy .zscan-ico{animation:zspin 1.1s linear infinite;display:inline-block}
-.zscan.warn{background:rgba(245,197,24,.10);border-color:rgba(245,197,24,.30)}
-@keyframes zspin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+/* v1.5.69: 文件替换面板的样式已随功能一起删除 */
 
 /* v1.5.12: GameBanana 下载区 */
 .gbmodal{width:min(1140px,96vw);max-height:92vh}
@@ -909,7 +875,6 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
     </div>
     <div class="spacer"></div>
     <button class="btn primary" id="btnLaunch" title="用 ZZMI 直接启动绝区零(需要管理员授权, 会弹 UAC 窗口)">▶ 启动游戏</button>
-    <button class="btn ghost" id="btnZZZTool" title="国服 ⇄ 国际服 文件替换: 一键在两套文件之间切换。用脚本要换国际服, 更新游戏要换回国服">🔄 文件替换</button>
     <button class="btn" id="btnUndo" title="撤销上一步操作">↶ 撤销</button>
     <button class="btn" id="btnRescan" title="重新扫描 Mods 目录">⟳ 重新扫描</button>
     <button class="btn ghost" id="btnLib" title="管理 Mods 外面的仓库目录">🗄 仓库</button>
@@ -1204,63 +1169,7 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
   </div>
 </div>
 
-<!-- v1.5.61: 脚本启动 / 国服国际服文件互转 面板 -->
-<div class="mask" id="zsMask"></div>
-<div class="modal" id="mZS" style="width:min(560px,94vw)">
-  <div class="dh"><h3>🔄 国服 ⇄ 国际服 文件替换</h3>
-    <button class="xbtn" id="zsCloseX">✕</button></div>
-  <div class="dbody">
-    <!-- v1.5.63: 自动扫描条 -->
-    <div class="zscan" id="zsScanBar">
-      <span class="zscan-ico">🔍</span>
-      <span class="zscan-msg hint" id="zsScanMsg">正在自动扫描文件夹…</span>
-      <button class="btn mini3" id="zsRescan" title="重新在常见位置找一遍文件夹">重新扫描</button>
-    </div>
-
-    <!-- 文件互转 -->
-    <div class="zsec">
-      <div class="zsec-t">在两套文件之间切换</div>
-      <div class="zsec-d">点下面的按钮，自动在国服 / 国际服两套文件之间切换（两套各存一份，互相覆盖，不用备份）。</div>
-
-      <div class="zside" id="zsSide">
-        <span class="hint">正在检测当前版本…</span>
-      </div>
-
-      <div class="zrow">
-        <label class="zlab">国服原文件</label>
-        <input class="inp zpath" id="zsCnDir" type="text" readonly placeholder="尚未找到（可点📁手动选）" />
-        <button class="btn mini3" id="zsCnPick">📁</button>
-      </div>
-      <div class="zrow">
-        <label class="zlab">国际服替换</label>
-        <input class="inp zpath" id="zsIntlDir" type="text" readonly placeholder="尚未找到（可点📁手动选）" />
-        <button class="btn mini3" id="zsIntlPick">📁</button>
-      </div>
-
-      <div class="zrow zrow-act">
-        <button class="btn primary" id="zsSwap">🔄 一键互转</button>
-      </div>
-
-      <div class="zwhy">
-        <div class="zwhy-t">💡 什么时候才需要换？</div>
-        <ul>
-          <li><b>用脚本（注入器）→ 必须【国际服】</b> —— 只有开脚本玩才要换。</li>
-          <li><b>只挂 mod（XXMI / ZZMI）→ 不用换</b> —— 国服、国际服都能正常挂 mod，
-              不需要动文件。</li>
-          <li><b>更新游戏 → 必须【国服】</b> —— 官方启动器更新会校验文件，不换回国服会
-              报错 / 更新失败 / 无限修复。</li>
-        </ul>
-        <div class="zwhy-key">⚠ 每次更新游戏前：先点「一键互转」换回<b>国服</b> → 再打开官方启动器更新 → 更新完再点一次换回<b>国际服</b>（要开脚本的话）。</div>
-      </div>
-
-      <div class="zhint2 hint">提示：替换前请<strong>先关掉游戏</strong>（游戏开着时 GameAssembly.dll 被占用，替换会失败）。</div>
-    </div>
-  </div>
-  <div class="dfoot">
-    <span id="zsFoot" class="hint"></span>
-    <button class="btn" id="zsCloseF">关闭</button>
-  </div>
-</div>
+<!-- v1.5.69: 「文件替换」面板已删除(用户 m02165: "删掉文件替换这个功能") -->
 
 <!-- v1.5.12: GameBanana Mod 下载区 -->
 <div class="mask" id="gbMask"></div>
@@ -4093,119 +4002,8 @@ async function gbConfirm(msg){
   return r != null;
 }
 
-if ($("#btnGB")) $("#btnGB").onclick = gbOpen;
-if ($("#btnZZZTool")) $("#btnZZZTool").onclick = zsOpen;
-
-/* ===== v1.5.61: 脚本启动 & 国服/国际服文件互转 ===== */
-function zsShow(on){
-  const m = $("#mZS"), mk = $("#zsMask");
-  if (!m) return;
-  m.classList.toggle("on", on);
-  if (mk) mk.classList.toggle("on", on);
-}
-function zsOpen(){
-  zsShow(true);
-  zsAutoScan(false);        // 打开面板先自动扫描/校准(只在有失效项时才真扫)
-}
-function zsScanState(kind, msg){
-  const bar = $("#zsScanBar");
-  if (!bar) return;
-  bar.className = "zscan" + (kind ? " " + kind : "");
-  if ($("#zsScanMsg")) $("#zsScanMsg").textContent = msg;
-}
-async function zsAutoScan(force){
-  zsScanState("busy", force ? "正在重新扫描…" : "正在自动扫描文件夹…");
-  try{
-    const r = await api("/api/zzz_autodetect", {force: !!force});
-    if (r.skipped){
-      zsScanState("done", "✓ 两个文件夹都正常");
-    } else {
-      const got = [];
-      if (r.cn) got.push("国服原文件");
-      if (r.intl) got.push("国际服替换");
-      const miss = [];
-      if (!r.cn) miss.push("国服原文件");
-      if (!r.intl) miss.push("国际服替换");
-      if (miss.length){
-        zsScanState("warn", "扫描完成（" + r.elapsed + "s）：找到 " +
-          (got.join("、") || "无") + "；没找到 " + miss.join("、") + "，请点 📁 手动选");
-      } else {
-        zsScanState("done", "✓ 已自动找到两个文件夹（" + r.elapsed + "s）");
-      }
-      if (r.changed && r.changed.length)
-        toast("已自动填好：" + r.changed.join("、"), "", 5000);
-    }
-    await zsRefresh();
-  }catch(e){
-    zsScanState("warn", "扫描失败: " + e.message + "（可点 📁 手动选）");
-    await zsRefresh();
-  }
-}
-async function zsRefresh(){
-  try{
-    const r = await api("/api/zzz_swap_status", {});
-    if ($("#zsCnDir")) $("#zsCnDir").value = r.cn_dir || "";
-    if ($("#zsIntlDir")) $("#zsIntlDir").value = r.intl_dir || "";
-    const box = $("#zsSide");
-    const nameMap = {cn:"国服", intl:"国际服"};
-    let cls = "ok-unk", big = "认不出当前版本", sm = "";
-    if (r.side === "cn" || r.side === "intl"){
-      cls = r.side === "cn" ? "ok-cn" : "ok-intl";
-      big = "当前装的是：" + nameMap[r.side];
-      sm = r.side === "cn"
-        ? "✓ 可直接更新游戏；要开脚本玩请点「一键互转」换成国际服"
-        : "✓ 可开脚本玩；要更新游戏请点「一键互转」先换回国服";
-    } else if (r.cur_size > 0){
-      sm = "文件像是被其他工具改过，认不出属于哪一套。可点「一键互转」试一次";
-    } else {
-      sm = "游戏目录里没找到 GameAssembly.dll" +
-           (r.game_root ? "（目录：" + r.game_root + "）" : "，请先在设置里配好游戏路径");
-    }
-    if (box){
-      box.className = "zside " + cls;
-      box.innerHTML = '<div><div class="zbig">' + esc(big) +
-        '</div><div class="zsm">' + esc(sm) + '</div></div>';
-    }
-    const miss = [];
-    if (!r.has_cn) miss.push("国服文件");
-    if (!r.has_intl) miss.push("国际服文件");
-    if ($("#zsFoot")) $("#zsFoot").textContent =
-      miss.length ? ("⚠ 还没配好：" + miss.join("、") + "（点上面「重新扫描」或 📁 手动选）") : "";
-  }catch(e){
-    if ($("#zsSide")) $("#zsSide").innerHTML =
-      '<span class="hint">检测失败: ' + esc(e.message) + '</span>';
-  }
-}
-async function zsSwapPick(which){
-  try{
-    const r = await api("/api/zzz_swap_pick", {which});
-    toast(r.msg || (r.ok ? "已记住" : "未选择"), r.ok ? "" : "err", 8000);
-    if (r.ok) zsRefresh();
-  }catch(e){ toast("出错了: " + e.message, "err", 8000); }
-}
-async function zsDoSwap(side){
-  const label = side === "auto" ? "一键互转" : (side === "cn" ? "换成国服" : "换成国际服");
-  const btn = $("#zsSwap");
-  const old = btn ? btn.textContent : "";
-  if (btn){ btn.disabled = true; btn.textContent = "⏳ 替换中…"; }
-  toast("正在" + label + "…文件较大，稍等几秒", "", 5000);
-  try{
-    const r = await api("/api/zzz_swap", {side});
-    toast(r.msg || (r.ok ? "完成" : "失败"), r.ok ? "" : "err", r.ok ? 8000 : 12000);
-    zsRefresh();
-  }catch(e){ toast("出错了: " + e.message, "err", 10000); }
-  finally{ if (btn){ btn.disabled = false; btn.textContent = old; } }
-}
-if ($("#zsCloseX")) $("#zsCloseX").onclick = () => zsShow(false);
-if ($("#zsCloseF")) $("#zsCloseF").onclick = () => zsShow(false);
-if ($("#zsMask")) $("#zsMask").onclick = () => zsShow(false);
-if ($("#zsRescan")) $("#zsRescan").onclick = () => zsAutoScan(true);
-if ($("#zsCnPick")) $("#zsCnPick").onclick = () => zsSwapPick("cn");
-if ($("#zsIntlPick")) $("#zsIntlPick").onclick = () => zsSwapPick("intl");
-if ($("#zsSwap")) $("#zsSwap").onclick = () => zsDoSwap("auto");
 if ($("#gbCloseX")) $("#gbCloseX").onclick = gbClose;
 if ($("#gbCloseF")) $("#gbCloseF").onclick = gbClose;
-if ($("#gbMask")) $("#gbMask").onclick = () => { gbCloseDl(); gbClose(); };
 if ($("#gbGo")) $("#gbGo").onclick = () => gbCrawl(1);
 if ($("#gbUrl")) $("#gbUrl").addEventListener("keydown", e => {
   if (e.key === "Enter"){ e.preventDefault(); gbCrawl(1); }

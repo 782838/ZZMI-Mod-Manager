@@ -130,6 +130,19 @@ def req(path, body=None, raw=False):
     except urllib.error.HTTPError as e:
         return e.code, None, {}
 
+def wait_partial(mod_id, want, tries=40):
+    """dir_toggle/component_toggle/variant_select 走后台重扫(v1.5.55), 轮询到
+    partial 变成目标值为止(前端就是靠 3s 轮询拿到校正后的状态)。"""
+    for _ in range(tries):
+        st, s, _ = req("/api/state")
+        e = {x["id"]: x for x in s["entries"]}.get(mod_id)
+        if e is not None and e["partial"] is want:
+            return e
+        time.sleep(0.25)
+    st, s, _ = req("/api/state")
+    return {x["id"]: x for x in s["entries"]}.get(mod_id) or {}
+
+
 try:
     # 1. UI 页面
     st, html, hd = req("/", raw=True)
@@ -214,16 +227,19 @@ try:
     assert {e["id"]: e for e in r["state"]["entries"]}["分类A/安比"]["enabled"] is True
 
     # 9. 子目录启停
+    # v1.5.55 起 dir_toggle 走后台重扫(rescan_async), 响应带回的 state 可能还没扫完;
+    # 而磁盘改名是同步的, 所以这里断言磁盘结果 + 等后台扫完再断言 partial。
     st, r, _ = req("/api/dir_toggle", {"rel": "分类A/安比/AnbyMod/resources", "enabled": False})
     w(f"POST /api/dir_toggle -> ok={r['ok']} msg={r['msg']}")
     assert r["ok"] and os.path.isdir(os.path.join(MODS, "分类A", "安比", "AnbyMod", "DISABLED_resources"))
-    e = {x["id"]: x for x in r["state"]["entries"]}["分类A/安比"]
-    assert e["enabled"] is True and e["partial"] is True, e
+    e = wait_partial("分类A/安比", True)
+    assert e["enabled"] is True, e
     w("  父 mod 仍启用, partial=True (部分子目录被禁用)")
     st, r, _ = req("/api/dir_toggle", {"rel": "分类A/安比/AnbyMod/resources", "enabled": True})
-    assert r["ok"]
-    e = {x["id"]: x for x in r["state"]["entries"]}["分类A/安比"]
-    assert e["partial"] is False
+    assert r["ok"] and os.path.isfile(os.path.join(MODS, "分类A", "安比", "AnbyMod", "resources", "tex.ini"))
+    e = wait_partial("分类A/安比", False)
+    assert e["enabled"] is True, e
+    w("  resources 已恢复启用, partial=False")
 
     # 9.5 变体 / 部件 (HTTP 全链路)
     st, d, _ = req("/api/detail?id=" + urllib.parse.quote("变体测试"))
