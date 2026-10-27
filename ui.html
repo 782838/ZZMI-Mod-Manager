@@ -1100,7 +1100,7 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
 <!-- v1.5.31: 连拍挑帧 —— 触发后把最近几秒的代表帧摊成胶片条, 点「留」才落盘 -->
 <div class="modal wide" id="mBurst">
   <div class="dh"><h3>📸 连拍挑帧 <span class="hint" id="pbHint" style="font-weight:400"></span></h3>
-    <button class="xbtn" id="pbX">✕</button></div>
+    <button class="xbtn" id="pbX" title="收起挑帧页。这一批留在缓存里, 下次按 📸 连拍或侧键新录一批后还能切回来">✕</button></div>
   <div class="dbody">
     <div id="pbEmpty" class="hint" style="display:none"></div>
     <div id="pbDiagBox" style="display:none"></div>
@@ -1114,11 +1114,12 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
     </div>
   </div>
   <div class="dfoot">
-    <button class="btn" id="pbClear" title="清掉内存里缓存的连拍帧, 下次侧键从零开始录(照片墙里已留下的成品不受影响)">🧹 清除缓存</button>
     <button class="btn" id="pbDiag" title="按了侧键没反应? 点这里逐环查一遍, 告诉你卡在哪、怎么修">🩺 侧键自检</button>
-    <!-- v1.5.39: 缓存切换按钮组(最多 3 批), 新批录完自动把最早的挤掉;
+    <!-- v1.5.70: 缓存切换按钮组(最多 3 批), 新批录完自动把最早的挤掉;
          当前活动批高亮 accent 色, 点其它切换。这一段写在「侧键自检」右边、
-         「选择留下」左边的空白处。空槽位直接不渲染按钮。 -->
+         「选择留下」左边的空白处。空槽位直接不渲染按钮。
+         ⚠️ 缓存只有两种清法: 第 4 批挤掉第 1 批 / 退出软件。这里不再有任何
+         「清除缓存」「弃掉这批」按钮 —— 用户拍板: 关窗口只是关窗口, 一律不丢批。 -->
     <span class="pb-bursts" id="pbBursts" style="display:none">
       <span class="hint" style="margin-right:4px">缓存</span>
       <button class="btn mini" data-bi="0" title="最新一批">📦1</button>
@@ -1129,7 +1130,7 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
     <button class="btn" id="pbPick" title="进入勾选模式: 一张张勾出想留下的, 再一次性落盘">☑ 选择留下</button>
     <button class="btn" id="pbPickX" style="display:none" title="退出勾选模式, 回到逐张翻看">↩ 退出选择</button>
     <button class="btn primary" id="pbKeep">留这张</button>
-    <button class="btn" id="pbClose">弃掉关闭</button>
+    <button class="btn" id="pbClose" title="关掉这个窗口而已 —— 缓存一批都不会丢, 下次从「📸 连拍」或 📦 按钮还能翻回来">关闭</button>
   </div>
 </div>
 
@@ -3098,9 +3099,9 @@ function renderSetup(){
     </span></div>
     <div class="kv"><span class="k">侧键自检</span><span class="v">
       <button class="mini" id="btnPhotoDiag" title="按了侧键没反应? 点这里逐环查一遍">🩺 侧键自检</button>
-      <button class="mini" id="btnPhotoClear" title="清掉内存里缓存的连拍帧(照片墙里已留下的成品不受影响)">🧹 清除缓存</button>
       <br><span class="hint">「按了侧键没反应」时点自检 —— 后台录屏 / 侧键监听 / 录制时长 / 上次录到几帧
-      逐环给出结论和修法。清除缓存只清内存, 磁盘上的照片一张不动。</span>
+      逐环给出结论和修法。<b>缓存只有在「第 4 批挤掉第 1 批」或「退出软件」时才清</b>,
+      关窗口、切页面、放置多久都不会丢；已经「留这张」落盘的成品更是永远不动。</span>
       <div id="setDiagBox" style="display:none"></div></span></div>
     <h4 style="margin:18px 0 6px;font-size:13px">日志 / 排错</h4>
     <div class="kv"><span class="k">命令窗口</span><span class="v">
@@ -3190,7 +3191,9 @@ function renderSetup(){
     toast(r.msg || "完成", r.ok?"ok":"err");
     if (r.ok) renderSetup();
   };
-  // v1.5.35: 侧键自检 + 清除缓存(和挑帧页里那两个按钮是同一套后端动作)
+  // v1.5.35: 侧键自检
+  // v1.5.70: 设置页的「🧹 清除缓存」按钮整个删掉 —— 缓存只有「第 4 批挤掉第 1 批」
+  // 和「退出软件」两种清法(用户拍板), 不留任何手动清空入口。
   const bpdg = $("#btnPhotoDiag");
   if (bpdg) bpdg.onclick = async () => {
     const btn = bpdg, old = btn.textContent, box = $("#setDiagBox");
@@ -3201,17 +3204,6 @@ function renderSetup(){
       box.innerHTML = diagHTML(d);
       box.style.display = "";
     }catch(e){ toast("自检失败: " + e.message, "err"); }
-    finally{ btn.disabled = false; btn.textContent = old; }
-  };
-  const bpcl = $("#btnPhotoClear");
-  if (bpcl) bpcl.onclick = async () => {
-    const btn = bpcl, old = btn.textContent;
-    btn.disabled = true; btn.textContent = "清除中…";
-    try{
-      const r = await api("/api/photo_clear", {});
-      toast(r.ok ? (r.msg || "已清除连拍缓存") : (r.msg || "清除失败"), r.ok?"ok":"err");
-      if (r.ok){ _pbShown = 0; _pressSeen = 0; }
-    }catch(e){ toast("清除失败: " + e.message, "err"); }
     finally{ btn.disabled = false; btn.textContent = old; }
   };
   // v1.5.54: 缓存管理按钮
@@ -4096,6 +4088,12 @@ load();
 // v1.5.32: 代表帧改成五层金字塔 —— 1 档最粗(差异最大), 逐层细分, 5 档=全部帧。
 // v1.5.34: ① 删掉没用的「📷 补抓一张」 ②「全部留下」改成勾选式「☑ 选择留下」
 //          ③ 点照片全屏预览 ④ 侧键一按不管管家开着什么页面都立刻把挑帧页顶到最前
+// v1.5.70 缓存规则(用户拍板, 只有两种清法):
+//          ① 第 4 批进来把第 1 批挤掉(deque maxlen=3, 其它批整体往前推)
+//          ② 退出软件
+//          关窗口 / ✕ / 「关闭」/ Esc / 点遮罩 一律只收起界面, 一批都不丢。
+//          老版 ✕ 和「弃掉关闭」都会 POST /api/photo_close 真把批丢掉, 于是
+//          "看完就关"= 每看一批丢一批, 3 批缓存永远攒不起来(用户报的"三次缓存我没看到")。
 const PH = { id: 0, frames: [], tiers: [], tier: 0, pos: 0, kept: {}, pick: false, sel: {},
              emptyMsg: "" };
 function pimg(qs, w){
@@ -4134,14 +4132,15 @@ function pbShow(meta){
 }
 // v1.5.39: 缓存切换按钮 —— 拉一次后端, 把每一槽的 📦N 渲染出来, 当前活动 idx
 // 加 on 类(accent 高亮)。后端给的是 {active, bursts:[{id,count,secs,t,pending}]}。
-// 只在「有 2 批或更多」时显示按钮组 —— 单一批时切换没意义, 也省点视觉噪声。
+// v1.5.70: 只要有缓存批就显示按钮组(老版 <2 批直接隐藏, 用户永远"看不到三次缓存")。
+// 单批时 📦1 仍会显示并高亮, 用户一眼就知道"缓存里有几批、是不是只攒到一批"。
 async function pbBurstsRender(){
   const wrap = $("#pbBursts");
   if (!wrap) return;
   try{
     const r = await api("/api/photo_bursts", {});
     const bs = (r && r.bursts) || [];
-    if (bs.length < 2){ wrap.style.display = "none"; return; }
+    if (!bs.length){ wrap.style.display = "none"; return; }
     wrap.style.display = "";
     const btns = $$("#pbBursts [data-bi]");
     btns.forEach((b, k) => {
@@ -4150,6 +4149,8 @@ async function pbBurstsRender(){
       const meta = bs[k] || {};
       b.textContent = "📦" + (k + 1) + " · " + (meta.count || 0) + "帧";
       b.title = "第 " + (k + 1) + " 批 · " + (meta.count || 0) + " 帧" +
+                (meta.secs ? " · " + meta.secs + " 秒" : "") +
+                (meta.fps ? " · " + meta.fps + "fps" : "") +
                 (meta.pending ? " · 待查看" : "");
     });
   }catch(e){ wrap.style.display = "none"; }
@@ -4201,7 +4202,8 @@ function pbPickUI(){
   $("#pbPick").textContent = on ? ("✅ 留下选中的 " + n + " 张") : "☑ 选择留下";
   $("#pbPick").classList.toggle("primary", on && n > 0);
   // v1.5.35: 空批(没抓到帧)时把「留这张/选择留下」藏起来 —— 没帧可留,
-  // 只留「🧹 清除缓存」和「弃掉关闭」两个能用的。
+  // 只剩「关闭」能用。
+  // v1.5.70: 「🧹 清除缓存」已删除(缓存只由第 4 批挤掉第 1 批 / 退出软件清理)。
   $("#pbPick").style.display = has ? "" : "none";
   $("#pbPickX").style.display = (on && has) ? "" : "none";
   $("#pbKeep").style.display = (has && !on) ? "" : "none";
@@ -4217,7 +4219,8 @@ function pbPickUI(){
       ? "勾选模式: 点胶片条(或大图左上角)把想留下的勾上, 可以跨档勾 · 点大图可全屏 · " +
         "勾完点「✅ 留下选中的 N 张」一次性落盘"
       : "档越往下越细(1 档差异最大, 5 档=全部帧) · 左右方向键换帧 · 按 <b>回车</b>或" +
-        "「留这张」把当前帧存进照片墙 · 点大图可全屏 · 没留的关掉即弃, 不落盘");
+        "「留这张」把当前帧存进照片墙 · 点大图可全屏 · <b>关掉窗口不会丢缓存</b>, " +
+        "最多留最近 3 批(第 4 批进来才挤掉第 1 批) · 没留的不会落盘");
   // v1.5.39: 缓存切换按钮(高亮活动 idx, 隐藏空槽位)
   pbBurstsRender();
 }
@@ -4265,10 +4268,20 @@ function pbRender(){
   pbPickUI();
 }
 // 顶栏「📸 连拍」和照片墙里的「📸 连拍挑帧」用同一套动作(用户要求保持一致):
-// 有刚抓的那批就直接摊开挑, 没有才去抓一次。
-function pbOpenOrTrigger(){
-  const b = (S && S.photo_burst) || {};
-  if (b.burst_id && b.frames && b.frames.length) pbShow(b);
+// 缓存里还有批就直接摊开挑, 一批都没有才去抓一次。
+// v1.5.70: 先问一次后端(而不是读可能已经过期的 S) —— 关窗口不丢缓存, 所以
+// 点这个按钮绝大多数时候应该是"翻回刚才那几批", 绝不该先把缓存冲掉再报没抓到帧。
+async function pbOpenOrTrigger(){
+  let meta = null;
+  try{
+    const r = await api("/api/photo_ping", {});
+    if (r && r.ok && r.meta && (r.meta.frames || []).length) meta = r.meta;
+  }catch(e){}
+  if (!meta){
+    const b = (S && S.photo_burst) || {};
+    if (b.burst_id && b.frames && b.frames.length) meta = b;
+  }
+  if (meta) pbShow(meta);
   else pbTrigger();
 }
 async function pbTrigger(){
@@ -4300,12 +4313,23 @@ async function pbPickKeep(){
   pbRender();
 }
 function pbPickExit(){ PH.pick = false; PH.sel = {}; pbRender(); }
-async function pbClose(){
-  PH.frames = []; PH.tiers = []; PH.id = 0; PH.pick = false; PH.sel = {};
+// v1.5.70 缓存规则(用户拍板, 只有两种清法):
+//   ① 第 4 批进来, 把第 1 批挤掉(deque maxlen=3, 其它批次整体往前推)
+//   ② 退出软件(内存随之释放)
+// 除此之外**一律不许丢**: 关窗口 / 点 ✕ / Esc / 点遮罩 / 切页面 / 放置多久, 都不丢。
+// 老版 ✕ 和「弃掉关闭」共用同一个 pbClose(), 两个都会 POST /api/photo_close 把这批真丢掉,
+// 于是"看完就关"= 每看一批丢一批, 3 批缓存永远攒不起来(用户报的"三次缓存我没看到")。
+// 现在: 所有"关闭"动作只调 pbHide(), 前端不再有任何弃批/清缓存的入口。
+function pbHide(){
   $("#mBurst").classList.remove("on");
   if (!$("#mWall").classList.contains("on")) $("#mask").classList.remove("on");
-  try{ await api("/api/photo_close", {}); }catch(e){}
 }
+// pbClose 保留这个名字(测试/旧绑定还在用), 但语义已改成"只关闭窗口, 不动缓存"。
+function pbClose(){
+  pbHide();
+}
+// 显式暴露给页面按钮 + jsdom 测试
+window.pbHide = pbHide; window.pbClose = pbClose;
 document.addEventListener("keydown", e => {
   if (!$("#mBurst").classList.contains("on")) return;
   // 全屏预览盖在挑帧页上面时, 方向键/回车交给 lightbox, 别偷偷换帧
@@ -4462,26 +4486,13 @@ window.lbZoomTo = lbZoomTo; window.lbReset = lbReset; window.lbNatural = lbNatur
 
 if ($("#btnPhoto")) $("#btnPhoto").onclick = pbOpenOrTrigger;
 if ($("#btnWall")) $("#btnWall").onclick = pwOpen;
-if ($("#pbX")) $("#pbX").onclick = pbClose;
-if ($("#pbClose")) $("#pbClose").onclick = pbClose;
-// v1.5.35: 「🧹 清除缓存」—— 清掉内存里的滚动缓冲 + 当前这批, 下次侧键从零开始录。
-// 只清内存, 照片墙里已经「留这张」落盘的成品一张不动。
-if ($("#pbClear")) $("#pbClear").onclick = async () => {
-  const btn = $("#pbClear"), old = btn.textContent;
-  btn.disabled = true; btn.textContent = "清除中…";
-  try{
-    const r = await api("/api/photo_clear", {});
-    toast(r.ok ? (r.msg || "已清除连拍缓存") : (r.msg || "清除失败"), r.ok ? "ok" : "err");
-    if (r.ok){
-      PH.frames = []; PH.tiers = []; PH.id = 0; PH.pick = false; PH.sel = {};
-      PH.kept = {}; PH.emptyMsg = "";
-      _pbShown = 0; _pressSeen = 0;
-      $("#pbDiagBox").style.display = "none";
-      pbClose();                       // 顺带把挑帧页收起来, 下次侧键再弹
-    }
-  }catch(e){ toast("清除失败: " + e.message, "err"); }
-  finally{ btn.disabled = false; btn.textContent = old; }
-};
+// v1.5.70: ✕ / 「关闭」都只收起界面 —— 缓存一批都不动。
+// 老版这两个都会 POST /api/photo_close 真把这一批丢掉, 于是"看完就关"= 每批都丢,
+// 3 批缓存永远攒不起来(用户报的"三次缓存我没看到")。
+if ($("#pbX")) $("#pbX").onclick = pbHide;
+if ($("#pbClose")) $("#pbClose").onclick = pbHide;
+// v1.5.70: 「🧹 清除缓存」按钮已整体删除 —— 缓存只有「第 4 批挤掉第 1 批」和
+// 「退出软件」两种清法(用户拍板), 界面不留任何手动清空入口。
 // v1.5.35: 「🩺 侧键自检」—— 按了侧键没反应时, 一键把每一环查清楚
 if ($("#pbDiag")) $("#pbDiag").onclick = async () => {
   const btn = $("#pbDiag"), old = btn.textContent;

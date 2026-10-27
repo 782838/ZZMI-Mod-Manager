@@ -235,7 +235,13 @@ const curTier = () => {
   ck('空批也会弹(显示"没抓到帧"而不是静默)', on('#mBurst'));
   ck('空批显示原因', ($('#pbEmpty').textContent || '').length > 0, $('#pbEmpty').textContent);
   ck('空批时藏起「留这张」', $('#pbKeep').style.display === 'none');
-  ck('空批时「清除缓存」还在', $('#pbClear').style.display !== 'none');
+  // v1.5.70: 「🧹 清除缓存」按钮整个删掉(缓存只由第 4 批/退出清理), 界面不许再有清空入口
+  ck('v1.5.70 空批时也没有「清除缓存」按钮(已删)',
+     d.querySelector('#pbClear') === null && d.querySelector('#btnPhotoClear') === null);
+  ck('v1.5.70 底部「关闭」按钮还在(只收起不丢批)',
+     d.querySelector('#pbClose') !== null &&
+     ($('#pbClose').textContent || '').indexOf('关闭') >= 0,
+     $('#pbClose') && $('#pbClose').textContent);
 
   // ---------- 场景 7 (v1.5.35): 侧键按了但没抓到帧 -> 弹空状态 + 后端给的原因 ----------
   $('#pbClose').onclick && $('#pbClose').click();
@@ -260,16 +266,29 @@ const curTier = () => {
   await sleep(60);
   ck('visibilitychange 立刻补一次哨兵', pingCalls > before, before + ' -> ' + pingCalls);
 
-  // ---------- 场景 10 (v1.5.35): 🧹 清除缓存 ----------
+  // ---------- 场景 10 (v1.5.70): 关闭只收起, 绝不丢批 ----------
   const m5 = makeMeta(12, 10);
   ping = { ok: true, burst_id: 12, count: 10, meta: m5, press_seq: 0, press_ok: true, press_msg: '' };
   await sleep(900);
   ck('又弹出一批(前置条件)', on('#mBurst'));
-  const cBefore = clearCalls;
-  $('#pbClear').click();
+  const clBefore = closeCalls;
+  const ccBefore = clearCalls;
+  $('#pbClose').click();
   await sleep(200);
-  ck('清除缓存调到了 /api/photo_clear', clearCalls === cBefore + 1, clearCalls);
-  ck('清除缓存后收起挑帧页', !on('#mBurst'));
+  ck('v1.5.70 「关闭」不再请求 /api/photo_close', closeCalls === clBefore,
+     'closeCalls ' + clBefore + ' -> ' + closeCalls);
+  ck('v1.5.70 「关闭」不碰 /api/photo_clear', clearCalls === ccBefore,
+     'clearCalls=' + clearCalls);
+  ck('「关闭」后收起挑帧页', !on('#mBurst'));
+  // ✕ 同理
+  ping = { ok: true, burst_id: 12, count: 10, meta: m5, press_seq: 0, press_ok: true, press_msg: '' };
+  w.burstForceShow(m5); await sleep(120);
+  const clBefore2 = closeCalls;
+  $('#pbX').click();
+  await sleep(200);
+  ck('v1.5.70 ✕ 也不请求 /api/photo_close', closeCalls === clBefore2,
+     'closeCalls ' + clBefore2 + ' -> ' + closeCalls);
+  ck('✕ 后收起挑帧页', !on('#mBurst'));
 
   // ---------- 场景 11 (v1.5.35): 🩺 侧键自检 ----------
   const m6 = makeMeta(13, 6);

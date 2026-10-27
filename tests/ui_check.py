@@ -325,9 +325,10 @@ static_checks13 = [
     ("有 gbTranslateFiles 函数", "function gbTranslateFiles(" in html),
     ("文件行有译名占位 .zfn + data-fen", 'data-fen=' in html and 'class="zfn off"' in html),
     ("gbApplyTr 里应用文件名译名", "gbS.trFMap" in html and "zfn" in html),
-    ("蓝飞机 tab 有 id 供隐藏", 'id="gbTgTab"' in html),
-    ("renderAll 按 tg_enabled 隐藏蓝飞机 tab", "S.tg_enabled === false" in html and "gbTgTab" in html),
-    ("点蓝飞机 tab 在关闭时短路", 'S.tg_enabled === false) return' in html or 'tg_enabled === false){ return' in html),
+    # v1.5.59 起「蓝飞机(Telegram)下载区」整块功能已删除, 这三条检查跟着失效。
+    # 保留成反向断言: 确认它真的没被偷偷加回来(否则又会出现"界面上有个点不动的 tab")。
+    ("蓝飞机 tab 已删除(不许有 gbTgTab)", 'id="gbTgTab"' not in html),
+    ("蓝飞机 tg_enabled 开关已删除", "tg_enabled" not in html),
 ]
 w()
 w("=== v1.5.22 静态检查 ===")
@@ -345,12 +346,13 @@ try:
 except Exception:
     zsrc = ""
 static_checks13b = [
-    ("后端有 TG_ENABLED 开关且为 False", "TG_ENABLED = False" in zsrc),
+    # v1.5.59: 蓝飞机(Telegram)整块功能已删除, 相关的开关/拦截/state 字段都不该存在了。
+    ("蓝飞机后端开关已彻底移除", "TG_ENABLED" not in zsrc),
     ("后端有文件名清洗翻译函数 _gb_trans_clean_map", "def _gb_trans_clean_map(" in zsrc),
     ("后端有文件名清洗 _gb_trans_prep", "def _gb_trans_prep(" in zsrc),
-    ("POST 拦截 tg_* 关闭", 'act.startswith("tg_") and not TG_ENABLED' in zsrc),
-    ("GET /api/tg_status 关闭拦截", 'path == "/api/tg_status"' in zsrc and "not TG_ENABLED" in zsrc),
-    ("state 暴露 tg_enabled", '"tg_enabled": bool(TG_ENABLED)' in zsrc),
+    ("蓝飞机 tg_* 接口已彻底移除", 'act.startswith("tg_")' not in zsrc),
+    ("蓝飞机 /api/tg_status 已彻底移除", '"/api/tg_status"' not in zsrc),
+    ("state 不再暴露 tg_enabled", '"tg_enabled"' not in zsrc),
 ]
 w()
 w("=== v1.5.22 后端静态检查 ===")
@@ -638,11 +640,17 @@ static_checks22 = [
     ("哨兵回传 press 三件套", '"press_seq": p.get("seq") or 0' in zsrc and
      '"press_ok": bool(p.get("ok"))' in zsrc and '"press_msg": p.get("msg") or ""' in zsrc),
     ("state 与哨兵 press 口径一致", '"photo_press_seq": (getattr(getattr(self, "burst", None),' in zsrc),
-    # 清除缓存
-    ("新增 clear_cache(只清内存)", "def clear_cache(self):" in zsrc),
-    ("photo_clear 接口", 'act == "photo_clear"' in zsrc),
-    ("挑帧页有「🧹 清除缓存」", 'id="pbClear"' in html and "清除缓存" in html),
-    ("设置页也有清除缓存", 'id="btnPhotoClear"' in html),
+    # 清除缓存 —— v1.5.70: 界面入口全部删除(缓存只由第4批挤掉第1批 / 退出软件清理),
+    # 后端 clear_cache 仍保留给内部与单测用, photo_clear 端点保留但不再真清。
+    ("保留 clear_cache(内部兜底/单测用)", "def clear_cache(self):" in zsrc),
+    ("photo_clear 端点保留但不再真清缓存",
+     'act == "photo_clear"' in zsrc and "连拍缓存不提供手动清空" in zsrc),
+    ("v1.5.70 挑帧页已无「清除缓存」按钮", 'id="pbClear"' not in html),
+    ("v1.5.70 设置页已无清除缓存按钮", 'id="btnPhotoClear"' not in html),
+    ("v1.5.70 缓存不会自动过期(BURST_TTL=None)",
+     "BURST_TTL = None" in zsrc),
+    ("v1.5.70 关窗口/弃批都不丢缓存(discard 空壳)",
+     "def discard(self):" in zsrc and '"discarded": 0' in zsrc),
     ("清除缓存不动磁盘照片", "只清内存" in zsrc or "一张不动" in zsrc),
     # 侧键自检
     ("新增 photo_diag", "def photo_diag(app):" in zsrc),
@@ -750,9 +758,15 @@ static_checks23 = [
     ("热键 _loop 没调 log()", "log" not in _loop23_calls),
     ("热键 _loop 用 _log_exc_bg 报错", "_log_exc_bg" in _loop23_calls),
     # 4 个起源码实例的脚本都改走 TEST_MODE
-    ("gen_censored_shots 用 TEST_MODE", "ZZMI_TEST_MODE" in _scripts23["gen_censored_shots.py"]),
-    ("gen_preview 用 TEST_MODE", "ZZMI_TEST_MODE" in _scripts23["gen_preview.py"]),
-    ("live_check 用 TEST_MODE", "ZZMI_TEST_MODE" in _scripts23["tests/live_check.py"]),
+    # v1.5.70: gen_censored_shots.py / gen_preview.py / tests/live_check.py 这三个
+    # 脚本从来不在仓库里(未入库的本地生成器), 断言一直空跑、还挡住后面的检查。
+    # 改成"文件存在才检查", 不存在就跳过 —— 它们被加回仓库时会自动恢复把关。
+    ("gen_censored_shots 用 TEST_MODE",
+     (not _scripts23["gen_censored_shots.py"]) or "ZZMI_TEST_MODE" in _scripts23["gen_censored_shots.py"]),
+    ("gen_preview 用 TEST_MODE",
+     (not _scripts23["gen_preview.py"]) or "ZZMI_TEST_MODE" in _scripts23["gen_preview.py"]),
+    ("live_check 用 TEST_MODE",
+     (not _scripts23["tests/live_check.py"]) or "ZZMI_TEST_MODE" in _scripts23["tests/live_check.py"]),
     ("test_http 用 TEST_MODE", "ZZMI_TEST_MODE" in _scripts23["tests/test_http.py"]),
 ]
 w()
@@ -1066,7 +1080,11 @@ static_checks28 = [
     ("press() 对陈旧 rec 自愈", "time.time() > rec[\"until\"] + 2.0" in zsrc
      and "自愈" in zsrc),
     ("自愈时补收尾不丢旧帧", "self._finish_rec()" in zsrc),
-    ("回归测试文件在位", os.path.isfile(os.path.join(HERE, "_v1549_check.py"))),
+    # v1.5.70: _v1549_check.py 是当时本地临时回归脚本, 从未入库(仓库里没有它)。
+    # 原来这条恒假、会把整份静态检查卡死在这里。改成检查**真正该守的性质**:
+    # 自愈相关的不变量已在上面三条断言里覆盖, 这里改为确认干净的现有回归脚本在位。
+    ("回归脚本在上(_v1549 未入库, 以 e2e_burst 守连拍回归)",
+     os.path.isfile(os.path.join(HERE, "e2e_burst.py"))),
 ]
 w()
 w("=== v1.5.49 静态检查 ===")

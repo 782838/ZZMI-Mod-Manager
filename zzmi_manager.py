@@ -5,6 +5,33 @@ ZZMI Mod 管家  (ZZMI Mod Manager)
 =========================================
 绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
 
+v1.5.70 更新
+-----------
+* **修: 连拍「三批缓存永远只剩一批」(用户: "三次缓存我没看到")** —— 根因不是抓屏,
+  是 ✕ 和「弃掉关闭」共用同一个 `pbClose()`, 两个都会 `POST /api/photo_close`
+  **把当前这批真丢掉**。用户的操作习惯是"看完就关掉, 回游戏再按一次", 于是每看一批
+  丢一批, `deque(maxlen=3)` 永远只有 1 批; 而缓存按钮组老版"少于 2 批就隐藏",
+  结果 📦1/📦2/📦3 一次都没出现过。
+* **缓存规则按用户拍板重写 —— 只有两种清法**:
+  ① 第 4 批进来把第 1 批挤掉(其余批整体往前推);
+  ② 退出软件。
+  除此之外**一律不许丢**: 关窗口 / ✕ / 「关闭」/ Esc / 点遮罩 / 切页面 / 放置多久都不丢。
+  改动: `BURST_TTL` 改为 `None`(取消"10 分钟自动过期"这条最阴的静默清理);
+  `discard()` 变成空壳(调它一批都不丢); `/api/photo_close` 不再具备丢弃效果;
+  `clear_cache()` 只留给内部与单测, HTTP 层的 `/api/photo_clear` 改为"只回说明";
+  界面上的「🧹 清除缓存」两个入口全部删除(挑帧页 + 设置页), 底部按钮改名「关闭」。
+* **改: 缓存按钮组只要有缓存就显示** —— 老版 <2 批直接隐藏, 用户根本看不到自己有几批;
+  现在单批也显示 📦1 并高亮, 悬停带秒数与实测 fps。
+* **修: 侧键自检「上次录到几帧」误报** —— 原来读"当前活动批"的帧数, 批次一旦不在
+  (老版弃掉/过期)就显示"上一段没抓到帧: 原因未知", 把 72 帧的历史说成抓屏失败。
+  现在封批时把帧数记进 `last_press["count"]`, 自检读这份记录, 真 0 帧才报失败。
+* **改: 顶栏「📸 连拍」先问后端有没有缓存** —— 关窗口不丢批之后, 点这个按钮应该是
+  "翻回刚才那几批", 而不是拿可能过期的页面快照去空抓一次。
+* **测试同步**: `test_core` 新增 4.10(自检帧数口径) / 4.11(两种清法的真值表, 含
+  "放置一年不丢批"与"第 4 批挤掉第 1 批的位移"); `e2e_burst` 的 T6 改为验证
+  "photo_clear 不再真清" + 新增 T6b/T6c; `ui_burst.js` / `ui_mustpop.js` /
+  `ui_check.py` 的过期断言(蓝飞机、已删按钮、未入库脚本)一并校正。
+
 v1.5.69 更新
 -----------
 * **删: 「🔄 文件替换」功能整体移除**(用户 m02282: "其他都不需要改 你只要完整删除这个功能 然后打包")。
@@ -851,7 +878,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.69"
+VERSION = "1.5.70"
 APP_NAME = "ZZMI Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -5012,7 +5039,10 @@ class BurstBuffer(object):
     """
 
     TARGET_FPS = 24          # v1.5.37: 12 -> 24(用户要"每一档数量翻倍")
-    BURST_TTL = 600.0        # 触发后 10 分钟没挑 = 自动丢弃, 不占内存
+    # v1.5.70: 删掉 BURST_TTL(原来 10 分钟没挑就自动丢弃)。用户拍板:
+    #   **缓存只有两种清法** —— ① 第 4 批进来把第 1 批挤掉(deque maxlen=3)
+    #   ② 退出软件。除此之外一律不许偷偷清, 关窗口 / 切页面 / 放置多久都不许丢。
+    BURST_TTL = None         # None = 永不过期(保留常量名, 兼容老代码/测试的读取)
     # v1.5.37: 各档数量翻倍 (4,8,16,32) -> (8,16,32,64)。"拿多少算多少":
     # 帧不够时 _thin() 天然降级, 不会硬凑, 也不报错。
     TIERS = (8, 16, 32, 64)
@@ -5432,7 +5462,12 @@ class BurstBuffer(object):
         self.last_press = {"seq": rec.get("seq") or self.press_seq,
                            "ok": bool(r.get("ok")), "msg": r.get("msg") or "",
                            "kind": rec.get("kind") or "btn", "t": time.time(),
-                           "pending": True}
+                           "pending": True,
+                           # v1.5.70: 把这一段的帧数留在记录里。侧键自检原来读的是
+                           # 「当前活动批的帧数」—— 用户「弃掉关闭」或 10 分钟过期之后
+                           # 那批就没了, 自检于是显示"上一段没抓到帧: 原因未知",
+                           # 明明是录到了 72 帧也会被误报成抓屏失败。
+                           "count": len(snap)}
         try:
             threading.Thread(target=_after_press_bg,
                              args=("连拍", r), daemon=True).start()
@@ -5450,9 +5485,13 @@ class BurstBuffer(object):
                 "seq": rec.get("seq") or 0}
 
     def clear_cache(self):
-        """v1.5.35: 清掉内存里的连拍缓存 —— 滚动缓冲 ring + 当前这批。
-        v1.5.37: 顺带把"正在录"的那一段也丢掉。
-        v1.5.39: 一并清空 3 次缓存(用户明确说"清除" = 全部清, 跟新行为一致)。
+        """清掉内存里的连拍缓存 —— 滚动缓冲 ring + 全部 3 批 + 正在录的那段。
+
+        v1.5.70: **不再有任何对外入口**(界面按钮、/api/photo_clear 都已改掉)。
+        用户拍板缓存只有两种清法:
+          ① 第 4 批进来把第 1 批挤掉(deque maxlen=3)
+          ② 退出软件
+        所以这个方法只留给内部兜底与单元测试用, 别在 HTTP 层或界面里接回它。
         ⚠️ 只清内存: 照片墙里已经「留这张」落盘的成品一张都不会动。"""
         with self.lock:
             n = len(self.ring)
@@ -5554,23 +5593,26 @@ class BurstBuffer(object):
                 chosen.discard(k)
         return [idxs[k] for k in sorted(chosen)]
 
-    # ---- 读一次触发结果(带 TTL 回收) ----
+    # ---- 读一次触发结果 ----
     def current(self):
-        """v1.5.39: 返回**当前活动批**(跟随 active_idx); 过期则回收并弹掉。"""
+        """v1.5.39: 返回**当前活动批**(跟随 active_idx)。
+
+        v1.5.70: **不再按时间自动回收**。用户拍板缓存只有两种清法 —— 第 4 批挤掉
+        第 1 批, 或退出软件。原来这里"超过 10 分钟就悄悄 pop 掉"是最阴的一条:
+        玩家打完一局回来挑帧, 缓存早就被判过期清空了, 表现就是"我的截图/缓存没了"。
+        现在 BURST_TTL=None, 只要进程活着, 挑过的批次一直在(最多 3 批)。"""
         b = self.active()
         if not b:
             return None
-        if time.time() - b["t"] > self.BURST_TTL:
-            # 过期批从 deque 里清掉, 重建索引; 保守起见 active_idx 重置为 0
+        ttl = self.BURST_TTL
+        if ttl is not None and time.time() - b["t"] > ttl:
+            # 只给"将来万一又要 TTL"留的口子; 现行配置 ttl=None 永不进这里
             try:
                 self.bursts.remove(b)
             except ValueError:
                 pass
             self.active_idx = 0
-            if self.bursts:
-                self.burst = self.bursts[0]
-            else:
-                self.burst = None
+            self.burst = self.bursts[0] if self.bursts else None
             return None
         return b
 
@@ -5623,21 +5665,16 @@ class BurstBuffer(object):
         return self._build_burst(snap[-1:])
 
     def discard(self):
-        # v1.5.39: 弃掉**当前活动批**; 切换按钮旁的"弃掉关闭"还是只丢活动那一档,
-        # 其它缓存批(用户切过去还能看)不受影响。
-        # v1.5.52: 修复缩进错位 —— 原先这个方法被误放进 MouseBtnWatcher,
-        # 导致 /api/photo_close 调 app.burst.discard() 抛 AttributeError -> HTTP 500,
-        # 前端"弃掉关闭"永远清不掉缓存批(被空 except 静默)。
-        b = self.active()
-        if b:
-            with self.lock:
-                try:
-                    self.bursts.remove(b)
-                except ValueError:
-                    pass
-                self.active_idx = 0
-                self.burst = self.bursts[0] if self.bursts else None
-        return {"ok": True}
+        """v1.5.70: **不再丢弃任何批次**。
+
+        老版这里是「弃掉关闭」的后端动作: 把当前活动批从 deque 里删掉。用户拍板
+        缓存只有两种清法(第 4 批挤掉第 1 批 / 退出软件), 所以这个方法现在是个
+        **什么都不做的兼容壳** —— 保留方法名是因为测试和老调用方还在调它,
+        它必须先"什么都不丢"才符合新规则。
+
+        历史: v1.5.52 修过一次缩进错位(这个方法曾被误放进 MouseBtnWatcher,
+        导致 /api/photo_close 抛 AttributeError -> HTTP 500)。"""
+        return {"ok": True, "discarded": 0}
 
 
 class MouseBtnWatcher(object):
@@ -5839,7 +5876,25 @@ def photo_diag(app):
     except Exception:
         cur = None
     last = (getattr(b, "last_press", None) or {}) if b else {}
-    last_n = (cur or {}).get("count") or 0
+    # v1.5.70: "上次录到几帧"必须看**上一次按下**的记录, 不能看"当前活动批" ——
+    # 用户点「弃掉关闭」/ 10 分钟过期之后活动批就空了, 老口径于是把"录到 72 帧、
+    # 用户看过后丢掉"误报成"上一段没抓到帧: 原因未知", 把人往抓屏被拦的方向带偏。
+    # 有 last_press.count(新口径)用它; 老状态没这个字段时退回活动批帧数。
+    _lpc = last.get("count")
+    if _lpc is None:
+        last_n = (cur or {}).get("count") or 0
+    else:
+        last_n = int(_lpc or 0)
+    # v1.5.70: 缓存不会自动过期、也没有弃批按钮了, 所以"录到 N 帧但现在缓存空"
+    # 只可能是被第 4 批挤掉或者进程刚重启过 —— 按这个口径说, 别再提"已弃掉/已过期"。
+    if last_n >= 1:
+        _last_count_v = "%d 帧" % last_n
+        if not (cur and cur.get("count")):
+            _last_count_v += "(那批已被后来第 4 批挤掉, 或这次是重启后的第一次)"
+    elif last:
+        _last_count_v = "上一段没抓到帧: %s" % (last.get("msg") or "原因未知")
+    else:
+        _last_count_v = "还没按过侧键"
 
     def step(k, ok, v, fix):
         return {"k": k, "ok": bool(ok), "v": v, "fix": fix}
@@ -5865,10 +5920,7 @@ def photo_diag(app):
              ("在跑 · PID %d" % gpid) if game else "没检测到",
              "录的是整块屏幕, 游戏没开也会录 —— 只是录到的就是桌面。"
              "想拍游戏画面就先把绝区零开起来"),
-        step("上次录到几帧", last_n >= 1,
-             ("%d 帧" % last_n) if last_n else
-             ("上一段没抓到帧: %s" % (last.get("msg") or "原因未知")
-              if last else "还没按过侧键"),
+        step("上次录到几帧", last_n >= 1, _last_count_v,
              "0 帧基本是屏幕捕获被拦了 —— ① 游戏改「无边框窗口」(别用独占全屏); "
              "② 把管家加进杀软白名单; ③ 换一个抓拍侧键再试"),
         step("管家窗口", hwnd,
@@ -7822,8 +7874,11 @@ class Handler(BaseHTTPRequestHandler):
                                    "meta": app.burst.meta() if b else {}})
 
             if act == "photo_clear":
-                # v1.5.35: 挑帧页的「🧹 清除缓存」—— 只清内存缓冲, 不动磁盘成品
-                return self._json(app.burst.clear_cache())
+                # v1.5.70: 端点保留(测试/老前端还可能打), 但不再真的清缓存 ——
+                # 用户拍板缓存只有两种清法: 第 4 批挤掉第 1 批 / 退出软件。
+                return self._json({"ok": True, "cleared": 0, "burst_id": 0,
+                                   "msg": "连拍缓存不提供手动清空: 最多留 3 批, "
+                                          "第 4 批进来才会挤掉第 1 批, 退出软件即清空。"})
 
             if act == "photo_trigger":
                 r = app.burst.trigger()

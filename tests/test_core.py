@@ -566,6 +566,141 @@ try:
 finally:
     Z.foreground_exe, Z._is_manager_foreground = _old_fg_exe, _old_mgr_fg
 
+# ---------- 4.10 v1.5.70: 「上次录到几帧」必须看按下记录, 不能看活动批 ----------
+# 用户报「三次缓存我没看到」时顺带查出的误报: 录到 72 帧 -> 用户点「弃掉关闭」/ 10 分钟
+# 过期 -> 活动批没了 -> 自检把"录到 72 帧"说成"上一段没抓到帧: 原因未知",
+# 把人往"抓屏被拦"的方向带偏。口径改成读 last_press["count"]。
+w()
+w("=== 4.10 侧键自检帧数口径(v1.5.70) ===")
+class _DiagApp:
+    def __init__(self):
+        self.cfg = {"photo_seconds": 3, "photo_on": True, "photo_mouse_btn": 1,
+                    "photo_only_in_game": True, "game_exe": r"X:\ZZZ\ZenlessZoneZero.exe"}
+        self.httpd = None
+_db = Z.BurstBuffer(_DiagApp())
+_diag_seq = [0]
+def _dgrab():
+    _diag_seq[0] += 1
+    return (3000.0 + _diag_seq[0] * 0.01, b"D%03d" % _diag_seq[0],
+            bytes([(_diag_seq[0] * 5) % 256] * 256))
+_db.grab = _dgrab
+_db.press("mouse")
+_t0 = time.time()
+while _db.rec is not None and time.time() - _t0 < 8:
+    _db._loop_tick()
+assert _db.last_press and _db.last_press.get("ok") is True, _db.last_press
+assert _db.last_press.get("count", 0) >= 1, "last_press 必须记下这一段录到几帧: %s" % _db.last_press
+_diag_n = _db.last_press["count"]
+w("封批时把帧数记进 last_press: %d 帧 OK" % _diag_n)
+
+# 只按「对 last_press.count 」这段逻辑做真值表 —— photo_diag 本身要真前台窗口,
+# 下面用一个最小替身把它的所有外部依赖挡掉, 只验帧数这一行的口径。
+_old = (Z.proc_probe, Z.foreground_pid, Z.foreground_exe,
+        Z._is_manager_foreground, Z._is_game_foreground, Z.find_manager_window,
+        Z._game_exe_name)
+try:
+    Z.proc_probe = lambda cfg, force=False: (True, False)
+    Z.foreground_pid = lambda: 1234
+    Z.foreground_exe = lambda ttl=None: "zenlesszonezero.exe"
+    Z._is_manager_foreground = lambda: False
+    Z._is_game_foreground = lambda cfg: True
+    Z.find_manager_window = lambda: 42
+    Z._game_exe_name = lambda cfg: "zenlesszonezero.exe"
+
+    class _App2:
+        def __init__(self):
+            self.cfg = dict(_DiagApp().cfg)
+            self.burst = _db
+            self.mwatch = type("MW", (), {"ok": True})()
+    d1 = Z.photo_diag(_App2())
+    row = [s for s in d1["steps"] if s["k"] == "上次录到几帧"][0]
+    assert row["ok"] is True and ("%d 帧" % _diag_n) in row["v"], row
+    w("批次还在: 自检显示 %r OK" % row["v"])
+
+    # v1.5.70: 缓存只有两种清法(第 4 批挤掉第 1 批 / 退出软件), discard 变成空壳,
+    # 调用它不许丢任何批次 —— 这是"关窗口不丢缓存"的后端保证。
+    _before_ids = [x["id"] for x in _db.bursts]
+    _rb2 = _db.discard()
+    assert _rb2.get("ok") is True and _rb2.get("discarded") == 0, _rb2
+    assert [x["id"] for x in _db.bursts] == _before_ids, "discard 竟然把批次丢了(新规则下不许)"
+    assert _db.current() is not None, "discard 之后活动批必须还在"
+    w("discard 变成空壳, 不再丢批(缓存只由第4批/退出清理) OK")
+
+    # 为了模拟"批次真的没了但按下记录还在"(比如极端情况内存回收), 直接掏空 deque
+    _db.bursts.clear()
+    _db.burst = None
+    _db.active_idx = 0
+    assert _db.current() is None, "清空之后不该还有活动批(前置条件)"
+    d2 = Z.photo_diag(_App2())
+    row2 = [s for s in d2["steps"] if s["k"] == "上次录到几帧"][0]
+    assert row2["ok"] is True, "批次没了就误报成没抓到帧: %s" % row2
+    assert ("%d 帧" % _diag_n) in row2["v"], row2
+    assert "原因未知" not in row2["v"], row2
+    assert "弃掉" not in row2["v"] and "过期" not in row2["v"], \
+        "缓存已经不弃批不过期了, 文案不许再提: %s" % row2
+    w("缓存都没了也不误报'原因未知', 仍报真实帧数: %r OK" % row2["v"])
+
+    # 真的一帧都没抓到的情况仍要如实报失败
+    _db.last_press = {"seq": 9, "ok": False, "msg": "屏幕捕获被拦住了", "pending": True,
+                      "count": 0}
+    d3 = Z.photo_diag(_App2())
+    row3 = [s for s in d3["steps"] if s["k"] == "上次录到几帧"][0]
+    assert row3["ok"] is False and "屏幕捕获被拦住" in row3["v"], row3
+    w("真 0 帧仍如实报失败原因 OK")
+finally:
+    (Z.proc_probe, Z.foreground_pid, Z.foreground_exe,
+     Z._is_manager_foreground, Z._is_game_foreground, Z.find_manager_window,
+     Z._game_exe_name) = _old
+
+w()
+w("=== 4.11 缓存只有两种清法(v1.5.70) ===")
+# 用户拍板: ① 第 4 批进来把第 1 批挤掉 ② 退出软件。除此之外一律不许丢。
+class _CacheApp:
+    def __init__(self):
+        self.cfg = {"photo_seconds": 3, "photo_on": True, "photo_mouse_btn": 1,
+                    "photo_only_in_game": False}
+_cb = Z.BurstBuffer(_CacheApp())
+_cseq = [0]
+def _cgrab():
+    _cseq[0] += 1
+    return (4000.0 + _cseq[0], b"C%03d" % _cseq[0], bytes([(_cseq[0] * 3) % 256] * 256))
+_cb.grab = _cgrab
+# 装满 3 批
+for _k in range(3):
+    for _i in range(30):
+        _cb._grab_one()
+    _cb.trigger()
+assert len(_cb.bursts) == 3, len(_cb.bursts)
+_ids3 = [x["id"] for x in _cb.bursts]
+w("录满 3 批: %s OK" % _ids3)
+
+# ① 第 4 批进来 -> 第 1 批被挤掉, 其它批往前推
+for _i in range(30):
+    _cb._grab_one()
+_cb.trigger()
+_ids4 = [x["id"] for x in _cb.bursts]
+assert len(_ids4) == 3, "第 4 批之后必须仍是 3 批: %s" % _ids4
+assert _ids4[2] != _ids3[2], "最旧那批没被挤掉: 前=%s 后=%s" % (_ids3, _ids4)
+assert _ids4[1] == _ids3[0] and _ids4[2] == _ids3[1], \
+    "批次没按顺序整体往前推: 前=%s 后=%s" % (_ids3, _ids4)
+w("第 4 批挤掉第 1 批, 其余整体前移: %s -> %s OK" % (_ids3, _ids4))
+
+# ② 关窗口 / 关闭 / 长时间放置 都不许丢
+_cb.discard()
+assert [x["id"] for x in _cb.bursts] == _ids4, "「关闭」竟然丢了批"
+# 模拟放置很久: 把三批的时间戳往前推一年, 也不许过期
+for _b in _cb.bursts:
+    _b["t"] -= 365 * 24 * 3600
+assert _cb.current() is not None, "放置一年之后缓存被判过期清掉了(不许)"
+assert len(_cb.bursts) == 3, "过期回收把批次删了: %s" % len(_cb.bursts)
+w("关闭 / 放置一年都不丢批(TTL 已取消) OK")
+
+# ③ 退出软件 = clear_cache (进程结束, 内存本来也没了)
+_cb.clear_cache()
+assert len(_cb.bursts) == 0 and _cb.current() is None
+w("退出软件清空 OK")
+assert Z.BurstBuffer.BURST_TTL is None, "BURST_TTL 必须关掉(不许自动过期)"
+
 w()
 w("ALL TESTS PASSED")
 open(OUT, "w", encoding="utf-8").write("\n".join(L))

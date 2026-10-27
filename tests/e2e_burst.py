@@ -107,16 +107,39 @@ p5 = jget("/api/photo_ping")
 ck("T5 新批进缓存(ping 可见)", p5.get("burst_id", 0) > 0 and p5.get("press_pending") is True,
    "burst_id=%s" % p5.get("burst_id"))
 
-# ---- T6 清缓存 ----
+# ---- T6 v1.5.70: 「清空」不再被允许 ----
+# 用户拍板缓存只有两种清法: ① 第 4 批挤掉第 1 批 ② 退出软件。
+# 所以 /api/photo_clear(老前端/脚本还可能打) 必须**什么都不清**, 只回一句话。
 data = json.dumps({}).encode("utf-8")
 req = urllib.request.Request(BASE + "/api/photo_clear?t=" + TOK, data=data,
                              headers={"Content-Type": "application/json"})
 with urllib.request.urlopen(req, timeout=15) as r:
     clr = json.loads(r.read().decode("utf-8"))
 p6 = jget("/api/photo_ping")
-ck("T6 photo_clear 清空(前端🧹同款端点)",
-   clr.get("ok") and p6.get("burst_id", 0) == 0 and p6.get("press_seq", 0) == 0,
-   "clear=%s ping.burst_id=%s" % (clr.get("ok"), p6.get("burst_id")))
+ck("T6 photo_clear 不再真清缓存(只回说明)",
+   clr.get("ok") and clr.get("cleared") == 0 and "不提供手动清空" in (clr.get("msg") or ""),
+   clr)
+ck("T6 打完 photo_clear 缓存批仍在", p6.get("burst_id", 0) > 0,
+   "ping.burst_id=%s" % p6.get("burst_id"))
+
+# ---- T6b v1.5.70: 「关闭/弃掉」也不许丢批(前端 ✕ 只收起界面) ----
+_ids_before = [b.get("id") for b in (jget("/api/photo_bursts").get("bursts") or [])]
+req = urllib.request.Request(BASE + "/api/photo_close?t=" + TOK, data=data,
+                             headers={"Content-Type": "application/json"})
+with urllib.request.urlopen(req, timeout=15) as r:
+    cls = json.loads(r.read().decode("utf-8"))
+_ids_after = [b.get("id") for b in (jget("/api/photo_bursts").get("bursts") or [])]
+ck("T6b photo_close 变成空壳, 一批都不丢",
+   cls.get("ok") and _ids_after == _ids_before and len(_ids_after) >= 1,
+   "前=%s 后=%s" % (_ids_before, _ids_after))
+
+# ---- T6c v1.5.70: 放置很久也不许过期(旧版 10 分钟自动丢) ----
+for _b in app.burst.bursts:
+    _b["t"] -= 365 * 24 * 3600          # 假装放了一年
+p6c = jget("/api/photo_ping")
+ck("T6c 放置一年后缓存仍在(TTL 已取消)",
+   p6c.get("burst_id", 0) > 0 and len(app.burst.bursts) >= 1,
+   "burst_id=%s 批数=%d" % (p6c.get("burst_id"), len(app.burst.bursts)))
 
 # ---- T7 v1.5.51: 闸门拦截记录对前端可见 ----
 app.burst.last_reject = {"msg": "测试: 绝区零不在最前面  ·  当前前台: explorer.exe", "t": time.time()}
