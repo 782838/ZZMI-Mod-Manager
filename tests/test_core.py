@@ -855,5 +855,53 @@ else:
     w("没有真实 config.json(跳过 5.7)")
 
 w()
+w("=== 6. 并发写配置(v1.5.73: 修「偶尔切游戏失败 HTTP 500」) ===")
+
+# 用户实测: 切游戏偶发 HTTP 500, 日志里是
+#   PermissionError: [Errno 13] Permission denied: '...config.json.tmp'
+# 根因: write_json 的临时文件名固定, 切换(HTTP 线程)与扫描/缩略图/连拍
+#       (后台线程)同时写会撞在同一个 .tmp 上。
+# 这里直接用多线程锤它, 断言零失败、零残留、结果可解析。
+import tempfile as _tf
+import threading as _th
+
+_d6 = _tf.mkdtemp(prefix="zzmi_cc_")
+_p6 = os.path.join(_d6, "config.json")
+_err6 = []
+
+
+def _w6(i):
+    try:
+        Z.write_json(_p6, {"i": i, "pad": list(range(150))})
+    except Exception as ex:      # noqa: BLE001
+        _err6.append(repr(ex))
+
+
+_ts6 = [_th.Thread(target=_w6, args=(i,)) for i in range(24)]
+for _t in _ts6:
+    _t.start()
+for _t in _ts6:
+    _t.join()
+
+assert not _err6, "并发写仍然失败: %r" % _err6[:3]
+with open(_p6, encoding="utf-8") as _f:
+    _c6 = json.load(_f)
+assert isinstance(_c6, dict) and "i" in _c6, "并发写之后文件不可解析: %r" % (_c6,)
+_left6 = [x for x in os.listdir(_d6) if x.endswith(".tmp")]
+assert not _left6, "并发写留下了临时文件: %r" % _left6
+w("24 线程同时写同一个 config: 0 失败, 结果可解析, 无残留 .tmp OK")
+
+# 另一个隐患: 写盘失败不许让「切换游戏」整体失败
+# (旧版在 save_config 抛异常时直接把 HTTP 500 甩给界面)
+import inspect as _insp
+_src6 = _insp.getsource(Z.App.switch_game)
+assert "except Exception" in _src6 and "存盘失败" in _src6, \
+    "switch_game 没有兜住 save_config 的异常"
+w("switch_game 已兜住存盘异常(写盘失败不再回 500) OK")
+
+_shutil_rm = __import__("shutil").rmtree
+_shutil_rm(_d6, ignore_errors=True)
+
+w()
 w("ALL TESTS PASSED")
 open(OUT, "w", encoding="utf-8").write("\n".join(L))

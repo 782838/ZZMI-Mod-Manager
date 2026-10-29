@@ -5,6 +5,21 @@ Mod 管家  (Mod Manager)
 =========================================
 XXMI Launcher 各 importer 的 Mod 管理界面。v1.5.71 起不再只服务绝区零。
 
+v1.5.73 更新
+-----------
+* **修: 切游戏偶发失败(界面弹「切换失败: HTTP 500」)** —— 日志实锤是
+  `PermissionError: [Errno 13] Permission denied: config.json.tmp`。
+  根因: `write_json()` 的临时文件名固定叫 `path + ".tmp"`, 而切换游戏跑在
+  HTTP 线程, 扫描/缩略图/连拍跑在后台线程, 多方同时写**同一个 .tmp** 就会撞车
+  (Windows 上后到的那次直接拒绝访问)。现在每次写用独立 uuid 后缀, 并发互不干扰,
+  并且对 `os.replace` 加了几次短重试(防杀软/索引服务短暂占用)。
+* **加: `save_config()` 全程持锁** —— 除了临时文件, 序列化 `self.cfg` 的那一刻
+  也必须锁住, 否则可能 dump 到"正被另一个线程改了一半"的 dict, 写出残缺配置。
+* **加: 存盘失败不再让切换整体失败** —— 内存里已经切好了, 先把界面切过去,
+  写盘失败只记日志, 下次任何一次 save_config 都会补写。旧版是直接把 500 甩给界面。
+* **测试**: `test_core` 新增第 6 节 —— 24 线程同时写同一个 config(断言零失败/
+  可解析/无残留 .tmp), 并静态断言 `switch_game` 已兜住存盘异常。
+
 v1.5.72 更新
 -----------
 * **改: 切游戏改成「秒切」** —— 原来切一下要把目标游戏的 Mods 整个扫一遍
@@ -916,11 +931,12 @@ import threading
 import time
 import traceback
 import urllib.parse
+import uuid
 import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.72"
+VERSION = "1.5.73"
 APP_NAME = "Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -1418,13 +1434,38 @@ def read_json(path, default):
 
 
 def write_json(path, obj):
+    """原子写 JSON。**每次用独立的临时文件名**。
+
+    v1.5.73 修: 原来临时文件固定叫 `path + ".tmp"`。切换游戏是 HTTP 线程,
+    而扫描 / 缩略图 / 连拍这些后台线程也会调 save_config —— 两个人同时写
+    同一个 config.json.tmp, Windows 上后到的那次直接
+    `PermissionError: [Errno 13] Permission denied` -> 接口回 HTTP 500,
+    表现就是「偶尔切游戏失败」。用户日志实测出现过。
+    现在每次写用 uuid 后缀, 并发写互不干扰; 失败时自己清掉临时文件。
+    """
     d = os.path.dirname(path)
     if d:
         os.makedirs(d, exist_ok=True)
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(obj, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, path)
+    tmp = "%s.%s.tmp" % (path, uuid.uuid4().hex[:8])
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(obj, f, ensure_ascii=False, indent=2)
+        # 重试几次: 目标文件可能正被杀软/索引服务短暂占用
+        last = None
+        for i in range(6):
+            try:
+                os.replace(tmp, path)
+                return
+            except PermissionError as ex:
+                last = ex
+                time.sleep(0.05 * (i + 1))
+        raise last
+    finally:
+        try:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        except OSError:
+            pass
 
 
 def norm_rel(p):
@@ -6486,6 +6527,18 @@ class App(object):
         return True
 
     def save_config(self):
+        """存盘。
+
+        v1.5.73: 全程持锁 —— 切换游戏(HTTP 线程)与扫描/缩略图/连拍(后台线程)
+        都会进来。原来只是 write_json 里撞临时文件, 现在临时文件名独立了,
+        但**序列化 self.cfg 的那一刻**也必须锁住: 否则可能 dump 到
+        "正被另一个线程改了一半" 的 dict, 写出去的配置字段是残缺的。
+        锁是可重入的(RLock), 已经在锁里的调用方不会死锁。
+        """
+        with self.lock:
+            self._save_config_locked()
+
+    def _save_config_locked(self):
         apply_photo_dir(self.cfg)     # v1.5.34: 存盘前先同步一次生效目录
         # v1.5.62: 防"空配置盖掉好配置"。比较几项用户数据, 若磁盘上那份明显更丰富,
         # 先把磁盘那份留个备份(带时间戳), 这样即使真被覆盖也能捞回来。
@@ -6567,7 +6620,13 @@ class App(object):
             md = find_mods_dir(self.cfg)
             cached = load_scan_cache(md) if md else None
             self.scan = cached or ScanResult()
-        self.save_config()
+        # v1.5.73: 存盘失败**不许**让整个切换失败(旧版就是这样回 HTTP 500 的)。
+        # 内存里已经切好了, 界面先切过去; 写盘失败只记一条日志, 下次任何一次
+        # save_config 都会再写一遍。
+        try:
+            self.save_config()
+        except Exception as ex:
+            log("切换后存盘失败(切换本身已完成, 下次存盘会重试): %s" % ex)
         # 4) 缓存已就位 -> 真正的重扫丢后台, 不阻塞切换
         md = find_mods_dir(self.cfg)
         if md:
