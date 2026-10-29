@@ -702,5 +702,158 @@ w("退出软件清空 OK")
 assert Z.BurstBuffer.BURST_TTL is None, "BURST_TTL 必须关掉(不许自动过期)"
 
 w()
+w("=== 5. 多游戏配置(v1.5.71): 迁移无损 / 隔离 / 切换 ===")
+
+# ---- 5.1 老格式(扁平) -> 新格式: 用户数据一个都不许丢 ----
+_old = {
+    "zzmi_root": r"X:\XXMI", "launcher_exe": r"X:\XXMI\Resources\Bin\XXMI Launcher.exe",
+    "importer": "ZZMI", "game_exe": r"Y:\Games\ZenlessZoneZero Game\ZenlessZoneZero.exe",
+    "mods_dir": r"X:\XXMI\ZZMI\Mods", "libraries": ["lib1", "lib2"], "libs_abs": [r"Z:\Libs"],
+    "custom_dirs": [r"W:\Custom"], "theme": "dark", "hotkey": "F9",
+    "char_overrides": {"a/b": "角色X"},
+    "thumb_overrides": {"a/b": r"a/b/prev.png", "c/d": r"c/d/p.png"},
+    "pinned_mods": ["a/b", "c/d", "e/f"],
+    "pinned_cats": ["分类1"], "pinned_chars": ["角色X"],
+    "usage": {"a/b": 1790947421.7, "c/d": 1790947422.9},
+    "photo_dir": r"X:\XXMI\照片", "photo_seconds": 5, "photo_on": False,
+    "downloads_dir": r"X:\Downloads", "show_translated": True,
+}
+_g, _gl, _act = Z.cfg_from_disk(_old)
+assert _act == "zzmi", "老配置活动游戏编号应该是 zzmi: %r" % _act
+assert "zzmi" in _g, "老配置没折进 games.zzmi: %r" % list(_g)
+_prof = _g["zzmi"]
+for _k in ("xxmi_root", "mods_dir", "game_exe", "libraries", "libs_abs",
+           "custom_dirs", "char_overrides", "thumb_overrides",
+           "pinned_mods", "pinned_cats", "pinned_chars", "usage", "photo_dir"):
+    assert _k in _prof, "每游戏的键 %r 没搬过来" % _k
+    assert _prof[_k] == _old.get(_k if _k != "xxmi_root" else "zzmi_root"), \
+        "键 %r 搬过来变了: %r" % (_k, _prof.get(_k))
+# 全局键必须留在全局, 不能被塞进每个游戏
+for _k in ("theme", "hotkey", "photo_seconds", "photo_on", "downloads_dir",
+           "show_translated"):
+    assert _k in _gl, "全局键 %r 丢了" % _k
+    assert _gl[_k] == _old[_k], "全局键 %r 值变了" % _k
+    assert _k not in _prof, "全局键 %r 不该进游戏档案" % _k
+# 数量级校验: 186 条使用统计 / 44 条缩略图改判那种规模也不许缩水
+assert len(_prof["usage"]) == 2 and len(_prof["thumb_overrides"]) == 2
+w("老格式折叠: 每游戏键 %d 个 + 全局键 %d 个全部原样, 一条不丢 OK"
+  % (len([k for k in Z.GAME_KEYS if k in _prof]), len(_gl)))
+
+# ---- 5.2 摊平视图: 内存里 self.cfg 的形状必须和 v1.5.70 一模一样 ----
+_flat = Z.cfg_flatten(_g, _gl, _act)
+for _k in _old:
+    _nk = "xxmi_root" if _k == "zzmi_root" else _k
+    assert _flat.get(_nk) == _old[_k], "摊平后 %r 变了: %r != %r" % (_nk, _flat.get(_nk), _old[_k])
+assert _flat["active_game"] == "zzmi"
+assert _flat["schema"] == 2
+w("摊平视图: 全部 %d 个键值与老格式逐项相同(其余代码零改动的前提) OK" % len(_old))
+
+# ---- 5.3 往返: 摊平 -> 拆开 -> 再摊平, 必须一模一样 ----
+_g2, _gl2, _act2 = Z.cfg_split(_flat)
+_flat2 = Z.cfg_flatten(_g2, _gl2, _act2)
+for _k in _old:
+    _nk = "xxmi_root" if _k == "zzmi_root" else _k
+    assert _flat2.get(_nk) == _old[_k], "往返之后 %r 变了" % _nk
+w("摊平↔拆开 往返无损 OK")
+
+# ---- 5.4 两游戏并存: 数据必须互不串味 ----
+_g["wwmi"] = {"importer": "WWMI", "zzmi_root": r"X:\XXMI",
+              "mods_dir": r"X:\XXMI\WWMI\Mods", "game_exe": "Wuthering Waves.exe",
+              "game_exes": ["wuthering waves.exe", "client-win64-shipping.exe"],
+              "libraries": [], "libs_abs": [], "custom_dirs": [],
+              "char_overrides": {}, "thumb_overrides": {},
+              "pinned_mods": ["a/b"],   # 故意和绝区零同名 —— 正是靠分区才不会串
+              "pinned_cats": [], "pinned_chars": [], "usage": {}, "photo_dir": "",
+              "views": {}}
+_fz = Z.cfg_flatten(_g, _gl, "zzmi")
+_fw = Z.cfg_flatten(_g, _gl, "wwmi")
+assert _fz["mods_dir"] == r"X:\XXMI\ZZMI\Mods"
+assert _fw["mods_dir"] == r"X:\XXMI\WWMI\Mods"
+assert _fz["importer"] == "ZZMI" and _fw["importer"] == "WWMI"
+assert _fz["pinned_mods"] == ["a/b", "c/d", "e/f"], "绝区零收藏被别的游戏污染了"
+assert _fw["pinned_mods"] == ["a/b"], "鸣潮收藏被绝区零污染了"
+assert _fz["usage"] != {} and _fw["usage"] == {}, "使用统计串味了"
+# 全局设置必须两个游戏都看得见
+assert _fz["theme"] == _fw["theme"] == "dark"
+assert _fz["hotkey"] == _fw["hotkey"] == "F9"
+# 照片目录按游戏分开
+assert _fz["photo_dir"] == r"X:\XXMI\照片" and _fw["photo_dir"] == ""
+w("两游戏并存: mods_dir/importer/收藏/使用统计/照片目录 互不串味, 全局设置共享 OK")
+
+# ---- 5.5 写盘形状 ----
+_disk = Z.cfg_to_disk(_g, _gl, "wwmi")
+assert _disk["schema"] == 2 and _disk["active_game"] == "wwmi"
+assert set(_disk["games"]) == {"zzmi", "wwmi"}
+assert _disk["theme"] == "dark" and "theme" not in _disk["games"]["zzmi"]
+assert Z.cfg_has_games(_disk) is True
+assert Z.cfg_has_games(_old) is False, "老格式不该被当成 v2"
+w("写盘形状: schema/active_game/games/全局键分层正确 OK")
+
+# ---- 5.6 importer 名字集合: 鸣潮的前台进程必须被认出来 ----
+_main, _names = Z.importer_exe_names("", "WWMI")
+assert "client-win64-shipping.exe" in _names, \
+    "鸣潮前台判定名字集合里必须含 Client-Win64-Shipping.exe: %r" % _names
+assert "wuthering waves.exe" in _names
+_m2, _n2 = Z.importer_exe_names("", "ZZMI")
+assert "zenlesszonezero.exe" in _n2
+w("importer_exe_names: 鸣潮含 Client-Win64-Shipping.exe, 绝区零含 ZenlessZoneZero.exe OK")
+
+# 前台判定真值表(直接喂名字集合, 不碰真实前台窗口)
+_cfgw = {"importer": "WWMI", "game_exe": "Wuthering Waves.exe",
+         "game_exes": ["wuthering waves.exe", "client-win64-shipping.exe"]}
+assert _cfgw["game_exes"] == _names or set(_names) <= set(Z._game_exe_names(_cfgw))
+_old_fg = Z.foreground_exe
+try:
+    Z.foreground_exe = lambda ttl=None: "client-win64-shipping.exe"
+    assert Z._is_game_foreground(_cfgw) is True, "鸣潮在前台却没认出来"
+    Z.foreground_exe = lambda ttl=None: "chrome.exe"
+    assert Z._is_game_foreground(_cfgw) is False
+    # 绝区零的配置不该把鸣潮进程当成自己
+    _cfgz = {"importer": "ZZMI", "game_exe": r"X:\a\ZenlessZoneZero.exe",
+             "game_exes": ["zenlesszonezero.exe"]}
+    Z.foreground_exe = lambda ttl=None: "client-win64-shipping.exe"
+    assert Z._is_game_foreground(_cfgz) is False, "绝区零档案不该认鸣潮进程"
+    Z.foreground_exe = lambda ttl=None: "zenlesszonezero.exe"
+    assert Z._is_game_foreground(_cfgz) is True
+finally:
+    Z.foreground_exe = _old_fg
+w("前台判定: 鸣潮认 Client-Win64-Shipping.exe, 绝区零不误认 OK")
+
+# ---- 5.7 真实 config.json 副本上的迁移(只读原件, 绝不写回) ----
+_REAL = os.path.join(os.path.expanduser("~"), ".mod-manager", "config.json")
+if not os.path.isfile(_REAL):
+    _REAL = os.path.join(os.path.expanduser("~"), ".zzmi-manager", "config.json")
+if os.path.isfile(_REAL):
+    try:
+        with open(_REAL, encoding="utf-8") as f:
+            _real = json.load(f)
+    except Exception as _e:
+        _real = None
+        w("真实配置读不了(跳过 5.7): %s" % _e)
+    if isinstance(_real, dict):
+        _rg, _rgl, _ract = Z.cfg_from_disk(_real)
+        _rflat = Z.cfg_flatten(_rg, _rgl, _ract)
+        for _k, _v in _real.items():
+            if _k == "importer" and not _v:
+                continue
+            # 这几个是"外壳键": 摊平后的视图本来就不会原样保留它们
+            #   games / schema / active_game -> 结构键, 摊平后按活动游戏展开
+            if _k in ("games", "schema", "active_game"):
+                continue
+            _nk = "xxmi_root" if _k == "zzmi_root" else _k
+            assert _rflat.get(_nk) == _v, "真实配置的 %r 迁移后变了" % _k
+        # 统计口径必须覆盖两种存放位置: v2 存在 games.<id> 里, v1 在顶层。
+        def _count(key):
+            g = _real.get("games") or {}
+            if g:
+                return sum(len((p or {}).get(key) or {}) for p in g.values())
+            return len(_real.get(key) or {})
+        w("真实 config.json(%d 个键, usage=%d 条, thumb_overrides=%d 条, games=%s)迁移无损 OK"
+          % (len(_real), _count("usage"), _count("thumb_overrides"),
+             list((_real.get("games") or {}) or ["(v1 扁平)"])))
+else:
+    w("没有真实 config.json(跳过 5.7)")
+
+w()
 w("ALL TESTS PASSED")
 open(OUT, "w", encoding="utf-8").write("\n".join(L))

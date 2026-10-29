@@ -1,9 +1,51 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ZZMI Mod 管家  (ZZMI Mod Manager)
+Mod 管家  (Mod Manager)
 =========================================
-绝区零 ZZMI / XXMI Launcher 的 Mod 管理界面。
+XXMI Launcher 各 importer 的 Mod 管理界面。v1.5.71 起不再只服务绝区零。
+
+v1.5.72 更新
+-----------
+* **改: 切游戏改成「秒切」** —— 原来切一下要把目标游戏的 Mods 整个扫一遍
+  (317 个 mod 实测 0.9~2s, 还要顺带排缩略图), 点下去就干等。现在跟启动走同一条路:
+  先拿扫描缓存**立刻**把界面填上, 真正的重扫丢后台线程, 扫完自动刷新。
+* **改: 安装包装完自动清 Windows 图标缓存** —— 用户换了新图标, 但资源管理器还在
+  显示缓存里的旧图标("快捷方式咋没变")。现在安装结束时静默删掉
+  `iconcache_*.db` 并通知 shell 重读, 装完就是新图标, 不用手动重启 explorer。
+
+v1.5.71 更新
+-----------
+* **新: 多游戏兼容 —— mod 界面与管理目录按游戏彻底分开** —— 顶部出现游戏切换器
+  (2 个以下自动隐藏, 单游戏用户的界面和以前一模一样)。切换时整套换: mod 列表、
+  管理目录、照片目录、排序/筛选/搜索词、收藏与使用统计。
+* **每个游戏一份档案**: 配置从"单份扁平"升成 `schema:2 { games: {每个游戏:{...}} }`。
+  全局设置(主题/热键/连拍开关/窗口大小)仍然只有一份, 两游戏共用。
+* **老配置无损自动迁移**: 读到老格式时在内存里折成对应的游戏档案, 键名一个不改,
+  等第一次真正存盘才落盘成新格式 —— 中途崩了磁盘上还是完整的老配置, 照样能用。
+  实测真实配置(186 条使用统计 / 44 条缩略图改判 / 收藏 / 21 个方案)迁移后逐项相同。
+* **为什么用户数据必须按游戏分区**: mod 条目的 id **就是相对路径**
+  (`1aMOD/南宫羽-隐藏武器`), 只在某一个游戏的 Mods 里有意义。两个游戏的 Mods 里
+  都有 `1aMOD/菲欧妮` 时, 共用一份收藏/使用统计就会串成一锅。
+  已用"两边放同名同路径的 mod"实测: 收藏、使用统计、缩略图改判互不影响。
+* **顺带白捡的隔离**(零改动): `scan_cache` 键是 md5(Mods 绝对路径)、`thumbs` 键是
+  md5(源文件绝对路径)、`journal` 存绝对路径 —— 本来就按目录分开了。
+* **修: 鸣潮的连拍会被误判成"不在游戏里"** —— 前台判定原来只比 `game_exe` 一个名字,
+  但鸣潮真正跑在前台的是 `Client-Win64-Shipping.exe`, 不是 `Wuthering Waves.exe`。
+  现在判定用**名字集合**, 从 XXMI Launcher Config.json 的
+  `game_exe_names` + `process_exe_names` 取, 再叠一层内置兜底。
+* **改: 自动探测不再"只挑一个 importer 把其余丢掉"** —— 根目录下所有认得的
+  两个 importer(绝区零 / 鸣潮)都登记成各自的游戏档案。
+* **新接口**: `GET /api/games`(轻量列表) · `POST switch_game` · `detect_games` · `save_view`。
+* **改: 图标换成「绝区零 + 鸣潮」各占一半的合成图标** —— 两张游戏横幅各缩进半边、
+  主体**完整不裁字**(等比缩放, 只缩不放), 空白处用该图自身的模糊放大当背景,
+  整体套圆角。exe / 桌面快捷方式 / 安装包 / 网页 favicon 用的是同一个 `installer\app.ico`。
+* **改: 品牌名去 ZZMI** —— 程序名/窗口标题/安装包显示名/数据目录/日志统一改成
+  「Mod 管家」「.mod-manager」「mod-manager.log」, 不再拿一个游戏的招牌当整个工具的名字;
+* **测试**: `test_core` 新增第 5 节(迁移无损/摊平视图往返/两游戏隔离/前台名字集合,
+  含真实 config.json 只读副本); 新增 `e2e_multigame.py`(13 项, 真起服务 + 双 importer
+  沙箱, 覆盖迁移落盘、切游戏、关掉重开); 新增 `e2e_multigame_render.py`(真浏览器
+  dump-dom 验证切换器渲染与切换)。
 
 v1.5.70 更新
 -----------
@@ -96,7 +138,7 @@ v1.5.63 更新
   仍是以**管理员权限**启动脚本(走 UAC runas, v1.5.60 起失败即明确报错、绝不偷偷降权)。
 * **改: 面板说明按用户实测的规律重写** —— 分清三件事:
   · **用脚本(注入器) → 必须【国际服】**(只有开脚本玩才要换);
-  · **只挂 mod(XXMI / ZZMI) → 不用换**(国服、国际服都能正常挂 mod);
+  · **只挂 mod(XXMI) → 不用换**(国服、国际服都能正常挂 mod);
   · **更新游戏 → 必须【国服】**(不换回国服会报错/更新失败/无限修复)。
 
 v1.5.62 更新
@@ -143,10 +185,10 @@ v1.5.60 更新
   这种降权启动必然 `WinError 740` 失败, 结果就是「提示成功、实际没起来 / 顶着旧进程」。
   现在: runas 失败 = 明确报错, **绝不再偷偷降权启动**。
 * **新: 脚本启动全链路写日志**。记录 `runas 返回码` + `管理器自身是否管理员` +
-  ①②③ 三步结果, 出问题直接看 `%USERPROFILE%/.zzmi-manager/zzmi.log`, 不用再猜。
+  ①②③ 三步结果, 出问题直接看 `%USERPROFILE%/.mod-manager/mod-manager.log`, 不用再猜。
 * **改: 游戏已在运行时的提示**。原来是干巴巴一句"游戏已经在运行了"; 现在明确告诉
   你: 脚本注入的顺序**必须是先脚本、后游戏**, 没生效就关掉游戏重来。
-* **说明**: 经字节级核对, `Launcher.exe` 与管理器 `ZZMI-Mod-Manager.exe` **都带
+* **说明**: 经字节级核对, `Launcher.exe` 与管理器 `Mod-Manager.exe` **都带
   `requireAdministrator` 清单**。所以 `Launcher.exe` 只要能弹出来, 就必然已拿到
   管理员权限 —— "菜单能呼出但功能不生效"属于注入/杀软层面, 不是权限问题
   (详见 `使用说明.txt` 的"问题总结": 火绒拦截 / 游戏版本不匹配 / Win11 24H2 无解)。
@@ -227,9 +269,9 @@ v1.5.47 更新
   原来 10 处业务确认用的是浏览器原生 `confirm()`, 它的标题栏只能显示 `127.0.0.1:port`
   这种地址、无法自定义。现在全部换成项目自带的 `#mAsk` 自绘确认弹窗
   (新增 `askConfirm()` 便利函数, 内部走 `openAsk(..., {confirm:true})`), 标题固定为
-  「ZZMI MOD 管家」, 与原输入弹窗共用一套 DOM 与 Esc 分层。原生 `confirm()`/`prompt()`
+  「Mod 管家」, 与原输入弹窗共用一套 DOM 与 Esc 分层。原生 `confirm()`/`prompt()`
   今后一律禁止再用(标题栏只能显示域名)。已用真浏览器 CDP 实测: 弹的是自定义模态、标题为
-  「ZZMI MOD 管家」、输入框在确认模式下隐藏、确定返回 `true` / 取消返回 `false`、原生 `confirm`
+  「Mod 管家」、输入框在确认模式下隐藏、确定返回 `true` / 取消返回 `false`、原生 `confirm`
   调用次数 **0**。
 
 v1.5.46 更新
@@ -476,7 +518,7 @@ v1.5.37 更新
   F9 被占的是**没退干净的孤儿进程**(关窗口时 `bye` 没送达 / Edge 被强杀)。两道防线:
   ① **热键自动重试** —— 启动没注册上的键, 后台每 5 秒重试一次(最多 2 分钟), 占键的
   旧进程一死就自动接管; ② **`WindowWatchdog`** —— 曾经找到过窗口、之后连续 180 秒
-  都找不到, 就判定为孤儿并主动退出, 把键让出来(`ZZMI_NO_WATCHDOG=1` 可关)。
+  都找不到, 就判定为孤儿并主动退出, 把键让出来(`MOD_MANAGER_NO_WATCHDOG=1` 可关)。
 * `photo_diag()` 口径跟着新模型改(看"上次录到几帧"而不是"ring 里攒了几帧")。
 
 v1.5.35 更新
@@ -506,7 +548,7 @@ v1.5.34 更新
 -----------
 * **修: 所有红色按钮上的字看不见了** —— `.btn.danger` 在样式表里被写了两次, 后一条
   只改了文字颜色没改背景, 于是「红字压红底」。删 mod 的「移入回收站」、抽屉里的
-  「切换状态」、设置里的「⏻ 退出 ZZMI 管家」等几个危险按钮全中招。删掉重复规则即可。
+  「切换状态」、设置里的「⏻ 退出 Mod 管家」等几个危险按钮全中招。删掉重复规则即可。
 * **照片保存位置可自定义** —— 以前成品固定写进 `数据目录\照片`, 现在设置里能改
   (设置 → 📸 连拍缓冲 → 照片保存位置), 照片墙里也加了「📁 保存位置」直接选文件夹;
   留空 = 恢复默认。
@@ -699,8 +741,8 @@ v1.5.10 更新
 * **关掉界面 = 程序真的退出了**: 以前关浏览器界面后, 真正的程序(那个被隐藏的命令窗口)
   还在后台跑、占着文件锁, 导致新安装包覆盖不了、还杀不掉(它是提权进程, 普通方式拒绝对)。
   现在界面窗口一关, 程序会在几秒后自动退出; 刷新页面(F5)不会误杀
-* **输入弹窗换成自制窗(标题「ZZMI MOD 管家」)**: 以前那些"输入名字"的框是浏览器原生 prompt,
-  标题栏显示的是网址、没法改。现在统一用自制弹窗, 标题就是「ZZMI MOD 管家」
+* **输入弹窗换成自制窗(标题「Mod 管家」)**: 以前那些"输入名字"的框是浏览器原生 prompt,
+  标题栏显示的是网址、没法改。现在统一用自制弹窗, 标题就是「Mod 管家」
 * **更新提醒加了注意事项**: 发现新版本时, 提醒条里写明"更新前请先关掉本程序", 避免装不上
 * **以后只发安装包, 不再单独发便携版 exe**: 安装包自带程序, 少一份文件、少一次 UAC
 
@@ -727,7 +769,7 @@ v1.5.7 更新
 -----------
 * **不再有黑窗口挡着**: 以前每次打开都会弹一个黑色命令窗口(关掉它程序就退出了),
   现在界面一起来**命令窗口会自动藏掉**, 桌面上只留界面本身
-* 日志没丢 —— 全部同时写进 `数据目录/zzmi.log`(超过 512KB 自动轮转成 .old),
+* 日志没丢 —— 全部同时写进 `数据目录/mod-manager.log`(超过 512KB 自动轮转成 .old),
   出问题时在界面「设置」里可以一键把命令窗口调回来看, 或手动加 `--console` 启动
 
 v1.5.6 更新
@@ -744,8 +786,8 @@ v1.5.6 更新
 
 v1.5.5 更新
 -----------
-* **仓库可以自己加了**: 「🗑 仓库管理」面板里新增「添加仓库」—— 既能**在 ZZMI 目录下新建**,
-  也能**锁定一个磁盘上已存在的文件夹**(任意盘符都行, 不必在 ZZMI 目录里); 加过的会一直留在
+* **仓库可以自己加了**: 「🗑 仓库管理」面板里新增「添加仓库」—— 既能**在 XXMI 目录下新建**,
+  也能**锁定一个磁盘上已存在的文件夹**(任意盘符都行, 不必在 XXMI 目录里); 加过的会一直留在
   下拉列表里, 想移出就点「移除」(只去列表, 磁盘文件夹一个都不删)
 * **仓库列表空了也不迷路**: 仓库页在"还没发现仓库目录"时给出「＋ 添加仓库 / 📁 手动寻找
   仓库路径」入口, 不用再去别的地方绕一圈才能建仓库
@@ -767,7 +809,7 @@ v1.5.3 更新
   成 mod 本身并归到「(根目录)」; ini 直接散落在 Mods 根目录的也会合成一条, 不再报错
 * **自定义文件夹(搬运目标)**: 仓库下拉新增「📁 自定义文件夹…」, 弹出文件夹浏览器 ——
   可层层点进去、可跳盘符/桌面/文档/下载、可在当面位置新建文件夹, 选完即可搬;
-  用过的路径会记住, 下次直接选。不再局限于 ZZMI 目录下的仓库
+  用过的路径会记住, 下次直接选。不再局限于 XXMI 目录下的仓库
 
 v1.5.2 更新
 -----------
@@ -850,8 +892,8 @@ v1.1 更新
 
 环境变量
 --------
-ZZMI_MANAGER_DATA  自定义数据目录
-ZZMI_NO_BROWSER=1  不自动打开窗口
+MOD_MANAGER_DATA  自定义数据目录
+MOD_MANAGER_NO_BROWSER=1  不自动打开窗口
 """
 
 import base64
@@ -878,8 +920,8 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.70"
-APP_NAME = "ZZMI Mod 管家"
+VERSION = "1.5.72"
+APP_NAME = "Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
 UPDATE_REPO = "782838/ZZMI-Mod-Manager"
@@ -891,15 +933,61 @@ IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".avif")
 # 永远不当作预览图的扩展名 —— .dds 是游戏贴图/模型资源, 拿来当封面只会选到模型文件, 直接禁用
 NEVER_IMAGE_EXTS = (".dds",)
 # 「一键添加预览图」写进 mod 文件夹的文件名前缀: 优先级最高, 保证用户选的封面一定生效
-COVER_STEM = "zzmi_cover"
+# v1.5.72: zzmi_cover -> mod_cover。同时**仍然认老的 zzmi_cover.***,
+# 否则用户以前手工选过的封面会突然失效(那些图还在 mod 目录里)。
+COVER_STEM = "mod_cover"
+COVER_STEM_LEGACY = "zzmi_cover"
+
+
+def is_cover_name(name):
+    """这个文件名是不是我们写的封面(mod_cover.* 或老的 zzmi_cover.*)。"""
+    low = (name or "").lower()
+    return low.startswith(COVER_STEM) or low.startswith(COVER_STEM_LEGACY)
 # 单个 mod 最多扫多少张候选图片(给「切换预览图」列表用)
 MAX_CANDIDATE_IMAGES = 60
 # 预览图优先级关键词(命中即 rank 0, 最优先做封面; 含中英文样本图命名)
 PREVIEW_PRIORITY = ("preview", "cover", "thumb", "showcase", "sample",
                     "预览", "示例", "样例", "展示", "封面", "说明图", "pic")
 
-DATA_DIR = (os.environ.get("ZZMI_MANAGER_DATA")
-            or os.path.join(os.path.expanduser("~"), ".zzmi-manager"))
+# ---- v1.5.72: 数据目录改名 .zzmi-manager -> .mod-manager ----
+# 老用户的数据(配置/缩略图/照片/方案/操作日志, 实测 732MB / 4702 个文件)必须**自动搬过来**,
+# 不能让用户重配一遍。迁移规则:
+#   ① 老目录在、新目录不在 -> 整个 os.rename 搬过去(同一个盘, 瞬间完成)
+#   ② 两个都在 -> 不自动动手(可能用户已经在新目录用了), 只记日志, 让程序照常用新的
+#   ③ 跨盘等 rename 失败 -> 退化成逐项复制, 再删源(尽力而为, 失败就留在原地)
+_OLD_DATA_DIR = os.path.join(os.path.expanduser("~"), ".zzmi-manager")
+_NEW_DATA_DIR = os.path.join(os.path.expanduser("~"), ".mod-manager")
+
+
+def _migrate_data_dir():
+    """把老数据目录搬到新名字下。返回本次使用的目录(字符串)。
+
+    只在**没有显式指定 ZZMI_MANAGER_DATA / MOD_MANAGER_DATA**时才会动老目录 ——
+    测试和其它实例用的隔离目录绝不能被搬走。
+    """
+    if os.path.isdir(_NEW_DATA_DIR):
+        return _NEW_DATA_DIR
+    if not os.path.isdir(_OLD_DATA_DIR):
+        return _NEW_DATA_DIR
+    try:
+        os.rename(_OLD_DATA_DIR, _NEW_DATA_DIR)
+        return _NEW_DATA_DIR
+    except OSError:
+        pass
+    # 跨盘 / 被占用: 逐项复制
+    try:
+        import shutil as _sh
+        _sh.copytree(_OLD_DATA_DIR, _NEW_DATA_DIR)
+        _sh.rmtree(_OLD_DATA_DIR, ignore_errors=True)
+        return _NEW_DATA_DIR
+    except Exception:
+        # 搬不动就退回老目录, 保证程序仍能用
+        return _OLD_DATA_DIR
+
+
+DATA_DIR = (os.environ.get("MOD_MANAGER_DATA")
+            or os.environ.get("ZZMI_MANAGER_DATA")
+            or _migrate_data_dir())
 CONFIG_PATH = os.path.join(DATA_DIR, "config.json")
 PRESETS_PATH = os.path.join(DATA_DIR, "presets.json")
 JOURNAL_PATH = os.path.join(DATA_DIR, "journal.jsonl")
@@ -912,6 +1000,26 @@ SCAN_CACHE_DIR = os.path.join(DATA_DIR, "scan_cache")
 # Pillow 的解码/缩放是 C 扩展、会释放 GIL, 多线程能真并行; 3 条足够把积压压到 ~10 秒,
 # 再多就会明显跟界面抢。
 THUMB_WORKERS = 3
+# v1.5.72: 日志文件名不再带 zzmi。老版本写的 zzmi.log 会在数据目录迁移时一起搬过来,
+# 这里首次启动时把它改名成新名字, 历史日志不丢。
+LOG_NAME = "mod-manager.log"
+_LEGACY_LOG_NAME = "zzmi.log"
+
+
+def _migrate_log_name():
+    """把老日志 zzmi.log / zzmi.log.old 改名成新名字(只在新名字还不存在时)。"""
+    try:
+        for old, new in ((_LEGACY_LOG_NAME, LOG_NAME),
+                         (_LEGACY_LOG_NAME + ".old", LOG_NAME + ".old")):
+            src = os.path.join(DATA_DIR, old)
+            dst = os.path.join(DATA_DIR, new)
+            if os.path.isfile(src) and not os.path.exists(dst):
+                os.replace(src, dst)
+    except Exception:
+        pass
+
+
+_migrate_log_name()
 PHOTO_DIR_DEFAULT = os.path.join(DATA_DIR, "照片")   # v1.5.31 连拍选帧后留下的成品
 # v1.5.34: 照片成品目录可在设置里自定义(config.photo_dir), 留空 = 用上面这个默认值。
 # 这里仍保留模块级 PHOTO_DIR 这个名字, 是因为 Burst.keep / list_photos /
@@ -925,12 +1033,12 @@ PHOTO_DIR = PHOTO_DIR_DEFAULT
 #   之后用户真正的管家每次启动都报「注册失败」, 可按 F9 又有反应 ——
 #   因为响应的是那个孤儿(它的 toggle_manager_window「没窗口就开」)。
 #   用户看到的就是「提示注册失败, 但我明明可以调用」。
-# 用法: 在这些子进程的环境里设 ZZMI_TEST_MODE=1。
-TEST_MODE = os.environ.get("ZZMI_TEST_MODE") == "1"
+# 用法: 在这些子进程的环境里设 MOD_MANAGER_TEST_MODE=1。
+TEST_MODE = os.environ.get("MOD_MANAGER_TEST_MODE") or os.environ.get("ZZMI_TEST_MODE") == "1"
 
 # 单实例互斥体名(见 detect_other_instance)。不带 Global\ 前缀 = 会话命名空间,
 # 普通用户也能建; 提权实例和非提权实例仍在同一会话, 互相看得见。
-INSTANCE_MUTEX = "ZZMI_Mod_Manager_SingleInstance_v1"
+INSTANCE_MUTEX = "Mod_Manager_SingleInstance_v1"
 
 
 def apply_photo_dir(cfg):
@@ -958,19 +1066,54 @@ def _res_dir():
 
 UI_PATH = os.path.join(_res_dir(), "ui.html")
 BG_PATH = os.path.join(_res_dir(), "bg.jpg")
-# v1.5.9 绝区零图标 favicon: 打包后在资源根, 源码运行时在 installer/ 下
+# v1.5.71 「绝区零 + 鸣潮」各占一半的合成图标: 打包后在资源根, 源码运行时在 installer/ 下
 ICON_PATH = os.path.join(_res_dir(), "app.ico")
 if not os.path.isfile(ICON_PATH):
     ICON_PATH = os.path.join(_res_dir(), "installer", "app.ico")
 
+# v1.5.71 每个游戏一张方形小图, 给界面左上角那个 34px logo 用。
+# 为什么不用合成图: 素材是 1.8:1 的横版横幅, 缩到 34px 只剩两团色斑
+# (用户原话"左上角有漏洞/破方块")。方图只留该游戏的识别特征, 34px 才看得清。
+GAME_ICON_FILES = {"ZZMI": "game-zzmi.png", "WWMI": "game-wwmi.png"}
+
+
+def _game_icon_path(importer):
+    """importer -> 方图绝对路径(找不到返回 "")。"""
+    fn = GAME_ICON_FILES.get(str(importer or "").upper())
+    if not fn:
+        return ""
+    for base in (_res_dir(), os.path.join(_res_dir(), "installer")):
+        p = os.path.join(base, fn)
+        if os.path.isfile(p):
+            return p
+    return ""
+
+
+def _game_icon_bytes(app):
+    """当前活动游戏的方图字节。该游戏没有专属图时回落到 favicon(合成图)。"""
+    try:
+        imp = (app.cfg or {}).get("importer")
+        p = _game_icon_path(imp)
+        if p:
+            with open(p, "rb") as f:
+                return f.read(), "image/png"
+    except Exception:
+        pass
+    try:
+        with open(ICON_PATH, "rb") as f:
+            return f.read(), "image/x-icon"
+    except OSError:
+        return b"", "image/png"
+
+
 DEFAULT_CONFIG = {
-    "zzmi_root": "",
+    "xxmi_root": "",
     "launcher_exe": "",
     "importer": "ZZMI",
     "game_exe": "",
     "mods_dir": "",
     "libraries": [],
-    "libs_abs": [],         # 锁定为仓库的绝对路径(可以在任意盘, 不必在 ZZMI 目录下)
+    "libs_abs": [],         # 锁定为仓库的绝对路径(可以在任意盘, 不必在 XXMI 目录下)
     "custom_dirs": [],      # 「自定义文件夹」最近用过的目标(完整路径)
     "theme": "dark",
     "hide_preview": False,
@@ -995,7 +1138,218 @@ DEFAULT_CONFIG = {
     "photo_only_in_game": True,
     "photo_seconds": 3,         # v1.5.31 往前回溯几秒(1~10)
     "photo_dir": "",            # v1.5.34 照片成品存哪(空=数据目录\照片)
+
+    # ---- v1.5.71 多游戏兼容: 以下是**外壳**键, 不参与摊平 ----
+    # 磁盘上的形状(见 cfg_to_disk):
+    #   {"schema": 2, "active_game": "<游戏key>",
+    #    "games": {"<游戏key>": {...每游戏一份...}}}
+    # 内存里的 self.cfg 永远是「当前活动游戏那份摊平后的样子」, 形状和 v1.5.70 完全一致,
+    # 所以全代码 100 多处 cfg.get("mods_dir") 之类一行都不用改。
+    "schema": 2,
+    "active_game": "",
+    "games": {},
 }
+
+# ---------------------------------------------------------------------------
+# v1.5.71: 多游戏档案
+# ---------------------------------------------------------------------------
+# 为什么要这样拆:
+#   mod 条目的 id **就是相对路径**(实测 "1aMOD/南宫羽-隐藏武器（独立开关）"), 它只在
+#   一个游戏的 Mods 目录里有意义。如果两个游戏的 Mods 里都有 1aMOD/菲欧妮, 收藏和使用
+#   统计就会串成一锅。所以凡是「以相对路径为键」的数据, 必须按游戏分开存。
+#
+# 不需要按游戏分的(自动就隔离了, 零改动):
+#   scan_cache  —— 键是 md5(Mods 绝对路径), 见 save_scan_cache()
+#   thumbs      —— 键是 md5(源文件绝对路径), 见 thumb_key()
+#   journal     —— 存的是绝对路径, 跨游戏不冲突
+
+# 每个游戏各存一份的键。不在这里的都算全局(主题/热键/连拍开关等)。
+GAME_KEYS = (
+    "xxmi_root", "launcher_exe", "importer",
+    "game_exe",     # 主程序(用于「启动游戏」)
+    "game_exes",    # v1.5.71 前台判定用的**名字集合**(见 _game_exe_names)
+    "mods_dir",
+    "libraries", "libs_abs", "custom_dirs",
+    "char_overrides", "thumb_overrides",
+    "pinned_mods", "pinned_cats", "pinned_chars", "usage",
+    "photo_dir",    # 照片成品目录: 录的是哪个游戏就进哪个文件夹
+    "views",        # 排序/筛选/搜索词等界面状态, 每游戏各自记住
+)
+
+# importer -> 展示信息。只是兜底; 有 XXMI Launcher Config.json 时以它为准,
+# 因为官方配置里的 game_exe_names / process_exe_names 才是权威。
+IMPORTER_META = {
+    "ZZMI": {"label": "绝区零", "game": "ZENLESS_ZONE_ZERO",
+             "exe": ["ZenlessZoneZero.exe", "ZenlessZoneZeroBeta.exe"],
+             "proc": [], "char_table": "zzz"},
+    "WWMI": {"label": "鸣潮", "game": "WUTHERING_WAVES",
+             "exe": ["Wuthering Waves.exe"],
+             # 鸣潮真正在前台跑的是 Client-Win64-Shipping.exe, 不是 Wuthering Waves.exe。
+             # 少了这一条, 在鸣潮里按侧键会被「游戏不在前台」直接拒掉。
+             "proc": ["Client-Win64-Shipping.exe"], "char_table": None},
+}
+
+# 本工具只做这两个游戏(用户明确要求: 不做通用多游戏框架)。
+# 顺序 = 切换器里的显示顺序, 绝区零在前(历史默认)。
+IMPORTER_ORDER = ("ZZMI", "WWMI")
+
+
+def importer_label(imp):
+    """importer 的内部编号 -> 界面上显示的游戏名。
+
+    注意: importer 为空时给"游戏"这种中性叫法, 不要凭空说成某个具体游戏 ——
+    配置不全(比如单元测试只给了 photo_seconds)时的提示语不该误导人。
+    """
+    info = IMPORTER_META.get(str(imp or "").upper()) or {}
+    return info.get("label") or (imp or "游戏")
+
+
+def _cfg_game_keys():
+    """每游戏的键清单(GAME_KEYS + 没写进 DEFAULT_CONFIG 的也补上)。"""
+    out = []
+    for k in GAME_KEYS:
+        if k not in out:
+            out.append(k)
+    return out
+
+
+def _cfg_global_keys():
+    """全局键 = DEFAULT_CONFIG 里除 GAME_KEYS 与外壳键之外的全部。"""
+    shell = {"schema", "active_game", "games"}
+    return [k for k in DEFAULT_CONFIG
+            if k not in GAME_KEYS and k not in shell]
+
+
+def cfg_flatten(games, global_part, active):
+    """磁盘形状 -> 内存扁平视图。
+
+    self.cfg 的形状必须和 v1.5.70 一模一样, 这样其余代码完全不用改。
+    """
+    out = dict(DEFAULT_CONFIG)
+    out.update(global_part or {})
+    prof = (games or {}).get(active) or {}
+    for k in _cfg_game_keys():
+        if k in prof:
+            out[k] = prof[k]
+    # views 是后加的键, DEFAULT_CONFIG 里没有, 单独带上
+    out["views"] = prof.get("views") or {}
+    out["schema"] = 2
+    out["active_game"] = active or ""
+    out["games"] = games or {}
+    # 空档案时给个安全的兜底: 绝区零是历史默认
+    if not out.get("importer"):
+        out["importer"] = "ZZMI"
+    if not isinstance(out.get("libraries"), list):
+        out["libraries"] = []
+    return out
+
+
+def cfg_split(flat):
+    """内存扁平视图 -> (games, global_part, active)。"""
+    flat = flat or {}
+    games = {}
+    for gid, prof in (flat.get("games") or {}).items():
+        games[gid] = dict(prof or {})
+    active = flat.get("active_game") or ""
+    if not active:
+        # 老配置或首次: 用当前 importer 的小写当编号
+        active = str(flat.get("importer") or "ZZMI").lower()
+    prof = games.get(active) or {}
+    for k in _cfg_game_keys():
+        if k in flat:
+            prof[k] = flat[k]
+    prof["views"] = flat.get("views") or prof.get("views") or {}
+    games[active] = prof
+    glob = {k: flat[k] for k in _cfg_global_keys() if k in flat}
+    return games, glob, active
+
+
+def cfg_to_disk(games, global_part, active):
+    """(games, global, active) -> 要写进 config.json 的 dict。"""
+    d = {"schema": 2, "active_game": active or ""}
+    d.update(global_part or {})
+    d["games"] = games or {}
+    return d
+
+
+# v1.5.72: 配置键改名对照。老的 config.json 里是 zzmi_root, 现在统一叫 xxmi_root。
+# 读盘时先把老键名就地换成新键名, 之后全代码只认新名字 —— 一条数据都不丢。
+LEGACY_KEY_MAP = {"zzmi_root": "xxmi_root"}
+
+
+def _migrate_keys(d):
+    """把 dict 里的老键名换成新键名(就地, 只动顶层)。"""
+    if not isinstance(d, dict):
+        return d
+    for old, new in LEGACY_KEY_MAP.items():
+        if old in d and new not in d:
+            d[new] = d.pop(old)
+    return d
+
+
+def cfg_from_disk(raw):
+    """config.json 的原始 dict -> (games, global_part, active)。
+
+    v1 老格式(扁平, 顶层直接有 xxmi_root)会自动折成对应的游戏档案, 键名一个不改,
+    只是多套一层 —— 这样 44 条缩略图改判 / 186 条使用统计 / 21 个方案 全都原样保住。
+    """
+    if not isinstance(raw, dict):
+        return {}, {}, ""
+    if isinstance(raw.get("games"), dict) and raw["games"]:
+        active = raw.get("active_game") or ""
+        glob = {k: v for k, v in raw.items()
+                if k not in ("schema", "active_game", "games")}
+        if not active:
+            active = next(iter(raw["games"]))
+        # 每个游戏档案里的老键名也换掉
+        games = {}
+        for gid, prof in raw["games"].items():
+            games[gid] = _migrate_keys(dict(prof or {}))
+        return games, glob, active
+    # ---- 老格式迁移 ----
+    raw = _migrate_keys(dict(raw))
+    gid = str(raw.get("importer") or "ZZMI").lower()
+    prof = {k: raw[k] for k in _cfg_game_keys() if k in raw}
+    prof["views"] = raw.get("views") or {}
+    glob = {k: raw[k] for k in _cfg_global_keys() if k in raw}
+    return {gid: prof}, glob, gid
+
+
+def cfg_has_games(raw):
+    """这份 config.json 是不是已经是 v2 多游戏格式。"""
+    return isinstance(raw, dict) and isinstance(raw.get("games"), dict) \
+        and bool(raw.get("games"))
+
+
+def importer_exe_names(config_json, importer):
+    """从 XXMI Launcher Config.json 取某个 importer 的全部进程名(小写)。
+
+    返回 (主程序名列表, 前台判定用名集合)。XXMI 官方配置是权威来源 ——
+    game_exe_names 是启动用的主程序, process_exe_names 是真正跑在前台的那个
+    (鸣潮是 Client-Win64-Shipping.exe), 两个都要收。
+    """
+    imp = str(importer or "").upper()
+    meta = IMPORTER_META.get(imp) or {}
+    main = list(meta.get("exe") or [])
+    proc = list(meta.get("proc") or [])
+    try:
+        lj = read_json(config_json or "", {})
+        im = (lj.get("Importers") or {}).get(imp) or {}
+        g = [str(x) for x in (im.get("game_exe_names") or []) if x]
+        p = [str(x) for x in (im.get("process_exe_names") or []) if x]
+        if g:
+            main = g
+        if p:
+            proc = p
+    except Exception:
+        pass
+    names = []
+    for x in list(main) + list(proc):
+        low = os.path.basename(str(x)).lower()
+        if low and low not in names:
+            names.append(low)
+    return main, names
+
 
 ROOT_SKIP = {"resources", "themes", "locale", "backups", "dds", "bin",
              "strings", "packages", "cache", "security", "debugger"}
@@ -1017,7 +1371,7 @@ def log(*a):
         pass
     # v1.5.7: 命令窗口会藏起来, 所以日志同时落盘一份, 出问题好排查
     try:
-        p = os.path.join(DATA_DIR, "zzmi.log")
+        p = os.path.join(DATA_DIR, LOG_NAME)
         if os.path.isfile(p) and os.path.getsize(p) > 512 * 1024:
             os.replace(p, p + ".old")          # 超过 512KB 就轮转一次
         with open(p, "a", encoding="utf-8", errors="replace") as f:
@@ -1610,7 +1964,7 @@ def is_classifier_dir(name, strong=False):
 
 
 # ===========================================================================
-# 自动探测 ZZMI
+# 自动探测 XXMI 安装目录
 # ===========================================================================
 
 def score_xxmi_root(d):
@@ -1701,17 +2055,39 @@ def autodetect_config(progress=None):
         return None, []
     hits.sort(key=lambda x: -x[0])
     _, best_dir, info = hits[0]
-    importers = info.get("importers") or []
-    importer = "ZZMI"
-    if importers:
-        importer = ([x for x in importers if x.upper() == "ZZMI"]
-                    or [x for x in importers if "ZZ" in x.upper()] or importers)[0]
+    # v1.5.71: 不再"只挑一个 importer 把其余丢掉" —— 根目录下所有认得的
+    # importer 都登记成各自的游戏档案。
+    importers = [str(x).upper() for x in (info.get("importers") or [])]
+    known = [x for x in importers if x in IMPORTER_META]
     cfg = dict(DEFAULT_CONFIG)
-    cfg["zzmi_root"] = best_dir
+    cfg["xxmi_root"] = best_dir
     cfg["launcher_exe"] = info.get("launcher_exe", "")
+    # 默认活动游戏: 有绝区零就先绝区零(历史默认), 否则取第一个认得的
+    importer = ("ZZMI" if "ZZMI" in importers
+                else (known[0] if known else
+                      ([x for x in importers if "ZZ" in x] or importers or ["ZZMI"])[0]))
     cfg["importer"] = importer
     cfg["mods_dir"] = os.path.join(best_dir, importer, "Mods")
     cfg["game_exe"] = game_exe_from_launcher_config(info.get("config_json"), importer)
+    _main, _names = importer_exe_names(info.get("config_json"), importer)
+    cfg["game_exes"] = _names
+    games = {}
+    for x in (known or [importer]):
+        main, names = importer_exe_names(info.get("config_json"), x)
+        games[x.lower()] = {
+            "importer": x,
+            "xxmi_root": best_dir,
+            "launcher_exe": info.get("launcher_exe", ""),
+            "mods_dir": os.path.join(best_dir, x, "Mods"),
+            "game_exe": game_exe_from_launcher_config(info.get("config_json"), x),
+            "game_exes": names,
+            "libraries": [], "libs_abs": [], "custom_dirs": [],
+            "char_overrides": {}, "thumb_overrides": {},
+            "pinned_mods": [], "pinned_cats": [], "pinned_chars": [],
+            "usage": {}, "photo_dir": "", "views": {},
+        }
+    cfg["games"] = games
+    cfg["active_game"] = importer.lower()
     # v1.5.4: 不再自动探测仓库 —— 仓库由玩家自己添加(新建/自定义文件夹)
     cfg["libraries"] = []
     return cfg, [{"root": d, "importers": hi.get("importers", [])}
@@ -1778,15 +2154,15 @@ def _mod_content_stats(p, budget=400):
     return n_ini, n_dds, n_ib
 
 
-def detect_libraries(zzmi_root, mods_dir):
+def detect_libraries(xxmi_root, mods_dir):
     out = []
-    if not os.path.isdir(zzmi_root):
+    if not os.path.isdir(xxmi_root):
         return out
     mods_abs = os.path.abspath(mods_dir) if mods_dir else ""
     importer_dirs = set()
     try:
-        for name in os.listdir(zzmi_root):
-            if os.path.isfile(os.path.join(zzmi_root, name, "d3dx.ini")):
+        for name in os.listdir(xxmi_root):
+            if os.path.isfile(os.path.join(xxmi_root, name, "d3dx.ini")):
                 importer_dirs.add(name)
     except Exception:
         pass
@@ -1801,7 +2177,7 @@ def detect_libraries(zzmi_root, mods_dir):
             out.append(rel)
 
     for imp in sorted(importer_dirs):
-        base = os.path.join(zzmi_root, imp)
+        base = os.path.join(xxmi_root, imp)
         try:
             for name in sorted(os.listdir(base)):
                 sp = os.path.join(base, name)
@@ -1813,8 +2189,8 @@ def detect_libraries(zzmi_root, mods_dir):
         except Exception:
             pass
     try:
-        for name in sorted(os.listdir(zzmi_root)):
-            sp = os.path.join(zzmi_root, name)
+        for name in sorted(os.listdir(xxmi_root)):
+            sp = os.path.join(xxmi_root, name)
             if not os.path.isdir(sp) or name.startswith("."):
                 continue
             if name in importer_dirs or name.lower() in ROOT_SKIP:
@@ -1969,7 +2345,7 @@ def find_mods_dir(cfg):
     md = cfg.get("mods_dir") or ""
     if md and os.path.isdir(md):
         return md
-    root = cfg.get("zzmi_root") or ""
+    root = cfg.get("xxmi_root") or ""
     imp = cfg.get("importer") or "ZZMI"
     cand = os.path.join(root, imp, "Mods")
     if os.path.isdir(cand):
@@ -2559,8 +2935,8 @@ def scan_mods(mods_dir, char_overrides=None, thumb_overrides=None, meta=None):
 
 def _img_rank(stem):
     """给预览图打分: 越小越优先做封面。"""
-    # 0) 用户自己放进来的封面(「一键添加预览图」写的 zzmi_cover.*)永远排第一
-    if stem.startswith(COVER_STEM):
+    # 0) 用户自己放进来的封面(「一键添加预览图」写的 mod_cover.*)永远排第一
+    if is_cover_name(stem):
         return -1
     # 1) 明确的预览/封面类关键词(含中英文) —— 最优先, 且能命中深层样本图
     for w in PREVIEW_PRIORITY:
@@ -2601,16 +2977,16 @@ def iter_mod_images(abs_root, limit=MAX_CANDIDATE_IMAGES):
                 continue
             out.append({"rel": norm_rel(os.path.relpath(fp, abs_root)),
                         "name": f, "size": sz, "size_h": human_size(sz),
-                        "manual": low.startswith(COVER_STEM)})
+                        "manual": is_cover_name(low)})
     out.sort(key=lambda x: (_img_rank(os.path.splitext(x["name"])[0].lower()),
                             -x["size"], x["rel"].lower()))
     return out[:limit]
 
 
 def write_mod_cover(abs_root, filename, data):
-    """「一键添加预览图」: 把用户选的照片写进 mod 文件夹根部, 命名 zzmi_cover.<ext>。
+    """「一键添加预览图」: 把用户选的照片写进 mod 文件夹根部, 命名 mod_cover.<ext>。
 
-    只写我们自己的 zzmi_cover.* (写之前先把旧的同名文件删掉), **从不碰用户原有的
+    只写我们自己的 mod_cover.* (写之前先把旧的同名文件删掉), **从不碰用户原有的
     图片和 ini**。返回 (相对文件名, 错误信息)。"""
     ext = os.path.splitext(filename or "")[1].lower()
     if ext not in IMAGE_EXTS:
@@ -2623,7 +2999,7 @@ def write_mod_cover(abs_root, filename, data):
         return None, "mod 文件夹不存在"
     for f in os.listdir(abs_root):
         p = os.path.join(abs_root, f)
-        if f.lower().startswith(COVER_STEM) and os.path.isfile(p):
+        if is_cover_name(f) and os.path.isfile(p):
             try:
                 os.remove(p)          # 这是本工具上一次生成的封面, 不是用户的文件
             except OSError:
@@ -4566,20 +4942,55 @@ def _game_exe_name(cfg):
         (cfg or {}).get("game_exe") or "ZenlessZoneZero.exe").lower()
 
 
+def _game_exe_names(cfg):
+    """v1.5.71: 前台判定要认的**全部**进程名(小写集合)。
+
+    为什么不能再只认 game_exe 一个名字:
+      鸣潮的启动程序是 `Wuthering Waves.exe`, 但真正跑在前台的是
+      `Client-Win64-Shipping.exe`。只比 game_exe 的话, 在鸣潮里按侧键会被
+      「游戏不在前台」直接拒掉 —— 连拍看起来就是坏了。
+
+    名字来源优先级:
+      1. 档案里的 game_exes(建档案时从 XXMI Launcher Config.json 抄下来的
+         game_exe_names + process_exe_names)
+      2. 当前 importer 的 IMPORTER_META 兜底
+      3. game_exe 本身
+    ⚠️ 纯内存计算, 0 子进程 / 0 文件 I/O —— 可以在 WH_MOUSE_LL 回调里调用。
+    """
+    cfg = cfg or {}
+    names = []
+    for x in (cfg.get("game_exes") or []):
+        low = os.path.basename(str(x or "")).lower()
+        if low and low not in names:
+            names.append(low)
+    imp = str(cfg.get("importer") or "").upper()
+    meta = IMPORTER_META.get(imp) or {}
+    for x in list(meta.get("exe") or []) + list(meta.get("proc") or []):
+        low = os.path.basename(str(x or "")).lower()
+        if low and low not in names:
+            names.append(low)
+    main = _game_exe_name(cfg)
+    if main and main not in names:
+        names.append(main)
+    return names
+
+
 def _is_game_foreground(cfg):
-    """前台窗口是不是**绝区零自己**。拿不到任何信息时返回 False(不录)。"""
-    want = _game_exe_name(cfg)
+    """前台窗口是不是**这个游戏自己**。拿不到任何信息时返回 False(不录)。"""
+    want = _game_exe_names(cfg)
     got = foreground_exe()
-    return bool(want) and bool(got) and got == want
+    return bool(want) and bool(got) and got in want
 
 
 def _not_game_msg(cfg=None):
     """被"游戏不在前台"挡掉时的说明文字。"""
-    exe = (cfg or {}).get("game_exe") or "ZenlessZoneZero.exe"
-    return ("绝区零不在最前面, 这次按键不算 —— v1.5.42 起连拍只在游戏窗口"
+    cfg = cfg or {}
+    exe = cfg.get("game_exe") or "ZenlessZoneZero.exe"
+    label = importer_label(cfg.get("importer"))
+    return ("%s不在最前面, 这次按键不算 —— v1.5.42 起连拍只在游戏窗口"
             "处于前台时才会触发(以前只要管家不在最前就录, 逛网页时也在后台"
             "一直抓屏)。如果认错了游戏程序, 去 设置 → 游戏 改「游戏主程序」"
-            "(当前认的是 %s)。" % os.path.basename(exe))
+            "(当前认的是 %s)。" % (label, os.path.basename(exe)))
 
 
 def _burst_allowed_now(cfg):
@@ -4669,7 +5080,7 @@ def launch_game(cfg):
                 return True, ("已请求管理员权限 —— 请在 UAC 弹窗点「是」, "
                               "游戏就会启动 (--nogui --xxmi %s)" % importer)
             if rc == 5:
-                return False, "你取消了管理员授权, 没有启动\n(ZZMI 注入需要管理员权限, 请再点一次并选「是」)"
+                return False, "你取消了管理员授权, 没有启动\n(注入 MOD 需要管理员权限, 请再点一次并选「是」)"
             if rc == 2:
                 return False, "找不到启动器文件"
             return False, "启动被系统拒绝 (错误码 %d)" % rc
@@ -4798,12 +5209,12 @@ def hide_console(delay=1.6):
     """把那个黑色命令窗口藏起来(不销毁, 日志照写)。
 
     为什么要 delay: 服务刚起来时还要往控制台打印几行启动信息, 等窗口和浏览器都
-    起来之后再藏, 用户就看不到闪烁了。日志同时写进 DATA_DIR\\zzmi.log, 出问题时
+    起来之后再藏, 用户就看不到闪烁了。日志同时写进 DATA_DIR\\mod-manager.log, 出问题时
     可以手动跑 `--console` 或在界面里点「显示日志」把它调回来。
     """
     if not _WIN:
         return False
-    if os.environ.get("ZZMI_KEEP_CONSOLE") == "1":
+    if os.environ.get("MOD_MANAGER_KEEP_CONSOLE") or os.environ.get("ZZMI_KEEP_CONSOLE") == "1":
         return False
     time.sleep(delay)
     hwnd = _console_hwnd()
@@ -5118,7 +5529,6 @@ class BurstBuffer(object):
                 self.thread.start()
             except Exception:
                 pass
-
     def stop(self):
         self._stop.set()
 
@@ -5152,12 +5562,26 @@ class BurstBuffer(object):
         # (少一次 tasklist), 也不因为管家在前台就冻结。
         rec = self.rec
         if rec is None:
-            # v1.5.37 防御: 没在录时清掉唤醒事件, 避免残留 set 让 _loop 空转。
+            # v1.5.71 修竞态: press() 的顺序是「先设 self.rec, 再 set 事件」。
+            # 本线程如果正好在这两步之间读到过一个 None, 紧接着 clear() 就会把
+            # press 刚 set 的信号**吞掉** —— 这一轮于是不录, 傻等到下一个等待
+            # 周期(0.5~0.8s)才回头看见 rec, 1 秒的录制窗口就这么被吃掉, 表现为
+            # 「按了没反应 / 上一段没抓到帧: 0 帧」(实测 5 次里 3 次)。
+            # 现在: clear 之后**再读一次**, press 已经设好的 rec 立刻就能接上。
             self._rec_event.clear()
+            rec = self.rec
         if rec is not None:
             # v1.5.37 录制触发修复: 一进录制分支就清掉唤醒事件, 避免 set 残留
             # 误唤醒; press() 在录制进行中再被按会直接返回"上一段还在录", 不会再来 set。
             self._rec_event.clear()
+            # v1.5.71 修竞态: press() 是「先设 rec, 再 set 事件」, 而后台线程可能
+            # 因为首次调度/系统繁忙晚于 until 才开始跑 —— 那样这一批会一帧都没抓到
+            # 就被判成"0 帧 / 按了没反应"(实测 6 次里 2 次, 用户会以为连拍坏了)。
+            # 用户确实按了一下, 就至少给它录到东西的机会: 还没开始录的
+            # (started 为空) 从**现在**重新起算一个完整窗口。
+            if not rec.get("started"):
+                rec["started"] = True
+                rec["until"] = time.time() + (rec.get("secs") or self._secs())
             if time.time() >= rec["until"]:
                 self._finish_rec()
                 return True
@@ -5383,10 +5807,11 @@ class BurstBuffer(object):
         # 否则用户看到的还是"按了没反应"。_is_game_foreground / foreground_exe
         # 都是纯内核调用(0 子进程 / 0 文件 I/O), 在钩子回调里调也安全。
         if cfg.get("photo_only_in_game", True) and not _is_game_foreground(cfg):
-            return ("连拍只在**绝区零窗口在最前面**的时候才会录(v1.5.42 起的默认行为), "
+            return ("连拍只在**%s窗口在最前面**的时候才会录(v1.5.42 起的默认行为), "
                     "现在前台是「%s」。切回游戏再按; 或者去 设置 → 📸 连拍缓冲 → "
                     "触发条件, 切回「只要管家不在最前就触发」。"
-                    % (foreground_exe() or "拿不到"))
+                    % (importer_label(cfg.get("importer")),
+                       foreground_exe() or "拿不到"))
         secs = cfg.get("photo_seconds") or 3
         return ("按下之后那 %s 秒里一帧都没抓到 —— 多半是屏幕捕获被拦住了。"
                 "可以试: ① 游戏别用「独占全屏」, 改「无边框窗口」; "
@@ -5645,7 +6070,7 @@ class BurstBuffer(object):
             return False, "这一帧已经不在了(可能超时)", ""
         try:
             os.makedirs(PHOTO_DIR, exist_ok=True)
-            name = time.strftime("zzmi_%Y%m%d_%H%M%S_") + "%03d.jpg" % idx
+            name = time.strftime("shot_%Y%m%d_%H%M%S_") + "%03d.jpg" % idx
             with open(os.path.join(PHOTO_DIR, name), "wb") as f:
                 f.write(jpeg)
             return True, "已留下 1 张", name
@@ -5933,10 +6358,11 @@ def photo_diag(app):
         # v1.5.42: 触发条件那两行 —— 用户要求"只有绝区零在前面才触发",
         # 自检必须能把"到底谁在前台"直接摆出来, 否则按了没反应没法排查。
         step("触发条件", True,
-             ("只在绝区零前台时触发" if only_in_game
+             ("只在%s前台时触发" % importer_label(cfg.get("importer")) if only_in_game
               else "只要管家不在最前就触发(v1.5.35 老行为)"),
              "设置 → 📸 连拍缓冲 → 触发条件, 可以切回老行为"),
-        step("绝区零在前台?", (not only_in_game) or game_fg,
+        step("%s在前台?" % importer_label(cfg.get("importer")),
+             (not only_in_game) or game_fg,
              ("是" if game_fg else "不是")
              + ("  ·  当前前台: %s" % (fg_exe or "拿不到"))
              + ("  ·  认的游戏: %s" % game_exe_name),
@@ -6016,7 +6442,14 @@ class App(object):
 
     def load_config(self):
         raw = read_json(CONFIG_PATH, None)
-        if not isinstance(raw, dict) or "zzmi_root" not in raw:
+        # v1.5.72: 三种都认 ——
+        #   ① 最新: 多游戏格式(顶层有 games)
+        #   ② v1.5.71 扁平格式(顶层有 xxmi_root)
+        #   ③ 更老的扁平格式(顶层是 zzmi_root, 键名后来改过)
+        # 全都无损折进对应的游戏档案, 一条数据都不丢。
+        if not isinstance(raw, dict) or not (
+                ("xxmi_root" in raw) or ("zzmi_root" in raw)
+                or cfg_has_games(raw)):
             if raw is not None:
                 try:
                     shutil.copyfile(CONFIG_PATH, os.path.join(
@@ -6024,7 +6457,14 @@ class App(object):
                 except Exception:
                     pass
             return False
-        cfg = dict(DEFAULT_CONFIG)
+        legacy = not cfg_has_games(raw)
+        games, glob, active = cfg_from_disk(raw)
+        cfg = cfg_flatten(games, glob, active)
+        if legacy:
+            # 只在内存里迁移, 等第一次真正的 save_config 才落盘 ——
+            # 万一这轮启动中途崩了, 磁盘上还是完整的老格式, 照样能用。
+            log("配置已从单游戏格式迁移到多游戏格式(内存中): active=%s 游戏数=%d"
+                % (active, len(games)))
         # v1.5.62 关键修正: 原来这里是
         #     cfg.update({k: v for k, v in raw.items() if k in DEFAULT_CONFIG})
         # —— 只要 config 里**存在**某个键就会被收下。但用户实测「管理器缓存全没了」:
@@ -6033,7 +6473,6 @@ class App(object):
         # 目录/照片目录 全被清空, 而 thumbs/方案/日志这些文件反而没事(它们不在 config)。
         # 现在: (1) 读取失败时不静默吞掉, 记日志; (2) 保存前若发现内存里的 cfg
         # 比磁盘上"更空", 先备份磁盘那份, 留一条回滚线索。
-        cfg.update({k: v for k, v in raw.items() if k in DEFAULT_CONFIG})
         # 一次性迁移: 旧版本写进配置里的默认呼出键 Ctrl+Alt+K -> 新的默认 F9
         if str(cfg.get("hotkey") or "").replace(" ", "").lower() == "ctrl+alt+k":
             cfg["hotkey"] = DEFAULT_CONFIG["hotkey"]
@@ -6052,10 +6491,24 @@ class App(object):
         # 先把磁盘那份留个备份(带时间戳), 这样即使真被覆盖也能捞回来。
         try:
             old = read_json(CONFIG_PATH, None)
-            if isinstance(old, dict) and "zzmi_root" in old:
+            if isinstance(old, dict) and ("xxmi_root" in old
+                                          or "zzmi_root" in old
+                                          or cfg_has_games(old)):
                 def _weight(c):
-                    return sum(len(c.get(k) or []) if isinstance(c.get(k), (list, dict))
-                               else (1 if c.get(k) else 0)
+                    src = c
+                    if cfg_has_games(c):
+                        # 多游戏格式: 把各游戏档案里的用户数据也算进去
+                        src = {}
+                        for prof in (c.get("games") or {}).values():
+                            for k, v in (prof or {}).items():
+                                if isinstance(v, (list, dict)):
+                                    src.setdefault(k, {})
+                                    if isinstance(src[k], dict) and isinstance(v, dict):
+                                        src[k].update(v)
+                                    elif isinstance(src[k], list) and isinstance(v, list):
+                                        src[k] = list(src[k]) + list(v)
+                    return sum(len(src.get(k) or []) if isinstance(src.get(k), (list, dict))
+                               else (1 if src.get(k) else 0)
                                for k in ("char_overrides", "thumb_overrides",
                                          "pinned_mods", "pinned_cats", "usage",
                                          "libraries", "custom_dirs"))
@@ -6065,7 +6518,142 @@ class App(object):
                     log("⚠ 保存的配置比磁盘上那份更空, 已把旧配置备份为 config.bak-*.json")
         except Exception:
             pass
-        write_json(CONFIG_PATH, self.cfg)
+        # v1.5.71: 落盘一律写成多游戏格式(已有的 games 档案与新摊平的这份合并)
+        games, glob, active = cfg_split(self.cfg)
+        write_json(CONFIG_PATH, cfg_to_disk(games, glob, active))
+
+    # ---- v1.5.71: 多游戏 ------------------------------------------------
+    def game_list(self):
+        """当前已知的游戏档案摘要(给顶部切换器用)。"""
+        games = self.cfg.get("games") or {}
+        active = self.cfg.get("active_game") or ""
+        out = []
+        for gid, prof in games.items():
+            imp = str((prof or {}).get("importer") or gid).upper()
+            md = (prof or {}).get("mods_dir") or ""
+            out.append({"id": gid,
+                        "importer": imp,
+                        "label": importer_label(imp),
+                        "mods_dir": md,
+                        "root": (prof or {}).get("xxmi_root") or "",
+                        "exists": bool(md and os.path.isdir(md)),
+                        "active": gid == active})
+        out.sort(key=lambda g: (IMPORTER_ORDER.index(g["importer"])
+                                if g["importer"] in IMPORTER_ORDER else 99))
+        return out
+
+    def switch_game(self, gid):
+        """切到另一个游戏。把当前这份摊平配置回写进它自己的档案, 再摊平新的。
+
+        v1.5.72: 改成**秒切**。原来这里调同步的 rescan(), 会把目标游戏的
+        Mods 整个扫一遍(317 个 mod 实测约 0.9~2s, 还要顺带排缩略图), 用户点
+        一下就干等。现在跟启动同一条路: 先拿扫描缓存**立刻**把界面填上,
+        真正的重扫丢后台线程, 扫完由前端轮询自然刷新。
+        """
+        gid = str(gid or "")
+        games = self.cfg.get("games") or {}
+        if gid not in games:
+            return False, "没有这个游戏: %s" % gid
+        if gid == self.cfg.get("active_game"):
+            return True, "已经是「%s」" % importer_label(
+                games[gid].get("importer"))
+        with self.lock:
+            # 1) 把当前活动游戏的所有改动写回它自己的档案
+            games, glob, active = cfg_split(self.cfg)
+            # 2) 换活动游戏并摊平
+            self.cfg = cfg_flatten(games, glob, gid)
+            apply_photo_dir(self.cfg)
+            # 3) 先把目标游戏的扫描缓存**立刻**顶上(没有缓存就是空列表, 也不等)
+            md = find_mods_dir(self.cfg)
+            cached = load_scan_cache(md) if md else None
+            self.scan = cached or ScanResult()
+        self.save_config()
+        # 4) 缓存已就位 -> 真正的重扫丢后台, 不阻塞切换
+        md = find_mods_dir(self.cfg)
+        if md:
+            threading.Thread(target=self._rescan_bg, args=(md,),
+                             name="scan-bg", daemon=True).start()
+        label = importer_label((games.get(gid) or {}).get("importer"))
+        log("已切换到游戏「%s」(%s)%s" % (
+            label, gid, "(缓存秒开)" if cached else "(无缓存, 后台扫描中)"))
+        return True, "已切换到「%s」" % label
+
+    def add_game(self, root, importer, mods_dir=None, save=True):
+        """把一个新发现的 importer(如 WWMI) 登记成一个游戏档案。
+
+        save=False 时只改内存不写盘 —— detect_games 批量登记时用,
+        最后一次统一存盘, 免得开机就反复写用户的 config.json。
+        """
+        imp = str(importer or "").upper()
+        if not imp:
+            return False, "缺少 importer"
+        gid = imp.lower()
+        root = (root or "").strip().strip('"').rstrip("\\/")
+        if not root or not os.path.isdir(root):
+            return False, "根目录不存在: %s" % root
+        md = mods_dir or os.path.join(root, imp, "Mods")
+        info = {}
+        try:
+            _, info = score_xxmi_root(root)
+        except Exception:
+            info = {}
+        main, names = importer_exe_names(info.get("config_json"), imp)
+        prof = dict((self.cfg.get("games") or {}).get(gid) or {})
+        prof.setdefault("libraries", [])
+        prof.setdefault("libs_abs", [])
+        prof.setdefault("custom_dirs", [])
+        prof.setdefault("pinned_mods", [])
+        prof.setdefault("pinned_cats", [])
+        prof.setdefault("pinned_chars", [])
+        prof.setdefault("char_overrides", {})
+        prof.setdefault("thumb_overrides", {})
+        prof.setdefault("usage", {})
+        prof.setdefault("views", {})
+        prof.setdefault("photo_dir", "")
+        prof["importer"] = imp
+        prof["xxmi_root"] = root
+        prof["launcher_exe"] = info.get("launcher_exe", "")
+        prof["mods_dir"] = md
+        prof["game_exe"] = game_exe_from_launcher_config(
+            info.get("config_json"), imp)
+        if not prof["game_exe"] and main:
+            prof["game_exe"] = main[0]
+        prof["game_exes"] = names
+        games = dict(self.cfg.get("games") or {})
+        games[gid] = prof
+        self.cfg["games"] = games
+        if save:
+            self.save_config()
+        return True, "已登记「%s」" % importer_label(imp)
+
+    def detect_games(self, root=None):
+        """扫描 XXMI 根目录下所有已启用的 importer, 登记成游戏档案。
+
+        返回的是**新登记或信息有更新**的那些; 已经登记过且信息没变的不会重复写盘。
+        """
+        root = (root or self.cfg.get("xxmi_root") or "").strip().rstrip("\\/")
+        if not root or not os.path.isdir(root):
+            return []
+        try:
+            score, info = score_xxmi_root(root)
+        except Exception:
+            return []
+        before = dict(self.cfg.get("games") or {})
+        found = []
+        for imp in (info.get("importers") or []):
+            imp = str(imp).upper()
+            if imp not in IMPORTER_META:
+                continue
+            md = os.path.join(root, imp, "Mods")
+            ok, msg = self.add_game(root, imp, md, save=False)
+            if ok:
+                found.append({"importer": imp, "label": importer_label(imp),
+                              "mods_dir": md, "exists": os.path.isdir(md)})
+        if found and (self.cfg.get("games") or {}) != before:
+            self.save_config()
+            return found
+        return []
+
 
     # ---- v1.5.10: 界面关闭 -> 自动退出 ---------------------------------
     def cancel_autoquit(self):
@@ -6094,36 +6682,46 @@ class App(object):
             pass
         os._exit(0)
 
-    def set_root(self, zzmi_root, importer=None, mods_dir=None):
-        zzmi_root = (zzmi_root or "").strip().strip('"').rstrip("\\/")
-        if not os.path.isdir(zzmi_root):
-            return False, "目录不存在: %s" % zzmi_root
-        score, info = score_xxmi_root(zzmi_root)
+    def set_root(self, xxmi_root, importer=None, mods_dir=None):
+        xxmi_root = (xxmi_root or "").strip().strip('"').rstrip("\\/")
+        if not os.path.isdir(xxmi_root):
+            return False, "目录不存在: %s" % xxmi_root
+        score, info = score_xxmi_root(xxmi_root)
         if score < 8:
             return False, ("这看起来不是 XXMI Launcher 的安装目录。\n"
                            "请选择包含 Resources\\Bin\\XXMI Launcher.exe "
-                           "以及 ZZMI 子目录的那一层。")
-        importers = info.get("importers") or []
-        imp = importer or self.cfg.get("importer") or "ZZMI"
+                           "以及 Mods 子目录的那一层。")
+        importers = [str(x).upper() for x in (info.get("importers") or [])]
+        imp = str(importer or self.cfg.get("importer") or "ZZMI").upper()
         if importers and imp not in importers:
-            imp = ([x for x in importers if x.upper() == "ZZMI"]
-                   or [x for x in importers if "ZZ" in x.upper()] or importers)[0]
-        self.cfg["zzmi_root"] = zzmi_root
+            known = [x for x in importers if x in IMPORTER_META]
+            imp = ("ZZMI" if "ZZMI" in importers
+                   else (known[0] if known else importers[0]))
+        self.cfg["xxmi_root"] = xxmi_root
         self.cfg["launcher_exe"] = info.get("launcher_exe", "")
         self.cfg["importer"] = imp
-        self.cfg["mods_dir"] = mods_dir or os.path.join(zzmi_root, imp, "Mods")
+        self.cfg["mods_dir"] = mods_dir or os.path.join(xxmi_root, imp, "Mods")
         exe = game_exe_from_launcher_config(info.get("config_json"), imp)
         if exe:
             self.cfg["game_exe"] = exe
+        # v1.5.71: 前台判定用的名字集合也跟着换
+        _main, _names = importer_exe_names(info.get("config_json"), imp)
+        self.cfg["game_exes"] = _names
         # v1.5.5: 换根目录时保留玩家自己登记的仓库 —— 只把新根下已经不存在的剪掉,
         # 再把这次探测到的合并进去(探测只是"顺手发现", 不会顶掉玩家的列表)
         keep = [l for l in (self.cfg.get("libraries") or [])
-                if os.path.isdir(safe_join(zzmi_root, l) or "")]
-        for d in detect_libraries(zzmi_root, self.cfg["mods_dir"]):
+                if os.path.isdir(safe_join(xxmi_root, l) or "")]
+        for d in detect_libraries(xxmi_root, self.cfg["mods_dir"]):
             if d not in keep:
                 keep.append(d)
         self.cfg["libraries"] = keep
         # 锁定的绝对路径仓库(在别的盘)跟根目录无关, 原样保留
+        # v1.5.71: 这个根下所有认得的 importer 都登记成独立的游戏档案
+        self.cfg["active_game"] = imp.lower()
+        try:
+            self.detect_games(xxmi_root)
+        except Exception as ex:
+            log("登记游戏档案时出错(忽略): %s" % ex)
         self.save_config()
         invalidate_lib_cache()
         return True, "已保存"
@@ -6283,10 +6881,15 @@ class App(object):
             game, launcher = proc_probe(self.cfg)
         st = {
             "app": APP_NAME, "version": VERSION,
-            "configured": bool(self.cfg.get("zzmi_root")),
-            "zzmi_root": self.cfg.get("zzmi_root", ""),
+            "configured": bool(self.cfg.get("xxmi_root")),
+            "xxmi_root": self.cfg.get("xxmi_root", ""),
             "mods_dir": md,
             "mods_dir_exists": bool(md and os.path.isdir(md)),
+            # v1.5.71 多游戏: 顶部切换器要的摘要 + 每游戏的界面状态
+            "games": self.game_list(),
+            "active_game": self.cfg.get("active_game") or "",
+            "views": self.cfg.get("views") or {},
+            "game_label": importer_label(self.cfg.get("importer")),
             "launcher_exe": self.cfg.get("launcher_exe", ""),
             "launcher_exists": bool(self.cfg.get("launcher_exe")
                                     and os.path.isfile(self.cfg["launcher_exe"])),
@@ -6394,7 +6997,7 @@ class App(object):
 # ===========================================================================
 
 def run_detection(app):
-    """后台自动查找 ZZMI 并写入配置 (供首启与界面「自动查找」共用)。"""
+    """后台自动查找 XXMI 安装目录并写入配置 (供首启与界面「自动查找」共用)。"""
     try:
         def prog(i, t):
             app.detect_report["step"] = "已检查 %d / %d 个目录…" % (i, t)
@@ -6404,12 +7007,12 @@ def run_detection(app):
             app.save_config()
             app.rescan()
             app.detect_report = {"done": True, "step": "",
-                                 "found": cfg["zzmi_root"], "candidates": cands,
-                                 "message": "已自动找到: %s" % cfg["zzmi_root"]}
+                                 "found": cfg["xxmi_root"], "candidates": cands,
+                                 "message": "已自动找到: %s" % cfg["xxmi_root"]}
         else:
             app.detect_report = {"done": True, "step": "", "found": None,
                                  "candidates": [],
-                                 "message": "没找到, 请手动填写 ZZMI 路径"}
+                                 "message": "没找到, 请手动填写 XXMI 安装路径"}
     except Exception as ex:
         app.detect_report = {"done": True, "step": "", "found": None,
                              "candidates": [],
@@ -6434,7 +7037,7 @@ def check_update(current_version, repo=None):
     try:
         req = urllib.request.Request(
             url,
-            headers={"User-Agent": "ZZMI-Mod-Manager",
+            headers={"User-Agent": "Mod-Manager",
                      "Accept": "application/vnd.github+json"})
         # 绕过系统代理直连(GitHub 外部访问不需要本机那个代理, 与仓库里其他 GitHub 脚本一致)
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
@@ -7184,7 +7787,7 @@ def gb_hist_clear():
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "ZZMIManager/" + VERSION
+    server_version = "ModManager/" + VERSION
     app = None
     quiet = True
 
@@ -7250,13 +7853,19 @@ class Handler(BaseHTTPRequestHandler):
                 except OSError:
                     return self._json({"error": "not found"}, 404)
             if path == "/favicon.ico":
-                # v1.5.9: 绝区零图标。浏览器请求 favicon 不带 token,
-                # 所以放在鉴权之前, 应用窗口模式的窗口/任务栏图标也靠它
+                # v1.5.9: 应用窗口模式的窗口/任务栏图标靠它(不带 token, 放在鉴权之前)。
+                # v1.5.71: 这里是**合成图**(鸣潮上/绝区零下), 给 exe 与浏览器标签用;
+                # 界面左上角那个 34px 的小 logo 走 /gameicon.png, 只显示当前游戏。
                 try:
                     with open(ICON_PATH, "rb") as f:
                         return self._send(200, f.read(), "image/x-icon")
                 except OSError:
                     return self._json({"error": "not found"}, 404)
+            if path == "/gameicon.png":
+                # v1.5.71: 左上角 34px logo —— 只给**当前活动游戏**的方图。
+                # 原来这里放合成图, 34px 下横版素材缩成一团色斑, 用户说是"破方块"。
+                data, mt = _game_icon_bytes(self.app)
+                return self._send(200, data, mt)
             if not self._ok(qs):
                 return self._json({"error": "unauthorized"}, 403)
             if path == "/api/cache_info":
@@ -7272,6 +7881,11 @@ class Handler(BaseHTTPRequestHandler):
                                    "done": len(_thumb_done)})
             if path == "/api/photo_ping":
                 return self._json(photo_ping_payload(self.app))
+            if path == "/api/games":
+                # v1.5.71: 游戏列表(切换器用)。不带 entries, 很轻。
+                return self._json({"ok": True, "games": self.app.game_list(),
+                                   "active": self.app.cfg.get("active_game") or "",
+                                   "views": self.app.cfg.get("views") or {}})
             if path == "/api/photo_diag":
                 # v1.5.35: 侧键自检(GET/POST 都挂, 见 photo_ping_payload 注释)
                 return self._json(photo_diag(self.app))
@@ -7486,13 +8100,13 @@ class Handler(BaseHTTPRequestHandler):
 
             if act == "add_lib":
                 """把一个文件夹加成仓库。两种:
-                · rel 形式(相对 ZZMI 根目录) -> 记进 cfg["libraries"]
+                · rel 形式(相对 XXMI 根目录) -> 记进 cfg["libraries"]
                 · abs 形式(任意盘)          -> 记进 cfg["libs_abs"]
                 create=1 时目录不存在会自动创建。只写配置, 不搬任何文件。"""
                 raw = (body.get("lib") or body.get("path") or "").strip()
                 if not raw:
                     return self._json({"ok": False, "msg": "没有指定仓库路径"})
-                root = app.cfg.get("zzmi_root") or ""
+                root = app.cfg.get("xxmi_root") or ""
                 want_create = bool(body.get("create"))
                 if is_abs_path(raw):
                     p = os.path.abspath(strip_abs_prefix(raw))
@@ -7521,7 +8135,7 @@ class Handler(BaseHTTPRequestHandler):
                     p = safe_join(root, rel)
                     if not p or not root or not os.path.isdir(root):
                         return self._json({"ok": False,
-                                           "msg": "还没设置 ZZMI 根目录"})
+                                           "msg": "还没设置 XXMI 根目录"})
                     if not os.path.isdir(p):
                         if not want_create:
                             return self._json({"ok": False,
@@ -7604,6 +8218,31 @@ class Handler(BaseHTTPRequestHandler):
             if act == "rescan":
                 app.rescan()
                 return self._json({"ok": True, "state": app.state()})
+
+            # ---- v1.5.71: 多游戏切换 -----------------------------------
+            if act == "switch_game":
+                ok, msg = app.switch_game(body.get("game") or "")
+                return self._json({"ok": ok, "msg": msg,
+                                   "state": app.state() if ok else None})
+
+            # v1.5.71: 原本这里还有个 act=="detect_games" 的接口(给顶栏「+ 添加」
+            # 按钮用)。用户拍板不要那个按钮 —— 启动时 main() 已经把 XXMI 根下
+            # 所有 importer 自动登记完了, 手动再点纯属重复劳动。
+            # 后端 App.detect_games() 仍保留: 启动登记和 set_root 都靠它。
+
+            if act == "save_view":
+                # 每个游戏各自记住界面状态(排序/筛选/搜索词/折叠等)
+                gid = app.cfg.get("active_game") or ""
+                if gid:
+                    v = body.get("view")
+                    views = dict(app.cfg.get("views") or {})
+                    if isinstance(v, dict):
+                        views.update({k: v[k] for k in v
+                                      if k in ("sort", "filter", "q", "scope",
+                                               "cat", "char", "scroll")})
+                        app.cfg["views"] = views
+                        app.save_config()
+                return self._json({"ok": True})
 
             # ---- v1.5.12: GameBanana 下载区 ---------------------------------
             if act == "gb_download":
@@ -7772,10 +8411,10 @@ class Handler(BaseHTTPRequestHandler):
                     select=bool(body.get("select")))})
 
             if act == "move":
-                root = app.cfg.get("zzmi_root") or ""
+                root = app.cfg.get("xxmi_root") or ""
                 md = app.mods_dir()
                 bases = {"mods": md, "root": root}
-                # 仓库可以锁在任意盘(不在 ZZMI 目录下), 这时用 *_abs 直给绝对路径
+                # 仓库可以锁在任意盘(不在 XXMI 目录下), 这时用 *_abs 直给绝对路径
                 src_base = body.get("src_abs") or bases.get(
                     body.get("src_base"), md)
                 dst_base = body.get("dst_abs") or bases.get(
@@ -7984,7 +8623,7 @@ class Handler(BaseHTTPRequestHandler):
                                                   % os.path.dirname(p)})
                 else:
                     base = (app.mods_dir() if body.get("base") == "mods"
-                            else app.cfg.get("zzmi_root") or "")
+                            else app.cfg.get("xxmi_root") or "")
                     p = safe_join(base, body.get("rel") or "")
                 if not p:
                     return self._json({"ok": False, "msg": "路径不合法"})
@@ -8001,12 +8640,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"error": "internal"}, 500)
 
     def _quick_folders(self):
-        """「自定义文件夹」里的快捷入口: ZZMI 根目录 / Mods / 桌面 / 文档 / 下载。"""
+        """「自定义文件夹」里的快捷入口: XXMI 根目录 / Mods / 桌面 / 文档 / 下载。"""
         out = []
         try:
-            root = self.app.cfg.get("zzmi_root") or ""
+            root = self.app.cfg.get("xxmi_root") or ""
             if root and os.path.isdir(root):
-                out.append({"label": "ZZMI 根目录", "path": root})
+                out.append({"label": "XXMI 根目录", "path": root})
             md = self.app.mods_dir()
             if md and os.path.isdir(md) and os.path.abspath(md) != \
                     os.path.abspath(root or " "):
@@ -8179,9 +8818,9 @@ class Handler(BaseHTTPRequestHandler):
         now = time.time()
         if _lib_cache["data"] is not None and now - _lib_cache["t"] < 90:
             return _lib_cache["data"]
-        root = app.cfg.get("zzmi_root") or ""
+        root = app.cfg.get("xxmi_root") or ""
         out = []
-        # 仓库 = ZZMI 目录下的相对仓库 + 玩家锁定的任意绝对路径仓库
+        # 仓库 = XXMI 目录下的相对仓库 + 玩家锁定的任意绝对路径仓库
         targets = [(lib, safe_join(root, lib), False)
                    for lib in (app.cfg.get("libraries") or [])]
         targets += [(d, os.path.abspath(d), True)
@@ -8323,8 +8962,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def config_action(self, body):
         app = self.app
-        if body.get("zzmi_root"):
-            ok, msg = app.set_root(body["zzmi_root"], body.get("importer"),
+        # v1.5.72: 键名从 zzmi_root 改成 xxmi_root, 但**仍然认老名字** ——
+        # 老前端页面(浏览器缓存里那份)和外部脚本还在发 zzmi_root, 不兼容就静默失效。
+        root_in = body.get("xxmi_root") or body.get("zzmi_root")
+        if root_in:
+            ok, msg = app.set_root(root_in, body.get("importer"),
                                    body.get("mods_dir"))
             if not ok:
                 return {"ok": False, "msg": msg}
@@ -8444,16 +9086,16 @@ class Handler(BaseHTTPRequestHandler):
         return {"ok": True, "msg": "已保存", "state": app.state()}
 
     def move_batch(self, body):
-        """多选一键搬运到仓库: {ids:[...], lib:"仓库名"(空=ZZMI 根目录), sub:"子目录"}。
+        """多选一键搬运到仓库: {ids:[...], lib:"仓库名"(空=XXMI 根目录), sub:"子目录"}。
         只搬目录本身, 不删文件; 同名自动加 (2); 每次搬运都写 journal 可撤销。"""
         app = self.app
-        root = app.cfg.get("zzmi_root") or ""
+        root = app.cfg.get("xxmi_root") or ""
         if not root or not os.path.isdir(root):
-            return {"ok": False, "msg": "还没设置 ZZMI 根目录"}
+            return {"ok": False, "msg": "还没设置 XXMI 根目录"}
         lib = (body.get("lib") or "").strip()
         sub = norm_rel(body.get("sub") or "")
         if is_abs_path(lib):
-            # 用户自己挑的任意文件夹(可以不在 ZZMI 目录下)
+            # 用户自己挑的任意文件夹(可以不在 XXMI 目录下)
             base = os.path.abspath(strip_abs_prefix(lib))
             if not os.path.isdir(base):
                 return {"ok": False, "msg": "找不到这个文件夹: %s" % base}
@@ -8495,7 +9137,7 @@ class Handler(BaseHTTPRequestHandler):
         invalidate_lib_cache()
         app.rescan()
         where = ((os.path.basename(base) or base) if is_abs_path(lib)
-                 else (lib or "ZZMI 根目录"))
+                 else (lib or "XXMI 根目录"))
         msg = ("已把 %d 个 mod 搬进「%s」" % (res["ok"], where)) if res["ok"] \
             else "搬运失败"
         if res["failed"]:
@@ -8657,7 +9299,7 @@ def find_manager_window():
     """
     import ctypes
     user32 = ctypes.windll.user32
-    # --app 模式的窗口标题就是页面 <title>: "ZZMI Mod 管家"
+    # --app 模式的窗口标题就是页面 <title>, 见 APP_NAME
     h = user32.FindWindowW("Chrome_WidgetWin_1", APP_NAME)
     if h:
         return h
@@ -8676,7 +9318,7 @@ def find_manager_window():
                 GetWindowTextW(hwnd, buf, 128)
                 title = buf.value or ""
                 # v1.5.35: 用 in 而不是 startswith —— 用户拿普通标签页打开时标题是
-                # "ZZMI Mod 管家 - 个人 - Microsoft Edge", 前缀匹配会漏掉。
+                # "Mod 管家 - 个人 - Microsoft Edge", 前缀匹配会漏掉。
                 if APP_NAME not in title:
                     return 1
                 if only_chromium:
@@ -8739,7 +9381,7 @@ def _is_manager_foreground():
     连拍缓冲靠它决定"冻不冻结" —— 拿不到就返回 False(照录, 宁可多录)。
 
     为什么用"含"而不是"以…开头": 用户拿普通标签页打开管家时标题是
-    "ZZMI Mod 管家 - 个人 - Microsoft Edge", 前缀匹配会漏, 缓冲就会一直录到
+    "Mod 管家 - 个人 - Microsoft Edge", 前缀匹配会漏, 缓冲就会一直录到
     管家自己 —— 那正是当初要冻结的原因。"""
     if not _WIN:
         return False
@@ -8888,7 +9530,7 @@ class WindowWatchdog(object):
     * 要**连续 `grace` 秒都找不到**才退。窗口被游戏盖住、最小化到任务栏
       都算"还在" —— `FindWindow` 找的是窗口本身, 不看可见性, 所以**玩游戏时
       绝不会误判**。
-    * 可以用环境变量 `ZZMI_NO_WATCHDOG=1` 整个关掉。
+    * 可以用环境变量 `MOD_MANAGER_NO_WATCHDOG=1` 整个关掉。
     """
 
     def __init__(self, app, grace=180.0, interval=5.0):
@@ -8903,7 +9545,7 @@ class WindowWatchdog(object):
     def start(self):
         if TEST_MODE or not _WIN:
             return
-        if os.environ.get("ZZMI_NO_WATCHDOG") == "1":
+        if os.environ.get("MOD_MANAGER_NO_WATCHDOG") or os.environ.get("ZZMI_NO_WATCHDOG") == "1":
             return
         if self.thread and self.thread.is_alive():
             return
@@ -9004,9 +9646,9 @@ class HotkeyManager(object):
                            (" / " + self.app.cfg.get("photo_hotkey"))
                            if self.app.cfg.get("photo_hotkey") else ""))
                     return
-            log("全局快捷键重试 %d 次仍然失败 —— 多半是另一个管家进程还占着键。"
-                "到任务管理器结束多余的 ZZMI-Mod-Manager.exe / python.exe, "
-                "再在 设置 里点一下「保存」。" % int(tries))
+            log(("全局快捷键重试 %d 次仍然失败 —— 多半是另一个管家进程还占着键。"
+                 "到任务管理器结束多余的管家进程(可搜「%s」), "
+                 "再在 设置 里点一下「保存」。") % (int(tries), APP_NAME))
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -9038,7 +9680,7 @@ class HotkeyManager(object):
             if getattr(self.app, "other_instance", False):
                 return False, ("%s 被占用 —— 检测到**另一个管家实例**正在运行, "
                                "它会占着这些键。到任务管理器结束多余的 "
-                               "ZZMI-Mod-Manager.exe / python.exe 再点「保存」重试。" % which)
+                               "管家进程(可搜「%s」)再点「保存」重试。" % (which, APP_NAME))
             return False, "%s 注册失败(可能被其他程序占用), 换一个组合或点「保存」重试。" % which
 
     def stop(self):
@@ -9112,9 +9754,9 @@ def pick_port():
 
 
 def main():
-    # --console / -c: 保留命令窗口(排查问题时用), 等价于 ZZMI_KEEP_CONSOLE=1
+    # --console / -c: 保留命令窗口(排查问题时用), 等价于 MOD_MANAGER_KEEP_CONSOLE=1
     if any(a in ("--console", "-c") for a in sys.argv[1:]):
-        os.environ["ZZMI_KEEP_CONSOLE"] = "1"
+        os.environ["MOD_MANAGER_KEEP_CONSOLE"] = "1"
     try:
         sys.stdout.reconfigure(encoding="utf-8")
     except Exception:
@@ -9146,21 +9788,33 @@ def main():
         if app.other_instance:
             log("⚠ 检测到另一个管家实例正在运行 —— 它会占用全局快捷键(F9 等)。"
                 "如果是没退干净的旧进程, 请到任务管理器结束多余的 "
-                "ZZMI-Mod-Manager.exe / python.exe。")
+                "管家进程(搜「%s」)。" % APP_NAME)
     app.burst.start()          # v1.5.31: 连拍缓冲线程(游戏没开时自动休眠, 不费电)
     have_cfg = app.load_config()
     if TEST_MODE:
-        log("测试/演示模式(ZZMI_TEST_MODE=1): 不注册全局快捷键、不装鼠标钩子, "
+        log("测试/演示模式(MOD_MANAGER_TEST_MODE=1): 不注册全局快捷键、不装鼠标钩子, "
             "免得和真管家抢 F9 —— 抢了又没被回收就会变成占着键的孤儿进程")
     elif app.cfg.get("photo_mouse_btn", 1):
         app.mwatch.restart()   # v1.5.32: 鼠标侧键抓拍(低级钩子, 只旁听不拦截)
     md = app.mods_dir()
+    # v1.5.71: 启动时自动把 XXMI 根目录下**所有**认得的 importer 登记成游戏档案。
+    # 以前只在 set_root(用户手动改路径)时才登记, 结果用户装完新版打开一看
+    # 还是只有绝区零一个, 根本找不到"哪里切鸣潮"。
+    # 只读目录 + 写自己配置, 不动任何 mod 文件。
+    try:
+        if have_cfg and app.cfg.get("xxmi_root"):
+            _found = app.detect_games(app.cfg.get("xxmi_root"))
+            if _found:
+                log("已登记游戏: %s" % "、".join(
+                    x["label"] for x in _found))
+    except Exception as ex:
+        log("启动时登记游戏失败(忽略): %s" % ex)
     pending_detect = False
     if have_cfg and md and os.path.isdir(md):
-        log("使用已保存的配置:", app.cfg.get("zzmi_root"))
+        log("使用已保存的配置:", app.cfg.get("xxmi_root"))
     else:
         # 不阻塞启动: 服务先起来, 界面秒开, 检测在后台跑并由界面显示进度
-        log("没有可用配置, 服务启动后在后台自动查找 ZZMI …")
+        log("没有可用配置, 服务启动后在后台自动查找 XXMI …")
         pending_detect = True
         app.detect_report = {"done": False, "step": "准备扫描…", "found": None,
                              "candidates": [], "message": ""}
@@ -9189,10 +9843,10 @@ def main():
     log("  %s v%s" % (APP_NAME, VERSION))
     log("  界面: %s" % url)
     log("  数据: %s" % DATA_DIR)
-    log("  日志: %s" % os.path.join(DATA_DIR, "zzmi.log"))
+    log("  日志: %s" % os.path.join(DATA_DIR, LOG_NAME))
     log("  关掉界面窗口(或界面「设置」里的退出)即可结束程序")
     log("")
-    if not os.environ.get("ZZMI_NO_BROWSER"):
+    if not (os.environ.get("MOD_MANAGER_NO_BROWSER") or os.environ.get("ZZMI_NO_BROWSER")):
         size = app.cfg.get("win_size") or "auto"
         b = find_browser((app.cfg.get("browser_path") or "").strip() or None)
         if not b:
@@ -9209,7 +9863,7 @@ def main():
             log("没有可用浏览器, 退回系统默认浏览器打开(普通标签页)")
             threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     # v1.5.7: 界面起来之后就把命令窗口藏掉, 不再挡在桌面上
-    if os.environ.get("ZZMI_KEEP_CONSOLE") != "1":
+    if os.environ.get("MOD_MANAGER_KEEP_CONSOLE") or os.environ.get("ZZMI_KEEP_CONSOLE") != "1":
         threading.Thread(target=hide_console, args=(1.8,), daemon=True).start()
     if pending_detect:
         threading.Thread(target=run_detection, args=(app,), daemon=True).start()

@@ -147,7 +147,8 @@ try:
     # 1. UI 页面
     st, html, hd = req("/", raw=True)
     w(f"GET /  -> {st}, {len(html)} bytes, ctype={hd.get('Content-Type')}")
-    assert st == 200 and b"ZZMI Mod" in html
+    # v1.5.71: 品牌名去掉了 "ZZMI"（多游戏之后不再写死一个游戏）
+    assert st == 200 and b"Mod \xe7\xae\xa1\xe5\xae\xb6" in html
     assert b"__BOOT__" not in html, "BOOT 占位符没被替换"
     assert b"model.token" not in html
     w("  UI 页面正常, 令牌已注入")
@@ -521,11 +522,11 @@ try:
     w(f"POST /api/console show=0 -> ok={r['ok']} msg={r['msg']}")
 
     # 17.1 日志确实落盘了(隐藏命令窗口后排查全靠它)
-    logp = os.path.join(DATA, "zzmi.log")
-    assert os.path.isfile(logp), "没生成 zzmi.log: %s" % logp
+    logp = os.path.join(DATA, "mod-manager.log")
+    assert os.path.isfile(logp), "没生成 mod-manager.log: %s" % logp
     txt = open(logp, encoding="utf-8", errors="replace").read()
     assert "v" in txt and "界面:" in txt, "日志内容不像是启动日志"
-    w("zzmi.log 已落盘, %d 字节" % os.path.getsize(logp))
+    w("mod-manager.log 已落盘, %d 字节" % os.path.getsize(logp))
 
     # 18. v1.5.8 禁用时撞上同名的 DISABLED_ 目录 -> 自动加 (2), 并回报给前端
     os.makedirs(os.path.join(MODS, "同名测试"), exist_ok=True)

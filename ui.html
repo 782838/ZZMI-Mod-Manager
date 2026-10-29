@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ZZMI Mod 管家</title>
-<!-- v1.5.9: 绝区零官方图标做 favicon, 应用窗口模式的窗口/任务栏图标就是它 -->
+<title>Mod 管家</title>
+<!-- v1.5.71: favicon 换成「绝区零 + 鸣潮」各占一半的合成图标, 窗口/任务栏图标就是它 -->
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <style>
 :root{
@@ -54,7 +54,7 @@ header{
   border-bottom:1px solid var(--line);flex:0 0 auto;z-index:20;
 }
 .brand{display:flex;align-items:center;gap:10px;flex:0 0 auto}
-/* v1.5.34: 左上角换成绝区零官方图标(复用已经在供的 /favicon.ico, 不额外加资源) */
+/* v1.5.71: 左上角只显示**当前游戏**的方图(/gameicon.png), 1:1 不裁 */
 .logo{
   width:34px;height:34px;border-radius:11px;display:block;object-fit:cover;
   background:#0e1015;box-shadow:0 0 0 3px var(--acring);
@@ -71,6 +71,30 @@ header{
 .pathchip.bad .dot{background:var(--off)}
 .pathchip code{font-family:Consolas,Menlo,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .spacer{flex:1 1 auto}
+/* ---------- v1.5.71 多游戏切换器 ---------- */
+.gtabs{
+  display:flex;align-items:center;gap:4px;padding:4px;border-radius:12px;
+  background:var(--panel);border:1px solid var(--line);flex:0 0 auto;
+  max-width:34vw;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
+}
+.gtabs::-webkit-scrollbar{display:none}
+.gtab{
+  display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:9px;
+  background:transparent;border:1px solid transparent;color:var(--dim);
+  font-size:13px;white-space:nowrap;transition:.15s;cursor:pointer;
+}
+.gtab:hover{background:var(--panel2);color:var(--txt2)}
+.gtab.on{background:var(--accent);color:var(--ink);font-weight:700;border-color:transparent}
+.gtab .gdot{width:6px;height:6px;border-radius:50%;background:var(--ok);flex:0 0 auto}
+.gtab .gdot.none{background:var(--off)}
+.gtab.on .gdot{background:var(--ink)}
+/* 超过 3 个游戏退化成下拉, 免得把顶栏挤爆 */
+.gpick{
+  display:none;padding:7px 11px;border-radius:10px;background:var(--panel);
+  border:1px solid var(--line);color:var(--txt2);font-size:13px;max-width:22vw;
+}
+.gtabs.many{display:none}
+.gtabs.many + .gpick{display:inline-block}
 .btn{
   display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:11px;
   background:var(--panel);border:1px solid var(--line);color:var(--txt2);
@@ -867,14 +891,17 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
 <div id="app" style="display:none">
   <header>
     <div class="brand">
-      <img class="logo" src="/favicon.ico" alt="绝区零" draggable="false">
-      <div><b>ZZMI Mod 管家</b><span id="verline">加载中…</span></div>
+      <img class="logo" id="glogo" src="/gameicon.png" alt="游戏" draggable="false">
+      <div><b>Mod 管家</b><span id="verline">加载中…</span></div>
     </div>
-    <div class="pathchip" id="pathchip" title="点击修改 ZZMI 路径">
+    <!-- v1.5.71 多游戏: 有 2 个以上游戏档案时才显示 -->
+    <div class="gtabs" id="gtabs" style="display:none"></div>
+    <select class="gpick" id="gpick" style="display:none"></select>
+    <div class="pathchip" id="pathchip" title="点击修改 XXMI 路径">
       <span class="dot"></span><code id="pathcode">…</code>
     </div>
     <div class="spacer"></div>
-    <button class="btn primary" id="btnLaunch" title="用 ZZMI 直接启动绝区零(需要管理员授权, 会弹 UAC 窗口)">▶ 启动游戏</button>
+    <button class="btn primary" id="btnLaunch" title="通过 XXMI Launcher 直接启动当前游戏(需要管理员授权, 会弹 UAC 窗口)">▶ 启动游戏</button>
     <button class="btn" id="btnUndo" title="撤销上一步操作">↶ 撤销</button>
     <button class="btn" id="btnRescan" title="重新扫描 Mods 目录">⟳ 重新扫描</button>
     <button class="btn ghost" id="btnLib" title="管理 Mods 外面的仓库目录">🗄 仓库</button>
@@ -997,7 +1024,7 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
     <div class="hint" style="margin-bottom:6px">＋ 添加仓库</div>
     <div class="lmrow">
       <input class="inp" id="lmName" placeholder="仓库名, 例如 未使用" spellcheck="false">
-      <button class="mini" id="lmNewRoot">＋ 在 ZZMI 下新建</button>
+      <button class="mini" id="lmNewRoot">＋ 在 XXMI 下新建</button>
     </div>
     <div class="lmrow">
       <button class="mini" id="lmFind">📁 手动寻找仓库路径…</button>
@@ -1021,7 +1048,7 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
       <li>确认那个黑色控制台窗口还开着 —— <b>关掉它程序就退出了</b>。</li>
       <li>如果开着代理/加速器(Clash、v2rayN、迅雷等), 把 <code>127.0.0.1</code> 和
           <code>localhost</code> 加入「直连/绕过」列表, 或暂时关掉「系统代理」。</li>
-      <li>重新双击 <code>启动ZZMI管家.bat</code> 或 <code>ZZMI-Mod-Manager.exe</code>:
+      <li>重新双击桌面「Mod 管家」快捷方式:
           它会用<b>独立窗口 + 强制绕过代理</b>的方式打开, 基本不会再遇到这个问题。</li>
     </ol>
     <p class="hint">报错: <span id="deadMsg"></span></p>
@@ -1085,7 +1112,7 @@ select.sel option:checked,select.inp option:checked{background:var(--accent);col
 <!-- v1.5.10: 自制输入弹窗, 替换浏览器原生 prompt(原生弹窗标题是网址、无法自定义) -->
 <div class="mask" id="mAskMask"></div>
 <div class="modal" id="mAsk">
-  <div class="dh"><h3 id="mAskTitle">ZZMI MOD 管家</h3>
+  <div class="dh"><h3 id="mAskTitle">Mod 管家</h3>
     <button class="xbtn" id="mAskX">✕</button></div>
   <div class="dbody">
     <div class="ask-msg" id="mAskMsg"></div>
@@ -1435,7 +1462,7 @@ function startIconObserver(){
    全部只作用于"视觉", 不改任何既有 DOM 结构与排列。
    背景偏好存 localStorage(纯前端, 后端 /api/config 不必改)。
    ============================================================ */
-const UIKEY = "zzmi.uiext";
+const UIKEY = "modmgr.uiext";
 const UIEXT = Object.assign({bg:"immersive", bgop:null}, (() => {
   try { return JSON.parse(localStorage.getItem(UIKEY) || "{}") || {}; } catch(e){ return {}; }
 })());
@@ -1660,19 +1687,128 @@ function renderAll(){
     + S.stats.chars + " 个角色 · 扫描 " + S.scan_seconds + "s"
     + (S.thumb_pending ? " · 缩略图 " + S.thumb_pending : "")
     + (S.hotkey ? " · 呼出键 " + S.hotkey : "");
-  renderPath(); renderChars(); renderCats(); renderPresets();
+  renderGames(); renderPath(); renderChars(); renderCats(); renderPresets();
   renderBanners(); renderScopebar(); renderCards(); observeThumbs();
+}
+
+// ---------- v1.5.71 多游戏 ----------
+// 一个游戏一份界面状态, 切回去时原样恢复(排序/筛选/搜索词/滚动位置)。
+const gViewMem = {};
+function curGid(){ return S ? (S.active_game || "") : ""; }
+function curGame(){
+  if (!S) return null;
+  return (S.games || []).find(g => g.id === curGid()) || null;
+}
+function curLabel(){
+  const g = curGame();
+  return (g && g.label) || S.game_label || "游戏";
+}
+// 换游戏前: 把当前界面状态存起来 + 落盘(每个游戏各自记住)
+function saveViewNow(){
+  if (!S) return;
+  const gid = curGid();
+  if (!gid) return;
+  const v = {
+    sort: ($("#sort") && $("#sort").value) || "def",
+    filter: filter || "all",
+    q: qtext || "",
+    scope: scope && scope.type !== "all" ? {type:scope.type, value:scope.value, label:scope.label} : null,
+    scroll: (document.querySelector(".content") || {}).scrollTop || 0
+  };
+  gViewMem[gid] = v;
+  // 顺手写进配置, 下次开软件还在(不 await, 失败也不影响切换)
+  api("/api/save_view", {action:"save_view", view:{
+    sort: v.sort, filter: v.filter, q: v.q,
+    scope: v.scope, scroll: v.scroll
+  }}).catch(()=>{});
+}
+// 切进来之后: 恢复这个游戏上次的界面状态
+function restoreView(){
+  const gid = curGid();
+  const fromCfg = (S && S.views) || {};
+  const v = gViewMem[gid] || fromCfg || {};
+  filter = v.filter || "all";
+  qtext = v.q || "";
+  scope = v.scope && v.scope.type ? v.scope : {type:"all", value:"", label:""};
+  if ($("#q")) $("#q").value = qtext;
+  if ($("#sort") && v.sort){
+    const ok = Array.prototype.some.call($("#sort").options, o => o.value === v.sort);
+    if (ok) $("#sort").value = v.sort;
+  }
+  document.querySelectorAll(".chips .chip").forEach(c => {
+    c.classList.toggle("on", (c.dataset.f || "all") === filter);
+  });
+  document.querySelectorAll(".navi").forEach(n => {
+    n.classList.toggle("on", scope.type === "all" ? n.dataset.scope === "all" : false);
+  });
+  if (v.scroll){
+    const el = document.querySelector(".content");
+    if (el) requestAnimationFrame(()=>{ el.scrollTop = v.scroll || 0; });
+  }
+}
+
+function renderGames(){
+  const box = $("#gtabs"), sel = $("#gpick");
+  if (!box || !sel) return;
+  const list = S.games || [];
+  // v1.5.71: 只有一个游戏时也显示(否则用户找不到切换器在哪, 会问「更换到鸣潮在哪里」)。
+  // 没有「+ 添加」按钮 —— 启动时 main() 已自动登记 XXMI 根下所有 importer,
+  // 手动再点一次纯属重复劳动(只会得到"没发现可用的 importer")。装了新游戏重启即可。
+  if (!list.length){
+    box.style.display = "none"; sel.style.display = "none";
+    box.innerHTML = ""; sel.innerHTML = "";
+    return;
+  }
+  const many = list.length > 3;
+  box.classList.toggle("many", many);
+  box.style.display = many ? "none" : "flex";
+  sel.style.display = many ? "inline-block" : "none";
+  box.innerHTML = list.map(g =>
+    `<button class="gtab${g.active?" on":""}" data-g="${esc(g.id)}" title="${esc(g.mods_dir||"未设置 Mods 目录")}">`
+    + `<span class="gdot${g.exists?"":" none"}"></span>${esc(g.label)}</button>`).join("");
+  sel.innerHTML = list.map(g =>
+    `<option value="${esc(g.id)}"${g.active?" selected":""}>${esc(g.label)}${g.exists?"":" (无目录)"}</option>`).join("");
+  box.querySelectorAll(".gtab[data-g]").forEach(b => { b.onclick = () => doSwitchGame(b.dataset.g); });
+  sel.onchange = () => doSwitchGame(sel.value);
+}
+
+// 点「+ 添加」: 让后端扫一遍 XXMI 根下所有认得的 importer 并登记
+async function doSwitchGame(gid){
+  if (!gid || gid === curGid()) return;
+  saveViewNow();                       // 先把当前游戏的状态记下来
+  try{
+    const r = await api("/api/switch_game", {action:"switch_game", game:gid});
+    if (!r.ok){ toast(r.msg || "切换失败", "err"); renderGames(); return; }
+    S = r.state;
+    document.documentElement.setAttribute("data-theme", S.theme || "dark");
+    restoreView();                     // 恢复目标游戏自己的界面状态
+    renderAll();
+    iconize(document.body);
+    toast(r.msg || "已切换");
+  }catch(e){
+    toast("切换失败: " + e.message, "err");
+    renderGames();
+  }
 }
 
 function renderPath(){
   const c = $("#pathchip"), code = $("#pathcode");
+  // v1.5.71: 左上角 logo 只显示当前游戏的方图。带上 game 参数强制刷新 —— 否则
+  // 切游戏后浏览器会拿缓存里上一张图, 看起来像"没换"。
+  const lg = $("#glogo");
+  if (lg){
+    const gid = curGid() || "x";
+    const want = "/gameicon.png?g=" + encodeURIComponent(gid);
+    if (lg.getAttribute("src") !== want) lg.setAttribute("src", want);
+    lg.alt = curLabel();
+  }
   if (S.configured && S.mods_dir_exists){
     c.classList.remove("bad"); code.textContent = S.mods_dir;
-    c.title = "ZZMI 根目录: " + S.zzmi_root + "\n点击修改";
+    c.title = curLabel() + " 根目录: " + S.xxmi_root + "\n点击修改";
   }else if (S.configured){
     c.classList.add("bad"); code.textContent = "Mods 目录不存在 → 点此修正";
   }else{
-    c.classList.add("bad"); code.textContent = "未找到 ZZMI, 点此指定路径";
+    c.classList.add("bad"); code.textContent = "未找到 " + curLabel() + ", 点此指定路径";
   }
 }
 
@@ -1778,9 +1914,9 @@ function renderBanners(){
   }
   if (!S.configured){
     const det = S.detect || {};
-    const prog = det.done === false ? `<div class="hint">🔍 正在后台自动查找 ZZMI… ${esc(det.step||"")}</div>` : "";
-    out.push(`<div class="banner err"><span>⚠</span><div><b>还没找到 ZZMI。</b>
-      <button class="mini" onclick="openSetup()">手动指定 ZZMI 路径</button>
+    const prog = det.done === false ? `<div class="hint">🔍 正在后台自动查找 XXMI… ${esc(det.step||"")}</div>` : "";
+    out.push(`<div class="banner err"><span>⚠</span><div><b>还没找到 XXMI 安装目录。</b>
+      <button class="mini" onclick="openSetup()">手动指定 XXMI 路径</button>
       或 <button class="mini" onclick="autoDetect()">自动查找</button>${prog}</div></div>`);
   }else if(!S.mods_dir_exists){
     out.push(`<div class="banner err"><span>⚠</span><div><b>Mods 目录不存在:</b> ${esc(S.mods_dir)}
@@ -2116,7 +2252,7 @@ function renderSelBar(){
       ${opts}
       ${aopts}
       ${copts}
-      <option value="__root__"${selLib==="__root__"?" selected":""}>ZZMI 根目录</option>
+      <option value="__root__"${selLib==="__root__"?" selected":""}>XXMI 根目录</option>
       <option value="__new__">＋ 新建仓库目录…</option>
       <option value="__custom__">📁 自定义文件夹…(任意位置)</option>
       <option value="__libmgr__">🗄 仓库管理 / 添加仓库…</option>
@@ -2264,7 +2400,7 @@ function closeLibMgr(){
   const box = $("#libmgr");
   if (box) box.classList.remove("on");
 }
-// 在 ZZMI 根目录下新建一个仓库目录并登记
+// 在 XXMI 根目录下新建一个仓库目录并登记
 async function addLibRoot(){
   const el = $("#lmName");
   const n = (el && el.value || "").trim();
@@ -2295,7 +2431,7 @@ function renderLibMgrList(){
   if (!list) return;
   if (!libs.length && !absLibs.length && !customs.length){
     list.innerHTML = `<div class="dpempty">还没有登记任何仓库。<br><br>` +
-      `用上面的「＋ 在 ZZMI 下新建」建一个,<br>` +
+      `用上面的「＋ 在 XXMI 下新建」建一个,<br>` +
       `或者「📁 手动寻找仓库路径…」锁定磁盘上已有的文件夹。</div>`;
     return;
   }
@@ -2304,7 +2440,7 @@ function renderLibMgrList(){
     `<span class="nm">${esc(name)}${sub ? `<span class="lmlib">${esc(sub)}</span>` : ""}</span>` +
     `<button class="mini" data-lmdel="${esc(val)}">🗑 移除</button></div>`;
   list.innerHTML =
-    (libs.length ? `<div class="lmsec">ZZMI 目录下的仓库</div>` : "") +
+    (libs.length ? `<div class="lmsec">XXMI 目录下的仓库</div>` : "") +
     libs.map(n => row("📦", n, "", n)).join("") +
     (absLibs.length ? `<div class="lmsec abs">锁定的其它位置</div>` : "") +
     absLibs.map(d => row("🔒", d, "", "abs:" + d)).join("") +
@@ -2329,7 +2465,7 @@ async function doMoveBatch(){
   if (!sel.size) return toast("先勾选要搬的 mod（点卡片即可勾选）","err");
   let lib = selLib;
   if (lib === "__new__"){
-    const n = await ask("新仓库目录名(会在 ZZMI 根目录下创建):", "未使用");
+    const n = await ask("新仓库目录名(会在 XXMI 根目录下创建):", "未使用");
     if (!n) return;
     const mk = await api("/api/add_lib", {lib: n, create: true});
     if (mk.state) S = mk.state;
@@ -2337,8 +2473,8 @@ async function doMoveBatch(){
     lib = n; selLib = n;
   }
   if (lib === "__custom__"){ openDirPick(); return; }
-  if (!lib) return toast("先选一个仓库 / 自定义文件夹（或选「ZZMI 根目录」）","err");
-  const where = (lib === "__root__") ? "ZZMI 根目录"
+  if (!lib) return toast("先选一个仓库 / 自定义文件夹（或选「XXMI 根目录」）","err");
+  const where = (lib === "__root__") ? "XXMI 根目录"
               : (isAbsPath(lib) ? "文件夹「" + lib.replace(/^abs:/i,"") + "」"
                                 : "仓库「" + lib + "」");
   if (!await askConfirm(`把勾选的 ${sel.size} 个 mod 搬到 ${where}?\n\n` +
@@ -2615,7 +2751,7 @@ $("#btnLaunch").onclick = async () => {
   }
 };
 // ---------- 侧栏分组: 点标题收起 / 展开整组 (状态记在 localStorage) ----------
-const FOLD_KEY = "zzmi.folds";
+const FOLD_KEY = "modmgr.folds";
 function foldState(){
   try{ return JSON.parse(localStorage.getItem(FOLD_KEY)) || {}; }catch(e){ return {}; }
 }
@@ -2759,7 +2895,7 @@ async function openDetail(id, silent){
       <button class="mini" id="pvAdd">＋ 选择照片作为预览图</button>
       <button class="mini" id="pvReset" style="display:none">↺ 恢复自动挑选</button>
       <input type="file" id="pvFile" accept="image/*" style="display:none">
-      <span class="hint">选中的照片会复制进这个 mod 文件夹(命名为 <code>zzmi_cover.*</code>),
+      <span class="hint">选中的照片会复制进这个 mod 文件夹(命名为 <code>mod_cover.*</code>),
       只新增/覆盖这个文件名, 不动你原来的图片和 ini。</span>
     </div>
     <h4 style="margin:16px 0 6px;font-size:13px">会覆盖的 hash (${(e.hashes||[]).length})</h4>
@@ -2943,10 +3079,10 @@ function renderSetup(){
   const d = S.detect || {}, cands = (d.candidates||[]);
   $("#setBody").innerHTML = `
     <div class="field">
-      <label>ZZMI / XXMI Launcher 安装目录</label>
-      <input class="inp" id="inRoot" value="${esc(S.zzmi_root||"")}"
+      <label>XXMI Launcher 安装目录</label>
+      <input class="inp" id="inRoot" value="${esc(S.xxmi_root||"")}"
         placeholder="例如  D:\\Mods  或  C:\\Users\\你\\AppData\\Roaming\\XXMI Launcher">
-      <div class="hint">填含有 <code>Resources\\Bin\\XXMI Launcher.exe</code> 和 <code>ZZMI</code>
+      <div class="hint">填含有 <code>Resources\\Bin\\XXMI Launcher.exe</code> 和 <code>ZZMI</code> / <code>WWMI</code> 注入器子目录
       子目录的那一层。换电脑后在这里填一次自己的路径, 之后自动记住。</div>
     </div>
     <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:10px">
@@ -2987,7 +3123,7 @@ function renderSetup(){
       <button class="mini" onclick="setHide(true)">隐藏</button>
       <button class="mini" onclick="setHide(false)">显示</button>
       <span class="hint">(当前: ${S.hide_preview?"隐藏":"显示"})</span></span></div>
-    <div class="kv"><span class="k">数据目录</span><span class="v">~/.zzmi-manager</span></div>
+    <div class="kv"><span class="k">数据目录</span><span class="v">~/.mod-manager</span></div>
     <h4 style="margin:18px 0 6px;font-size:13px">💾 缓存与存储</h4>
     <div class="hint" style="margin-bottom:8px">管家会在本机缓存两类数据: <b>扫描索引</b>(让界面秒开) 与 <b>封面缩略图</b>(卡片预览)。
       你增删 mod 后, 缩略图可能残留已删除文件的孤儿图, 白白占空间。下面可随时查看与清理 —— 清理后下次打开会自动重建, 不影响任何 mod 或设置。</div>
@@ -3027,7 +3163,7 @@ function renderSetup(){
         if(!bad.length && S.hotkey_ok===false) bad.push("快捷键");
         if(!bad.length) return "";
         const why = S.other_instance
-          ? "检测到<b>另一个管家实例</b>正在运行 —— 它占着这些键(旧进程没退干净时就会这样: 提示失败, 可按 F9 仍有反应, 因为响应的是那个旧实例)。到任务管理器结束多余的 ZZMI-Mod-Manager.exe / python.exe, 再点「保存」重试。"
+          ? "检测到<b>另一个管家实例</b>正在运行 —— 它占着这些键(旧进程没退干净时就会这样: 提示失败, 可按 F9 仍有反应, 因为响应的是那个旧实例)。到任务管理器结束多余的 管家进程(搜「Mod 管家」), 再点「保存」重试。"
           : "可能被其他程序占用: 换一个组合, 或先关掉占用它的程序, 再点「保存」重试。";
         return '<b style="color:var(--warn,#e8b339)">⚠ '+esc(bad.join(" / "))+" 注册失败。"+why+"</b>";
       })()}</span></span></div>
@@ -3060,7 +3196,7 @@ function renderSetup(){
       <button class="mini" id="btnPhotoHotkey">保存</button>
       <br><span class="hint">键盘快捷键（和侧键并存，随你习惯）。
       只存你点过「留这张」的。
-      ${S.hotkey_photo_ok === false ? '<br><b style="color:var(--warn,#e8b339)">⚠ 这个组合被占用了，注册不上。</b>' + (S.other_instance ? "检测到另一个管家实例在运行，它占着这个键 —— 结束多余的 ZZMI-Mod-Manager.exe / python.exe 后点「保存」重试。" : "换一个组合，或先关掉占用它的程序，再点「保存」重试。") : ""}</span></span></div>
+      ${S.hotkey_photo_ok === false ? '<br><b style="color:var(--warn,#e8b339)">⚠ 这个组合被占用了，注册不上。</b>' + (S.other_instance ? "检测到另一个管家实例在运行，它占着这个键 —— 结束多余的管家进程(搜「Mod 管家」)后点「保存」重试。" : "换一个组合，或先关掉占用它的程序，再点「保存」重试。") : ""}</span></span></div>
     <div class="kv"><span class="k">照片保存位置</span><span class="v">
       <input class="inp" id="inPhotoDir" value="${esc(S.photo_dir||"")}" placeholder="留空 = 数据目录\\照片"
         style="max-width:250px;padding:6px 9px;display:inline-block">
@@ -3108,16 +3244,16 @@ function renderSetup(){
       <button class="mini" id="btnConsole">▣ 显示命令窗口(看日志)</button>
       <br><span class="hint">程序启动后命令窗口会自动隐藏, 省得挡在桌面上。
       想看运行日志就点这里把它调回来; 日志同时存在
-      <code>数据目录\zzmi.log</code> 里, 随时能翻。</span></span></div>
+      <code>数据目录\mod-manager.log</code> 里, 随时能翻。</span></span></div>
     <h4 style="margin:18px 0 6px;font-size:13px">退出</h4>
     <div class="kv"><span class="k">退出程序</span><span class="v">
-      <button class="btn danger" id="btnQuit">⏻ 退出 ZZMI 管家</button>
+      <button class="btn danger" id="btnQuit">⏻ 退出 Mod 管家</button>
       <span class="hint">关掉界面窗口即可结束程序(命令窗口已隐藏, 程序会在几秒后自动退出, 不用管它)。</span></span></div>`;
   $("#btnAuto").onclick = () => autoDetect();
   $("#btnSaveRoot").onclick = async () => {
     const v = $("#inRoot").value.trim();
     if (!v) return toast("请填写路径","err");
-    const r = await api("/api/config", {zzmi_root: v});
+    const r = await api("/api/config", {xxmi_root: v});
     if (!r.ok) return toast(r.msg, "err");
     S = r.state; renderAll(); toast("已保存, 共 "+S.stats.total+" 个 mod", "ok");
   };
@@ -3232,7 +3368,7 @@ function renderSetup(){
     toast(r.msg || (r.ok ? "命令窗口已显示" : "没找到命令窗口"), r.ok?"ok":"err");
   };
   $("#btnQuit").onclick = async () => {
-    if (!await askConfirm("确定退出 ZZMI 管家?")) return;
+    if (!await askConfirm("确定退出 Mod 管家?")) return;
     try{ await api("/api/quit", {}); }catch(e){}
     document.body.innerHTML = '<div style="display:grid;place-items:center;height:100vh;color:#808b99;font:15px sans-serif">已退出, 可以关掉这个窗口了</div>';
   };
@@ -3253,7 +3389,7 @@ function renderSetup(){
     }else if (h) h.textContent = "检查失败: " + (r.error || "未知错误");
   };
   $("#setBody").querySelectorAll("[data-use]").forEach(b => b.onclick = async () => {
-    const r = await api("/api/config", {zzmi_root: b.dataset.use});
+    const r = await api("/api/config", {xxmi_root: b.dataset.use});
     if (!r.ok) return toast(r.msg,"err");
     S = r.state; renderAll(); toast("已切换到 "+b.dataset.use,"ok"); renderSetup();
   });
@@ -3387,7 +3523,7 @@ async function openLib(){
     const name = b.dataset.out;
     let target = $("#libTarget").value;
     if (target === "__new__"){
-      target = await ask("新仓库目录名(会在 ZZMI 根目录下创建):", "未使用");
+      target = await ask("新仓库目录名(会在 XXMI 根目录下创建):", "未使用");
       if (!target) return;
     }
     if (target === "__find__"){
@@ -3419,11 +3555,11 @@ function closeAll(){
 }
 
 // v1.5.10: 自制输入弹窗, 替换浏览器原生 prompt()。原生 prompt 标题是网址且无法自定义,
-// 这里统一显示「ZZMI MOD 管家」。返回 Promise<string|null>, 取消/ESC 返回 null。
+// 这里统一显示「Mod 管家」。返回 Promise<string|null>, 取消/ESC 返回 null。
 
 // v1.5.47: 自制确认弹窗, 替换浏览器原生 confirm()。原生 confirm 标题栏只能显示
 // "127.0.0.1:port 显示", 用户多次反馈「不要显示域名, 显示管理器的名字」——
-// 调用 openAsk 的 confirm 模式, 标题固定「ZZMI MOD 管家」, 与上方输入弹窗共用一套 DOM。
+// 调用 openAsk 的 confirm 模式, 标题固定「Mod 管家」, 与上方输入弹窗共用一套 DOM。
 // 用法: if (!await askConfirm("把 430 个 mod 全部启用?")) return;
 function askConfirm(msg, opts){
   return openAsk(msg, null, Object.assign({confirm: true}, opts || {}));

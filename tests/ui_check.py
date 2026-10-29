@@ -18,7 +18,10 @@ L = []
 def w(s=""):
     L.append(str(s)); print(s)
 
-URL = open(os.path.join(os.path.expanduser("~"), ".zzmi-manager", "last_url.txt")).read().strip()
+_DD = os.path.join(os.path.expanduser("~"), ".mod-manager")
+if not os.path.isdir(_DD):
+    _DD = os.path.join(os.path.expanduser("~"), ".zzmi-manager")   # 兼容未迁移的老机器
+URL = open(os.path.join(_DD, "last_url.txt")).read().strip()
 w("URL = " + URL)
 
 # ---------- 1. 找浏览器 ----------
@@ -140,7 +143,7 @@ assert not sbad3, "v1.5.6 静态检查失败: %s" % sbad3
 static_checks4 = [
     ("设置里有『显示命令窗口』按钮", 'id="btnConsole"' in html),
     ("按钮走 /api/console", '/api/console' in html),
-    ("设置里说明了日志落盘位置", "zzmi.log" in html),
+    ("设置里说明了日志落盘位置", "mod-manager.log" in html),
     ("退出提示不再说『关掉黑色控制台窗口』", "关掉那个黑色控制台窗口" not in html),
 ]
 w()
@@ -191,7 +194,7 @@ assert not sbad6, "v1.5.9 静态检查失败: %s" % sbad6
 static_checks7 = [
     ("有自制输入弹窗 #mAsk", 'id="mAsk"' in html),
     ("输入弹窗有输入框 #mAskInput", 'id="mAskInput"' in html),
-    ("弹窗标题是 ZZMI MOD 管家", "ZZMI MOD 管家" in html),
+    ("弹窗标题是 Mod 管家", ">Mod 管家</h3>" in html),
     ("定义了 ask() 输入函数", "function ask(" in html),
     ("界面关闭监听 pagehide", "pagehide" in html),
     ("关闭时通知后端 /api/bye", "/api/bye" in html),
@@ -549,7 +552,9 @@ static_checks21 = [
     ("设置页有照片保存位置", 'id="inPhotoDir"' in html and 'id="btnPhotoDirPick"' in html),
     ("照片墙能直接改保存位置", 'id="pwDir"' in html),
     ("选文件夹支持指定起始目录", 'body.get("base")' in zsrc),
-    ("左上角 logo 用绝区零图标", 'src="/favicon.ico"' in html),
+    # v1.5.71: 左上角 logo 改成只显示**当前游戏**的方图(/gameicon.png),
+    # 不再复用 favicon 的合成图 —— 34px 下横版素材会糊成一团色斑。
+    ("左上角 logo 用当前游戏的方图", 'id="glogo" src="/gameicon.png"' in html),
 ]
 w()
 w("=== v1.5.34 静态检查 ===")
@@ -878,9 +883,12 @@ static_checks25 = [
          re.search(r"_HOTKEY_ID2[\s\S]{0,900}?burst\.press", zsrc))),
     ("配置项 photo_only_in_game 默认 True", '"photo_only_in_game": True,' in zsrc),
     ("/api/config 支持 photo_only_in_game", '"photo_only_in_game" in body' in zsrc),
-    ("_why_empty 会解释「只在绝区零前台才录」",
-     "连拍只在**绝区零窗口在最前面**" in zsrc),
-    ("自检里有「绝区零在前台?」这一步", "绝区零在前台?" in zsrc),
+    # v1.5.71: 多游戏之后提示语改成按当前游戏显示("绝区零窗口在最前面" ->
+    # "%s窗口在最前面" % importer_label(...)), 所以这里校验"文案存在且是
+    # 按游戏动态生成的", 不再写死某个具体游戏名。
+    ("_why_empty 会解释「只在游戏在前台才录」(按当前游戏动态生成)",
+     "窗口在最前面**的时候才会录" in zsrc and "importer_label(" in zsrc),
+    ("自检里有「<游戏>在前台?」这一步(动态)", '在前台?" % importer_label(' in zsrc),
     ("设置页有「触发条件」两个按钮",
      'id="btnPOG1"' in html and 'id="btnPOG0"' in html and 'photo_only_in_game' in html),
     # 回调链安全: 闸门函数里不许有子进程/文件 I/O
@@ -1167,7 +1175,7 @@ w(f"dump-dom 输出 {len(dom)} 字符, stderr={len(r.stderr or '')} 字符")
 
 # 拿到的如果不是我们的界面, 而是浏览器自带的错误页, 直接说清, 别让后面 12 条全红
 if ("拒绝连接" in dom or "ERR_CONNECTION" in dom or "无法访问此网站" in dom
-        or "ZZMI Mod 管家" not in dom):
+        or "Mod 管家" not in dom):
     w("")
     w("!! 抓到的不是界面(像是浏览器错误页/空白页), 中止渲染校验。")
     w("   DOM 前 300 字符: " + dom[:300].replace("\n", " "))
@@ -1185,7 +1193,7 @@ def has(s):
     return s in dom
 
 checks = [
-    ("标题渲染", "ZZMI Mod 管家" in dom),
+    ("标题渲染", "Mod 管家" in dom),
     ("顶栏按钮", "启动游戏" in dom and "撤销" in dom and "仓库" in dom),
     ("统计已填充", "个 mod" in dom),
     ("卡片已渲染", dom.count('class="card') > 10),

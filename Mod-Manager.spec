@@ -25,7 +25,8 @@ a = Analysis(
     ['zzmi_manager.py'],
     pathex=[],
     binaries=[],
-    datas=[('ui.html', '.'), ('bg.jpg', '.'), ('installer/app.ico', '.')],
+    datas=[('ui.html', '.'), ('bg.jpg', '.'), ('installer/app.ico', '.'),
+           ('installer/game-zzmi.png', '.'), ('installer/game-wwmi.png', '.')],
     # v1.5.68: 连拍用 PIL。PIL.JpegImagePlugin 是保存 JPEG 时才延迟导入的,
     # PyInstaller 静态分析抓不到, 必须显式列出来(否则打包后存图报
     # "encoder jpeg not available")。
@@ -50,7 +51,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='ZZMI-Mod-Manager',
+    name='Mod-Manager',
     debug=False,
     uac_admin=True,  # 默认以管理员权限启动(嵌 requireAdministrator 清单)
     bootloader_ignore_signals=False,
@@ -74,7 +75,7 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='ZZMI-Mod-Manager',
+    name='Mod-Manager',
 )
 
 

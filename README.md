@@ -1,9 +1,11 @@
-# ZZMI Mod Manager · ZZMI Mod 管家
+# Mod Manager · Mod 管家
 
-A local mod manager for **Zenless Zone Zero** (ZZMI / XXMI Launcher).
+A local mod manager for **Zenless Zone Zero** and **Wuthering Waves** (via XXMI Launcher).
 It turns "rename folders by hand" into a few clicks.
 
-绝区零 **ZZMI / XXMI Launcher** 的 Mod 管理界面。把「进文件夹手动改名」变成点几下鼠标。
+**绝区零**与**鸣潮**的 Mod 管理界面（走 XXMI Launcher）。把「进文件夹手动改名」变成点几下鼠标。
+
+切换器一键在两个游戏之间切换, 两边的 mod 列表、收藏、方案、照片目录完全独立, 互不干扰。
 
 > 📖 **Language / 语言**：English first, Chinese below. 英文在前，中文在后（本项目主要面向中文用户）。
 
@@ -16,16 +18,19 @@ It turns "rename folders by hand" into a few clicks.
 This project is a **local file management utility only**. It does not modify game binaries,
 inject the game process, tamper with game memory, and it ships **no game or mod assets**.
 
-*Zenless Zone Zero* is developed by HoYoverse. This project is **not affiliated with,
-endorsed, or authorized by HoYoverse**. The game's terms of service **do not allow modding**;
-using mods may result in an **account ban**. **All risks and consequences are borne by the user.**
+*Zenless Zone Zero* is developed by HoYoverse; *Wuthering Waves* is developed by Kuro Games.
+This project is **not affiliated with, endorsed, or authorized by** either company.
+Both games' terms of service **do not allow modding**; using mods may result in an
+**account ban**. **All risks and consequences are borne by the user.**
 
 Provided for personal learning and research only; commercial use and repackaged distribution
 are prohibited. Full text: [DISCLAIMER.md](DISCLAIMER.md).
 
 ## Features
 
-- **Zero configuration** — auto-detects your ZZMI install, Mods folder, launcher and game path
+- **Two games, one window** — a switcher flips between *Zenless Zone Zero* and *Wuthering Waves*;
+  each keeps its own mod list, directory, favourites, presets and screenshot folder
+- **Zero configuration** — auto-detects your XXMI install, Mods folders, launcher and game paths
 - **Native-feeling window** — opened via Edge/Chrome `--app`, no address bar
 - **Proxy-proof** — forces a direct connection to `127.0.0.1` (system proxies often break localhost)
 - **Character grouping** — infers the character from the mod name (editable); see all outfits at a glance
@@ -56,7 +61,7 @@ are prohibited. Full text: [DISCLAIMER.md](DISCLAIMER.md).
 
 Go to **[Releases](../../releases)** and grab the installer:
 
-- `ZZMI-Mod-Manager-Setup-<ver>.exe` — installer (installs without UAC; elevates at runtime)
+- `Mod-Manager-Setup-<ver>.exe` — installer (installs without UAC; elevates at runtime)
 
 No Python required. **Run as administrator** (click *Yes* on the UAC prompt).
 If you use the installer, launch it from the **desktop shortcut**, not the "Run now" checkbox.
@@ -67,8 +72,9 @@ If you use the installer, launch it from the **desktop shortcut**, not the "Run 
 ## Quick start
 
 1. Launch, wait for auto-detection (green path = found).
-2. If not found: click the red hint (or ⚙ Settings) → fill in the ZZMI path → *Save & Rescan*.
-3. The ZZMI path is the folder containing `Resources\Bin\XXMI Launcher.exe` and `ZZMI\`.
+2. If not found: click the red hint (or ⚙ Settings) → fill in the XXMI path → *Save & Rescan*.
+3. That path is the folder containing `Resources\Bin\XXMI Launcher.exe` plus the per-game
+   importer folders (`ZZMI\` for ZZZ, `WWMI\` for WuWa).
 4. Press **F10** in game to reload mods; **F6** temporarily toggles all costume mods.
 
 ## How enable/disable works
@@ -90,21 +96,21 @@ Mods\...\DISABLED_Anby     <- disabled
 
 Disabling never deletes a byte. Deleting a mod (or a photo) goes through the **native Windows
 recycle bin** after two confirmations — there is no physical-delete code path in the program at all.
-Every action is journaled (`~/.zzmi-manager/journal.jsonl`), so Undo always works.
+Every action is journaled (`~/.mod-manager/journal.jsonl`), so Undo always works.
 
 ## Keys / data
 
 - Hotkey: configurable, default **F9**; burst-capture trigger defaults to `Ctrl+Shift+C`
   (plus the mouse side button)
-- Data folder: `%USERPROFILE%\.zzmi-manager\` — `config.json`, `presets.json`, `journal.jsonl`,
-  `thumbs\`, `照片\` (kept burst frames), `downloads\`, `browser-profile\`, `zzmi.log`.
+- Data folder: `%USERPROFILE%\.mod-manager\` — `config.json`, `presets.json`, `journal.jsonl`,
+  `thumbs\`, `照片\` (kept burst frames), `downloads\`, `browser-profile\`, `mod-manager.log`.
   The photo folder and the download folder can each be pointed elsewhere in Settings
-- Env vars: `ZZMI_MANAGER_DATA`, `ZZMI_NO_BROWSER=1`, `ZZMI_KEEP_CONSOLE=1`
+- Env vars: `MOD_MANAGER_DATA`, `MOD_MANAGER_NO_BROWSER=1`, `MOD_MANAGER_KEEP_CONSOLE=1`
 
 ## Development
 
 ```bat
-pyinstaller --noconfirm --onefile --name ZZMI-Mod-Manager --add-data "ui.html;." zzmi_manager.py
+pyinstaller --noconfirm --onefile --name Mod-Manager --add-data "ui.html;." zzmi_manager.py
 "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\setup.iss
 ```
 
@@ -120,14 +126,14 @@ Tests run against sandbox folders only (never your real mods):
 本项目仅为**本地文件管理工具**，不修改游戏本体、不注入游戏进程、不篡改游戏内存，
 **不内置任何游戏或模组资源**。
 
-《绝区零》为米哈游旗下游戏，本项目与米哈游**无任何关联、未获授权**。
-绝区零用户协议**不支持使用模组**，使用模组存在**账号封禁风险**，
+《绝区零》为米哈游旗下游戏，《鸣潮》为库洛游戏旗下游戏。本项目与上述两家公司**均无任何关联、未获授权**。
+两款游戏的用户协议**均不支持使用模组**，使用模组存在**账号封禁风险**，
 **一切后果由使用者本人自行承担**。仅用于个人技术学习研究，禁止商用与分发整合包。
 完整声明见 [DISCLAIMER.md](DISCLAIMER.md)。
 
 ## 功能
 
-- **零配置**：启动后自动在本机找到你的 ZZMI 安装位置、Mods 目录、启动器、游戏路径
+- **零配置**：启动后自动在本机找到你的 XXMI 安装位置、各游戏 Mods 目录、启动器、游戏路径
 - **独立窗口**：用 Edge/Chrome 的 App 模式打开，看起来就是个软件，没有地址栏
 - **自动绕过代理**：很多人 127.0.0.1 被系统代理拦截导致"点了没反应"，这个程序强制直连，绕开这个坑
 - **按角色分类**：自动从 mod 名识别角色（可手改），一个角色几套 mod 一眼看清
@@ -152,7 +158,7 @@ Tests run against sandbox folders only (never your real mods):
 
 ## 下载
 
-到 [Releases](../../releases) 页面下载 `ZZMI-Mod-Manager-Setup-<版本>.exe`（安装版），无需 Python 环境。
+到 [Releases](../../releases) 页面下载 `Mod-Manager-Setup-<版本>.exe`（安装版），无需 Python 环境。
 
 装完请**从桌面快捷方式启动**（安装完成页的「立即运行」已移除），弹 UAC 点「是」以管理员运行。
 
@@ -160,11 +166,11 @@ Tests run against sandbox folders only (never your real mods):
 
 ## 一、怎么启动
 
-**普通用户**：装 `ZZMI-Mod-Manager-Setup-<版本>.exe`，然后从**桌面快捷方式**启动。
+**普通用户**：装 `Mod-Manager-Setup-<版本>.exe`，然后从**桌面快捷方式**启动。
 程序已打包好，**不需要装 Python**。
 
-**想从源码跑**：**双击 `启动ZZMI管家.bat`**（需要 Python 3.8+，安装时勾选
-"Add python.exe to PATH"），或自己用 `pyinstaller ZZMI-Mod-Manager.spec` 打一个 exe。
+**想从源码跑**：**双击 `启动管家.bat`**（需要 Python 3.8+，安装时勾选
+"Add python.exe to PATH"），或自己用 `pyinstaller Mod-Manager.spec` 打一个 exe。
 
 启动后：
 
@@ -172,17 +178,17 @@ Tests run against sandbox folders only (never your real mods):
 2. 启动时闪过的**黑色控制台窗口会自动隐藏**（不用管它）——
    它是服务本体，想看日志可以在「⚙ 设置 → 日志/排错」里点「▣ 显示命令窗口」把它调回来
 3. **关掉界面窗口 = 退出程序**（几秒后自动退出，不用再去任务管理器杀进程）
-   —— 想手动退也可以点「⚙ 设置 → ⏻ 退出 ZZMI 管家」
+   —— 想手动退也可以点「⚙ 设置 → ⏻ 退出 Mod 管家」
 
 > 首次运行会用几秒钟生成预览缩略图，左上角会显示还剩多少张，生成完就是秒开。
 
 ## 二、换电脑后第一次用
 
-1. 双击启动，等它自动找 ZZMI
+1. 双击启动，等它自动找 XXMI 安装目录
 2. 找到了：顶部显示绿色路径，直接能用
-3. 没找到：点顶部红色提示（或 ⚙ 设置）→ 填 ZZMI 路径 → 「保存并扫描」
+3. 没找到：点顶部红色提示（或 ⚙ 设置）→ 填 XXMI 路径 → 「保存并扫描」
 
-**"ZZMI 路径"填哪一层？** 含有 `Resources\Bin\XXMI Launcher.exe` 和 `ZZMI` 子目录的那一层：
+**"XXMI 路径"填哪一层？** 含有 `Resources\Bin\XXMI Launcher.exe` 和 `ZZMI\` / `WWMI\` 子目录的那一层：
 
 ```
 D:\Mods                         <- 填这一层
@@ -200,7 +206,7 @@ D:\Mods                         <- 填这一层
 
 | 位置 | 功能 |
 | --- | --- |
-| 顶栏「▶ 启动游戏」 | 用 `XXMI Launcher.exe --nogui --xxmi ZZMI` 直接拉起游戏。**会弹 UAC 授权窗口，点「是」游戏才会启动** |
+| 顶栏「▶ 启动游戏」 | 用 `XXMI Launcher.exe --nogui --xxmi <当前游戏>` 直接拉起**当前切换到的那个游戏**。**会弹 UAC 授权窗口，点「是」游戏才会启动** |
 | 顶栏「↶ 撤销」 | 撤销上一步改名／搬运 |
 | 顶栏「⟳ 重新扫描」 | 外部改动过 mod 目录后刷新 |
 | 顶栏「🗄 仓库」 | 管理 Mods 外面那些不加载的 mod（见下） |
@@ -268,7 +274,7 @@ D:\Mods                         <- 填这一层
 
 ## 四、它是怎么"启用/禁用"的
 
-ZZMI 底层是 3DMigoto，官方 `d3dx.ini`：
+ZZMI / WWMI 底层都是 3DMigoto，官方 `d3dx.ini` 形如（下面是绝区零的）：
 
 ```ini
 [Include]
@@ -301,20 +307,20 @@ exclude_recursive = DISABLED*
 
 ## 七、数据存在哪
 
-`%USERPROFILE%\.zzmi-manager\`：
+`%USERPROFILE%\.mod-manager\`：
 
 | 文件 / 目录 | 内容 |
 | --- | --- |
-| `config.json` | 你填的 ZZMI 路径、主题、手动指定的角色、呼出键、下载目录、照片目录… |
+| `config.json` | 你填的 XXMI 路径、主题、手动指定的角色、呼出键、下载目录、照片目录… |
 | `presets.json` | 「方案」 |
 | `journal.jsonl` | 操作日志（撤销靠它） |
 | `thumbs\` | 预览缩略图缓存（可整个删掉，会自动重建） |
 | `照片\` | 连拍挑中留下的成品（**可在设置里改到别的盘**） |
 | `downloads\` | 下载区下来的 mod（**可改到别的盘**） |
 | `browser-profile\` | 界面窗口专用的浏览器数据目录，**你自己的 Edge 历史不会被写脏** |
-| `zzmi.log` | 运行日志（超 512KB 自动轮转成 `.old`） |
+| `mod-manager.log` | 运行日志（超 512KB 自动轮转成 `.old`） |
 
-想彻底重置就把 `.zzmi-manager` 删掉（**不影响你的 mod**）。
+想彻底重置就把 `.mod-manager` 删掉（**不影响你的 mod**）。
 
 ## 八、常见问题
 
@@ -336,10 +342,10 @@ zzmi-manager/
 ├── zzmi_manager.py   后端（纯标准库 + 可选 Pillow）
 ├── ui.html           前端（内联 CSS/JS，零外部资源）
 ├── bg.jpg            界面背景图
-├── 启动ZZMI管家.bat
-├── ZZMI-Mod-Manager.exe
+├── 启动管家.bat
+├── Mod-Manager.exe
 ├── installer/        Inno Setup 安装脚本（setup.iss）
-├── 安装包/           编译产物 ZZMI-Mod-Manager-Setup-*.exe
+├── 安装包/           编译产物 Mod-Manager-Setup-*.exe
 ├── screenshots/
 └── tests/            test_core / test_http / test_exe / ui_check
 ```
@@ -354,10 +360,10 @@ zzmi-manager/
 
 ```bat
 pip install pillow pyinstaller
-pyinstaller --noconfirm --onefile --name ZZMI-Mod-Manager --add-data "ui.html;." --add-data "bg.jpg;." zzmi_manager.py
+pyinstaller --noconfirm --onefile --name Mod-Manager --add-data "ui.html;." --add-data "bg.jpg;." zzmi_manager.py
 ```
 
-环境变量：`ZZMI_MANAGER_DATA`（自定义数据目录）、`ZZMI_NO_BROWSER=1`（不自动开窗口）。
+环境变量：`MOD_MANAGER_DATA`（自定义数据目录）、`MOD_MANAGER_NO_BROWSER=1`（不自动开窗口）。
 
 验证（全部使用沙箱目录，不碰真实 mod）：
 

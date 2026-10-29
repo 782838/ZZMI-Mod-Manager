@@ -1,11 +1,11 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0"
-title ZZMI Mod Manager
+title Mod Manager
 
 echo.
 echo   ============================================
-echo     ZZMI Mod Guan Jia  (ZZMI Mod Manager)
+echo     Mod Guan Jia  (Mod Manager)
 echo   ============================================
 echo.
 
@@ -20,7 +20,7 @@ echo.
 echo   请到 https://www.python.org/downloads/ 下载安装,
 echo   安装时务必勾选 "Add python.exe to PATH", 然后重新双击本文件。
 echo.
-echo   或者直接运行同目录下的 ZZMI-Mod-Manager.exe (免安装版, 推荐)。
+echo   或者直接运行同目录下的 Mod-Manager.exe (免安装版, 推荐)。
 echo.
 pause
 exit /b 1
