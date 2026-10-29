@@ -5,6 +5,19 @@ Mod 管家  (Mod Manager)
 =========================================
 XXMI Launcher 各 importer 的 Mod 管理界面。v1.5.71 起不再只服务绝区零。
 
+v1.5.74 更新
+-----------
+* **修: 升级后仍显示旧版本 / 桌面快捷方式消失** —— 两个安装器 bug:
+  ① `CleanOldInstall()` 只清理 `{autopf}/ZZMI Mod Manager`(C 盘), 但老用户可能
+     装在别的盘(实测 F:/ZZMI Mod Manager), 旧 `ZZMI-Mod-Manager.exe` 留在原地,
+     用户双击它看到的还是旧版本, 以为"装了没用"。
+  ② 顺手删了 `{autodesktop}/ZZMI Mod 管家.lnk` —— 但 v1.5.72 起桌面快捷方式
+     已经叫「Mod 管家.lnk」, 结果把用户桌面入口删了, 找不到新版本。
+  现在: 扫所有盘符清掉旧 exe; 只删**旧名字**的快捷方式, 保留「Mod 管家.lnk」。
+* **改: 升级时装回原来的位置** —— 新增 `GetDefaultDir()`: 先读注册表里上次的
+  InstallLocation, 再找任意盘的 `ZZMI Mod Manager`, 都没有才用 `{autopf}/Mod Manager`。
+  配合 `UsePreviousAppDir=yes`, 老用户升级不再被搬到 C 盘。
+
 v1.5.73 更新
 -----------
 * **修: 切游戏偶发失败(界面弹「切换失败: HTTP 500」)** —— 日志实锤是
@@ -936,7 +949,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.73"
+VERSION = "1.5.74"
 APP_NAME = "Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
