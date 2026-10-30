@@ -5,6 +5,17 @@ Mod 管家  (Mod Manager)
 =========================================
 XXMI Launcher 各 importer 的 Mod 管理界面。v1.5.71 起不再只服务绝区零。
 
+v1.5.75 更新
+-----------
+* **修: 开着鸣潮时顶上写「绝区零正在运行」** —— 那条横幅的文案写死了绝区零,
+  但 `game_running` 判断的是**当前游戏**。现在按当前游戏显示游戏名;
+  另外 F10/F6 是绝区零的热键, 鸣潮不一定一样, 所以只对绝区零说这两个键,
+  其它游戏提示"以该游戏 3DMigoto 配置为准"。
+* **修: `proc_probe()` 认不出鸣潮在运行** —— 原来只比 `game_exe` 一个名字,
+  但鸣潮真正的游戏进程是 `Client-Win64-Shipping.exe`(`Wuthering Waves.exe` 只是
+  启动器)。于是开着鸣潮时「正在运行」提示不出现, 侧键自检也会说游戏没开。
+  改成按 `_game_exe_names()` 的名字集合匹配, PID 解析也一并修好。
+
 v1.5.74 更新
 -----------
 * **修: 升级后仍显示旧版本 / 桌面快捷方式消失** —— 两个安装器 bug:
@@ -949,7 +960,7 @@ import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.5.74"
+VERSION = "1.5.75"
 APP_NAME = "Mod 管家"
 
 # GitHub 仓库(用于自动更新检查); 也可以在设置里改成自己的 fork
@@ -4881,6 +4892,13 @@ def invalidate_lib_cache():
 
 
 def proc_probe(cfg, force=False):
+    """当前游戏 / XXMI 启动器在不在运行。
+
+    v1.5.75: 原来只比 `game_exe` 一个名字。但鸣潮真正的游戏进程是
+    `Client-Win64-Shipping.exe`（`Wuthering Waves.exe` 只是启动器），
+    所以开着鸣潮时这里检测不到 —— 顶上那条「正在运行」的提示不出现,
+    侧键自检也会显示游戏没开。改成按 `_game_exe_names()` 的**名字集合**匹配。
+    """
     now = time.time()
     # 用 .get 兜住: state() 是界面每 2 秒轮询的接口, 缓存若被清成空字典(测试/热重载)
     # 也不能让整个 /api/state 抛 KeyError 把界面搞死。
@@ -4893,22 +4911,24 @@ def proc_probe(cfg, force=False):
                              timeout=8, errors="replace",
                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         txt = (out.stdout or "").lower()
-        exe = os.path.basename(cfg.get("game_exe") or "ZenlessZoneZero.exe").lower()
-        game = exe in txt
-        launcher = "xxmi launcher.exe" in txt
-        if game:
-            pid = 0
-            for line in txt.splitlines():
-                parts = line.split()
-                # tasklist 行: "进程名.exe   30892   Console  ..." —— 第二段是 PID
-                if parts and parts[0] == exe and len(parts) > 1:
+        names = _game_exe_names(cfg)            # 小写, 含主程序与真正跑前台的进程名
+        want = set(names) or {"zenlesszonezero.exe"}
+        # 逐行解析, 顺便取 PID(只有本游戏的名字才算, 免得拿到别的进程)
+        for line in txt.splitlines():
+            parts = line.split()
+            if not parts:
+                continue
+            if parts[0] in want:
+                game = True
+                if len(parts) > 1:
                     try:
                         pid = int(parts[1])
                     except ValueError:
                         pass
-                    break
-        else:
+                break
+        if not game:
             pid = 0
+        launcher = "xxmi launcher.exe" in txt
     except Exception:
         pass
     _proc_cache.update({"t": now, "game": game, "launcher": launcher,

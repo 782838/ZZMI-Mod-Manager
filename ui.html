@@ -1923,8 +1923,15 @@ function renderBanners(){
       <button class="mini" onclick="openSetup()">修改路径</button></div></div>`);
   }
   if (S.game_running){
-    out.push(`<div class="banner ok"><span>🎮</span><div>绝区零正在运行 —— 游戏里按 <b>F10</b> 直接重载 mod
-      (不用重启), <b>F6</b> 临时开关全部服装 mod。<br>
+    // v1.5.75: 以前这里写死「绝区零正在运行」—— 但 game_running 是**当前游戏**
+    // 的运行状态, 开着鸣潮也显示绝区零, 用户实测发现。改成按当前游戏显示。
+    // 另外 F10/F6 是绝区零的热键, 鸣潮不一定一样, 所以只对绝区零说这两个键。
+    const _gl = curLabel();
+    const _isZZZ = (S.importer || "").toUpperCase() === "ZZMI";
+    const _keys = _isZZZ
+      ? `游戏里按 <b>F10</b> 直接重载 mod (不用重启), <b>F6</b> 临时开关全部服装 mod。`
+      : `游戏里的重载/开关热键以该游戏的 3DMigoto 配置为准 (本工具不改热键)。`;
+    out.push(`<div class="banner ok"><span>🎮</span><div>${esc(_gl)}正在运行 —— ${_keys}<br>
       <span class="hint">游戏开着时个别文件可能被占用, 如果提示"文件被占用"就先关游戏再切。</span></div></div>`);
   }
   const cf = S.conflicts || [];

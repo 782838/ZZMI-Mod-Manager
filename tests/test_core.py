@@ -902,6 +902,43 @@ w("switch_game 已兜住存盘异常(写盘失败不再回 500) OK")
 _shutil_rm = __import__("shutil").rmtree
 _shutil_rm(_d6, ignore_errors=True)
 
+
+# ---- 6.3 v1.5.75: proc_probe 要认「真正在跑的那个进程」 ----
+# 鸣潮的实际进程是 Client-Win64-Shipping.exe(Wuthering Waves.exe 只是启动器)。
+# 原来 proc_probe 只比 game_exe 一个名字, 于是开着鸣潮时"正在运行"提示不出现。
+import subprocess as _sp
+
+_FAKE = ("Client-Win64-Shipping.exe       12345 Console   1   98,765 K\n"
+         "XXMI Launcher.exe                 888 Console   1   12,000 K\n")
+
+
+class _R6(object):
+    stdout = _FAKE
+
+
+_real_run6 = _sp.run
+_sp.run = lambda *a, **k: _R6()
+try:
+    _cfg6 = {"importer": "WWMI",
+             "game_exe": r"X:\WuWa\Wuthering Waves.exe",
+             "game_exes": ["wuthering waves.exe", "client-win64-shipping.exe"]}
+    Z._proc_cache.clear()
+    _g6, _l6 = Z.proc_probe(_cfg6, force=True)
+    assert _g6 is True, "鸣潮真进程在跑, proc_probe 必须认出来"
+    assert _l6 is True, "启动器也该认出来"
+    assert Z._proc_cache.get("game_pid") == 12345, \
+        "PID 解析不对: %r" % Z._proc_cache.get("game_pid")
+
+    # 绝区零的配置不许被鸣潮的进程误判成"游戏在跑"
+    Z._proc_cache.clear()
+    _g7, _ = Z.proc_probe({"importer": "ZZMI",
+                           "game_exe": r"X:\ZZZ\ZenlessZoneZero.exe"}, force=True)
+    assert _g7 is False, "绝区零配置不该把鸣潮进程认成自己"
+finally:
+    _sp.run = _real_run6
+    Z._proc_cache.clear()
+w("proc_probe 认 Client-Win64-Shipping.exe(鸣潮), 且不误判绝区零 OK")
+
 w()
 w("ALL TESTS PASSED")
 open(OUT, "w", encoding="utf-8").write("\n".join(L))
